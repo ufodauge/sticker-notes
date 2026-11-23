@@ -1,0 +1,122 @@
+---
+name: ui-conventions
+description: このリポジトリで UI(React コンポーネント、CSS Modules、画面の文言、ダイアログ、アイコン、アニメーション、入力の検証)を作成・改修するときに必ず読む規約。src/ui 以下を触るとき、画面の文言を書くとき、UI のレビューをするときに使う。
+---
+
+# UI 規約
+
+UI を作成・改修するときの規約。利用者が繰り返し指摘した点と、実装で固めた構成をまとめる。
+迷ったら「体験で伝える」「足さずに削る」「ネイティブ要素」「レイアウトを揺らさない」を優先する。
+
+参考(詳細が必要なときに読む):
+
+- https://developer.chrome.com/docs/modern-web-guidance?hl=ja
+- https://github.com/pbakaus/impeccable
+
+## 0. 体験が説明になる(最重要)
+
+説明文を書く前に、触れば分かる形にできないかを考える(SNES 版ドンキーコングの最初の面のように、操作の結果がそのまま使い方を教える)。
+
+- 画面はシール帳 1 つ。ドック、タブ、画面タイトル(「シール帳」など)、操作説明は置かない
+- 機能は今ある画面の上にダイアログで呼ぶ(作る、QR、印刷、メニュー)。新しい画面や表示切り替え(一覧表示など)を足さない
+- 結果は動きで見せる: 受け取ったステッカーは飛んできて貼り付き、捨てたものははがれて消え、既にあるものは揺れる
+- 空の状態は「次に触る場所」を見せる(空のページの最初の枠に、作るための点線の枠)
+- 隣のページを画面の端に少し見せて、横にめくれることを伝える(`scroll-snap-type: x mandatory`)
+- 確認ダイアログより「すぐ実行 + 元に戻す」
+
+## 1. 文言
+
+- 「。」を書かない。短く、1 項目 1 行
+- 文字より先にアイコンで伝える。アイコンだけのボタンには `aria-label` と `title`(ツールチップ)を必ず付ける
+- 残す文は、体験では伝わらない事実だけ(例: 「QRを読んだ人全員にIDが渡る」「保存はこの端末の中だけ」)
+- ボタンは「動詞 + 対象」(「シール帳に貼る」)。「OK」「送信」だけにしない
+- エラーは何が起きたかだけ。ペイロードの検証失敗は「読み込めないステッカー」だけ(理由を出さない)
+- 色やアイコンだけに頼らない(選択は枠線、透明はチェッカー柄、のように形でも示す)
+
+## 2. 見た目(ワイヤーフレーム調)
+
+- 主張しない: 紙(`--paper`)とインク(`--ink`)、細い線(`--line`)だけ。アクセントカラーは使わない。色はステッカーだけが持つ
+- シール帳の台紙はテーマによらず白(`--sheet` 系のトークン)。台紙の上に置くものも `--sheet-*` の色を使う
+- 文字は選択させない(`user-select: none`)。入力欄だけ選択できる
+- 主ボタンはインクで塗る 1 つだけ。他は線のみか、線もないアイコンボタン
+- 影は持ち上げたもの(選択中のステッカー、浮いているバー)だけに薄く付ける
+- アイコンは lucide-react を `strokeWidth={1.5}` 前後、装飾には `aria-hidden="true"`
+- ドット絵は必ず `image-rendering: pixelated` と整数倍の拡大
+- QR は白地に黒、クワイエットゾーン 4 モジュール。ダークテーマでも反転させない
+- トークンは用途で名前を付ける(`--ink-soft`、`--line-faint`)。値で名前を付けない
+
+## 3. 動き
+
+- 状態が変わるところには動きを付ける: ダイアログの出入り(`@starting-style` + `transition-behavior: allow-discrete`)、トースト、選択の持ち上げ、貼り付き・はがれ・揺れ
+- アニメーションは `transform` / `opacity` / `filter` / `scale` / `translate` だけ
+- 時間とイージングはトークン(`--t-fast`、`--t-med`、`--ease-out`)を使う。`prefers-reduced-motion: reduce` ではトークンが 0 になる
+- 完了を待つ必要がある動き(はがれてから削除)は `animationend` で次へ進め、reduce でも 1ms のアニメーションで必ず終わらせる
+
+## 4. レイアウト
+
+- モバイル優先。幅 320px で崩さない。`env(safe-area-inset-*)` を避ける
+- コンポーネントの切り替えはコンテナクエリ。要素は自分自身を問い合わせできないので、`container-type` は外側のラッパーに付ける
+- 長い ID は `overflow-wrap: anywhere`、1 行に収める所(トースト)は `text-overflow: ellipsis`。ボタンは `white-space: nowrap`
+- タップ領域は 44×44 以上
+
+## 5. 要素の選び方
+
+- 操作は `<button>`、移動は `<a href>`。外部リンクは行き先のホスト名をボタンに見せ、`rel="noopener noreferrer"`
+- ダイアログは `src/ui/Dialog.tsx`(ネイティブ `<dialog>`、Esc・戻る・外側タップで閉じる、閉じるアニメーション付き)。中から閉じるときは `useCloseDialog()`
+- 横スクロールは `overflow-x: auto` と `scroll-snap-type`。タッチイベントで自作しない
+
+## 6. 宣言は 1 か所(関連する情報を分けない)
+
+- 種類ごとの情報(ラベル、ヒント、規則、URL など)は 1 つのテーブルにまとめる(例: `core/sns.ts` の `SNS`)。配列とラベルの Record を別々に宣言しない
+- UI の文言を core のユニオン型に対応させるときは `Readonly<Record<Union, string>>` にして、抜けを型エラーにする(`ui/text.ts`)
+- 判別用の値の一覧は `as const` のオブジェクトか valibot の `picklist` から型を導く。型と値を二重に書かない
+
+## 7. 入力の検証は valibot
+
+- 外から来る値(バックアップファイル、IndexedDB の設定値、ステッカーの SNS ID)は valibot のスキーマで検証する。`typeof` の手書きの連鎖を書かない
+- レコードの型はスキーマから `v.InferOutput` で導く(`core/album.ts` の `PlacementSchema`)
+- 設定値はキーとスキーマを `data/settings.ts` の `SETTINGS` に並べ、読み出しで必ず通す
+- バイナリのペイロード(`core/payload.ts`)はビット単位の仕様なので手書きのまま
+
+## 8. React の実装規約
+
+- 状態は `useReducer` のステートマシン(readonly な状態と判別共用体のアクション)
+- `let` とミュータブルなオブジェクトを避ける
+- 外部の状態(IndexedDB、通知、トースト)は外部ストア + `useSyncExternalStore`
+- React Compiler 前提。`useMemo`/`useCallback` は手で散らさない(参照の同一性が正しさに関わるときだけ、理由を書いて使う)
+- スタイルは CSS Modules。インラインスタイルは座標などの動的な値と CSS 変数だけ
+- ブラウザ API は `src/data` か `src/ui/effects` に閉じ込め、`src/core` からは呼ばない
+
+### 非同期と副作用(effect で発火させない)
+
+- 描画に使う非同期の値は Suspense: キャッシュした Promise を `use()` で読む(例: 前回の SNS、保存の固定状態)
+- ブラウザのイベントで始まる処理は、そのイベントから直接動かす。effect で「状態が変わったら発火」しない
+  - 例: リンクの受け取りは `hashchange` を `main.tsx` で購読し(`data/inbox.ts`)、結果を外部ストアに書く
+  - 例: トーストの自動消去のタイマーは `ui/feedback.ts` が持つ
+- 要素の寿命に結び付く資源(object URL、Wake Lock、スクロールして見せる)は、React 19 の ref コールバックのクリーンアップで扱う。ref コールバックはモジュールで定義するか、同一性を保つ
+- 中断できる処理には `AbortController` を使う: 画像の読み込み(選び直しや閉じたときに中断)、`addEventListener(..., { signal })` での一時的なリスナー(ドラッグ中の `pointermove` など)
+- どうしても `useEffect` を使うときは `src/ui/effects/` のカスタムフックに入れ、クリーンアップを返す(lint で強制)。effect の中のトップレベルで `setState` しない(描画が 1 回増える)。描画中に計算できる値は計算する
+- 非同期の後始末で `try/catch` を書くなら、コンポーネントの外の普通の関数にする(コンポーネント内の try/catch の中に条件式があると React Compiler が最適化を諦める)
+
+### React Compiler が最適化を諦めていないか
+
+- `vp run check:compiler`(`scripts/check-react-compiler.ts`)が `src/ui` の全コンポーネントとフックをコンパイルし、1 つでも諦めたら失敗する。`vp run verify` と CI に入っている
+- ビルドも `panicThreshold: "all_errors"` で、諦めた箇所があると失敗する
+- よくある原因: 分割代入の既定値(`{ variant = "sheet" }` → 本文で `variant ?? "sheet"`)、コンポーネント内の try/catch の中の条件式
+
+## 9. レイアウトスラッシングを起こさない
+
+- DOM の読み取りと書き込みを同じフレームで交互にしない
+- ドラッグ・ピンチ中は CSS 変数(transform)だけを `requestAnimationFrame` で更新し、離したときに保存する
+- 数百枚を並べても、1 枚ごとに描いた canvas を整数倍で拡大するだけにする
+
+## 完了前のチェック
+
+- [ ] 説明文を足していないか。足すなら、体験では伝わらない事実か
+- [ ] アイコンだけのボタンに `aria-label` と `title` がある
+- [ ] 320px 幅、ダークテーマ、`prefers-reduced-motion: reduce` で崩れない
+- [ ] 関連する宣言が 1 か所にまとまっている
+- [ ] 外部入力を valibot で検証している
+- [ ] 非同期を effect で発火させていない(Suspense、イベント、ref クリーンアップ、AbortController)
+- [ ] `vp run check:compiler` が通る(React Compiler が諦めていない)
+- [ ] `vp run knip` が通る(未使用のファイル・export・依存がない)。外で使わない値は export しない
