@@ -1,0 +1,57 @@
+.defs {
+  position: absolute;
+  inline-size: 0;
+  block-size: 0;
+  overflow: hidden;
+}
+
+.sheet {
+  flex: 0 0 auto;
+  inline-size: min(60%, 260px);
+  block-size: auto;
+  border: 1px solid var(--line);
+  scroll-snap-align: start;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .sheet {
+    animation: in var(--t-med) var(--ease-out) both;
+  }
+}
+
+@keyframes in {
+  from {
+    opacity: 0;
+    translate: 0 8px;
+  }
+}
+
+.printOnly {
+  display: none;
+}
+
+.sheetPrint {
+  display: block;
+  inline-size: 210mm;
+  block-size: 297mm;
+  break-after: page;
+}
+
+.sheetPrint:last-child {
+  break-after: auto;
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 0;
+  }
+
+  :global(body > *:not(.printOnly)) {
+    display: none !important;
+  }
+
+  .printOnly {
+    display: block;
+  }
+}

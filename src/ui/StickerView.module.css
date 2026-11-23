@@ -1,0 +1,5 @@
+.sticker {
+  display: block;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 1px 1.5px rgb(0 0 0 / 0.35));
+}

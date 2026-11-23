@@ -1,0 +1,94 @@
+.dialog {
+  position: fixed;
+  padding: var(--space-6) var(--space-4) max(var(--space-6), env(safe-area-inset-bottom));
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  opacity: 0;
+  translate: 0 24px;
+  transition:
+    opacity var(--t-med) ease-out,
+    translate var(--t-med) var(--ease-out),
+    overlay var(--t-med) allow-discrete,
+    display var(--t-med) allow-discrete;
+}
+
+.dialog[open] {
+  opacity: 1;
+  translate: 0 0;
+}
+
+@starting-style {
+  .dialog[open] {
+    opacity: 0;
+    translate: 0 24px;
+  }
+}
+
+.dialog::backdrop {
+  background: var(--scrim);
+  opacity: 0;
+  transition:
+    opacity var(--t-med) ease-out,
+    overlay var(--t-med) allow-discrete,
+    display var(--t-med) allow-discrete;
+}
+
+.dialog[open]::backdrop {
+  opacity: 1;
+}
+
+@starting-style {
+  .dialog[open]::backdrop {
+    opacity: 0;
+  }
+}
+
+.sheet {
+  inset: auto 0 0;
+  inline-size: 100%;
+  max-inline-size: 100%;
+  max-block-size: 92dvh;
+  margin: 0;
+  border-width: 1px 0 0;
+  border-radius: 16px 16px 0 0;
+}
+
+@media (min-width: 720px) {
+  .sheet {
+    inset: 0;
+    inline-size: min(640px, 92vw);
+    max-block-size: 88dvh;
+    margin: auto;
+    border-width: 1px;
+    border-radius: 16px;
+  }
+}
+
+.full {
+  inset: 0;
+  inline-size: 100%;
+  max-inline-size: 100%;
+  block-size: 100%;
+  max-block-size: 100%;
+  margin: 0;
+  border: 0;
+  /* the QR needs white whatever the theme */
+  background: #ffffff;
+  color: #161616;
+  color-scheme: light;
+  --paper: #ffffff;
+  --ink: #161616;
+  --ink-soft: #5a5a5a;
+  --line: #d6d6d6;
+  --surface: #ffffff;
+}
+
+.close {
+  position: absolute;
+  inset-block-start: var(--space-2);
+  inset-inline-end: var(--space-2);
+  z-index: 1;
+}

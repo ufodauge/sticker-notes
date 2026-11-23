@@ -1,0 +1,237 @@
+.body {
+  display: flex;
+  flex-direction: column;
+  padding-block-start: var(--space-6);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: var(--space-3);
+  padding-block: var(--space-4);
+  border-block-end: 1px solid var(--line-faint);
+}
+
+.row:last-child {
+  border-block-end: 0;
+}
+
+.rowIcon {
+  padding-block-start: 10px;
+  color: var(--ink-soft);
+}
+
+.rowBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-inline-size: 0;
+}
+
+.inline {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.pre {
+  white-space: pre-line;
+}
+
+.summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-block-size: var(--tap);
+  cursor: pointer;
+  list-style: none;
+}
+
+.summary::-webkit-details-marker {
+  display: none;
+}
+
+.chevron {
+  color: var(--ink-soft);
+  transition: rotate var(--t-med) var(--ease-out);
+}
+
+.details[open] .chevron {
+  rotate: 180deg;
+}
+
+.details::details-content {
+  block-size: 0;
+  overflow: clip;
+  opacity: 0;
+  transition:
+    block-size var(--t-med) var(--ease-out),
+    opacity var(--t-med) ease-out,
+    content-visibility var(--t-med) allow-discrete;
+}
+
+.details[open]::details-content {
+  block-size: auto;
+  opacity: 1;
+}
+
+.done {
+  font-weight: 600;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .done {
+    animation: pop var(--t-med) var(--ease-out);
+  }
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    translate: 0 4px;
+  }
+}
+
+.palettes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.palette {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.strip {
+  display: grid;
+  grid-template-columns: repeat(16, 1fr);
+  flex: 1;
+  block-size: 18px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+
+.popover {
+  inset: auto;
+  position-area: bottom span-left;
+  position-try-fallbacks: flip-block;
+  min-inline-size: 200px;
+  margin: var(--space-1) 0 0;
+  padding: var(--space-1);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.12);
+  opacity: 0;
+  translate: 0 -4px;
+  transition:
+    opacity var(--t-fast) ease-out,
+    translate var(--t-fast) var(--ease-out),
+    overlay var(--t-fast) allow-discrete,
+    display var(--t-fast) allow-discrete;
+}
+
+.popover:popover-open {
+  display: flex;
+  flex-direction: column;
+  opacity: 1;
+  translate: 0 0;
+}
+
+@starting-style {
+  .popover:popover-open {
+    opacity: 0;
+    translate: 0 -4px;
+  }
+}
+
+@supports not (position-area: bottom) {
+  .popover {
+    inset: 0;
+    margin: auto;
+    block-size: fit-content;
+  }
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-block-size: var(--tap);
+  padding-inline: var(--space-3);
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  text-align: start;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.menuItem:hover,
+.menuItem:focus-visible {
+  background: var(--line-faint);
+}
+
+.small {
+  min-block-size: 36px;
+  padding-inline: var(--space-2);
+  font-size: var(--text-small);
+}
+
+.switch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-block-size: var(--tap);
+  cursor: pointer;
+}
+
+.switch input {
+  appearance: none;
+  flex: none;
+  inline-size: 44px;
+  block-size: 24px;
+  border: 1px solid var(--ink);
+  border-radius: 12px;
+  background: var(--surface);
+  cursor: inherit;
+  transition: background var(--t-fast) ease-out;
+}
+
+.switch input::before {
+  content: "";
+  display: block;
+  inline-size: 16px;
+  block-size: 16px;
+  margin: 3px;
+  border-radius: 50%;
+  background: var(--ink);
+  transition: translate var(--t-fast) var(--ease-out);
+}
+
+.switch input:checked {
+  background: var(--ink);
+}
+
+.switch input:checked::before {
+  background: var(--surface);
+  translate: 20px 0;
+}
+
+.switch input:disabled:not(:checked) {
+  opacity: 0.5;
+}
+
+.failed {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
