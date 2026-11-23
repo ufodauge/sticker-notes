@@ -1,0 +1,5 @@
+{
+  "include": ["src/core/*.ts"],
+  "exclude": ["src/core/*.test.ts", "src/core/palette-data.ts", "src/core/testing/**"],
+  "typecheck": false
+}

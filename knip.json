@@ -1,0 +1,19 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "workspaces": {
+    ".": {
+      "entry": ["src/**/*.test.ts", "e2e/**/*.spec.ts", "scripts/*.ts"],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "e2e/**/*.ts",
+        "scripts/**/*.ts",
+        "test/**/*.ts",
+        "lint/**/*.js"
+      ]
+    },
+    "tools/css-modules-content-mapper": {
+      "entry": ["src/**/*.test.ts"],
+      "project": ["src/**/*.{js,ts}"]
+    }
+  }
+}

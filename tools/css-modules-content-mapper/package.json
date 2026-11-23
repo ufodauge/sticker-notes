@@ -1,0 +1,27 @@
+{
+  "name": "css-modules-content-mapper",
+  "version": "0.1.0",
+  "private": true,
+  "description": "TypeScript 7 content mapper: types `*.module.css` imports from the CSS itself (lightningcss CSS Modules semantics)",
+  "license": "MIT",
+  "type": "module",
+  "main": "./src/transform.js",
+  "exports": {
+    ".": "./src/transform.js",
+    "./package.json": "./package.json"
+  },
+  "dependencies": {
+    "lightningcss": "^1.33.0",
+    "vscode-jsonrpc": "^9.0.1"
+  },
+  "typescript": {
+    "contentMapper": {
+      "compilerOptions": [],
+      "dynamicConfig": false,
+      "exec": [
+        "node",
+        "src/server.js"
+      ]
+    }
+  }
+}
