@@ -32,3 +32,6 @@ playwright-report
 
 # Mutation testing (mutator)
 .mutator
+
+# Claude agent worktrees
+.claude/worktrees
