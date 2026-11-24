@@ -9,7 +9,7 @@ export function JarFrame({ tools, children }: Props) {
   return (
     <section className={styles.stage} aria-label={t.jar.label}>
       {tools}
-      <div className={styles.jar}>{children}</div>
+      <div className={children ? styles.jar : `${styles.jar} ${styles.jarEmpty}`}>{children}</div>
     </section>
   );
 }

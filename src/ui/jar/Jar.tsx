@@ -20,6 +20,8 @@ export function Jar({ onPick }: Props) {
   const snap = useSyncExternalStore(stickerStore.subscribe, stickerStore.getSnapshot);
   const selection = useSyncExternalStore(jarContent.subscribe, jarContent.get);
   const handle = useRef<JarHandle | null>(null);
+  const backGlass = useRef<HTMLCanvasElement>(null);
+  const frontGlass = useRef<HTMLCanvasElement>(null);
   const [tilting, setTilting] = useReducer((_: boolean, next: boolean) => next, false);
   const all = snap.status === "ready" ? snap.stickers : [];
   const shown = shownStickers(all, selection);
@@ -31,13 +33,15 @@ export function Jar({ onPick }: Props) {
     const sync = () => handle.current?.setBlocks(currentShown());
     const observer = new ResizeObserver(([entry]) => {
       const box = entry?.contentRect;
-      if (!box || box.width <= 0 || box.height <= 0) return;
+      const glass = { back: backGlass.current, front: frontGlass.current };
+      if (!box || box.width <= 0 || box.height <= 0 || !glass.back || !glass.front) return;
       if (handle.current) {
         handle.current.resize(box.width, box.height);
         return;
       }
       handle.current = createJar({
         canvas,
+        glass: { back: glass.back, front: glass.front },
         width: box.width,
         height: box.height,
         blocks: currentShown(),
@@ -124,7 +128,9 @@ export function Jar({ onPick }: Props) {
 
   return (
     <JarFrame tools={tools}>
+      <canvas ref={backGlass} className={styles.glass} aria-hidden="true" />
       <canvas ref={attach} className={styles.canvas} aria-hidden="true" />
+      <canvas ref={frontGlass} className={styles.glass} aria-hidden="true" />
       <ul className={common.visuallyHidden} aria-label={t.jar.list}>
         {shown.map((s) => (
           <li key={s.id}>{snsDisplay(s.sticker.snsKind, s.sticker.snsId)}</li>

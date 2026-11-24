@@ -1,4 +1,6 @@
 import { Bodies, Body, Composite, Constraint, Engine, Events, Query, Sleeping } from "matter-js";
+import { insideJar, jarGeometry, pushInside, wallSegments } from "../../core/jar-geometry.ts";
+import { JAR_FEEL, capSpeed, isCalm, shakeKick } from "../../core/jar-feel.ts";
 import { blockSide, dropPose, fitSide, initialPile, rescalePose } from "../../core/jar-layout.ts";
 import {
   INITIAL_QUALITY,
@@ -8,15 +10,19 @@ import {
   type JarQuality,
   type QualityState,
 } from "../../core/jar-quality.ts";
+import { blockShape, polygonCentroid, type BlockShape } from "../../core/jar-shape.ts";
 import type { Sticker } from "../../core/payload.ts";
+import { drawGlass, type GlassLayers } from "./glass.ts";
 import { publishProbe } from "./probe.ts";
-import { makeBlockSprite, type BlockSprite } from "./sprite.ts";
+import { makeBlockSprite, silhouettePath, type BlockSprite } from "./sprite.ts";
 
 type JarBlock = { readonly id: string; readonly sticker: Sticker };
 
 export type JarOptions = {
   readonly canvas: HTMLCanvasElement;
-  // jar interior in CSS px
+  // static canvases stacked behind and in front of `canvas`, drawn only when the size or theme changes
+  readonly glass: GlassLayers;
+  // the whole jar canvas in CSS px (the glass, its walls and the room above it)
   readonly width: number;
   readonly height: number;
   readonly blocks: readonly JarBlock[];
@@ -38,6 +44,7 @@ export type JarHandle = {
 type Entry = {
   readonly id: string;
   readonly sticker: Sticker;
+  readonly shape: BlockShape;
   body: Body | null;
   sprite: BlockSprite | null;
   stale: boolean;
@@ -56,8 +63,9 @@ const FALLBACK_STEP_MS = 1000 / 60;
 const MAX_STEPS_PER_FRAME = 3;
 const STILL_STEPS = 360;
 const GRAVITY_SCALE = 0.0015;
+const WALL_THICKNESS = 80;
 const SPRITE_BUDGET_MS = 5;
-const MAX_SPAWNS_PER_FRAME = 4;
+const MAX_SPAWNS_PER_FRAME = 2;
 const VANISH_MS = 240;
 const TAP_SLOP_PX = 8;
 const TAP_MAX_MS = 600;
@@ -72,10 +80,16 @@ export function createJar(o: JarOptions): JarHandle {
   const dpr = () => window.devicePixelRatio || 1;
   const darkQuery = matchMedia("(prefers-color-scheme: dark)");
 
+  const geo0 = jarGeometry(o.width, o.height);
   const st = {
     width: o.width,
     height: o.height,
-    side: blockSide(o.blocks.length, o),
+    geo: geo0,
+    glassKey: "",
+    shake: null as { start: number; fired: number } | null,
+    calmSteps: 0,
+    rescued: 0,
+    side: blockSide(o.blocks.length, geo0.room),
     k: 1,
     slab: 1,
     dark: darkQuery.matches,
@@ -106,61 +120,86 @@ export function createJar(o: JarOptions): JarHandle {
   };
   const pixelRatio = () => (still ? Math.min(2, dpr()) : Math.min(tier().pixelRatioCap, dpr()));
 
+  const paintGlass = () => {
+    const key = `${canvas.width}x${canvas.height}:${st.width}x${st.height}:${st.dark}`;
+    if (key === st.glassKey) return;
+    st.glassKey = key;
+    drawGlass(st.geo, st.k, st.dark, o.glass);
+  };
+
   const sizeCanvas = () => {
     canvas.width = Math.round(st.width * pixelRatio());
     canvas.height = Math.round(st.height * pixelRatio());
     st.k = canvas.width / st.width;
     st.slab = Math.round(st.side * st.k);
+    st.geo = jarGeometry(st.width, st.height);
+    paintGlass();
   };
 
   const makeWalls = () => {
     Composite.remove(engine.world, st.walls);
-    const { width, height } = st;
-    const wall = (x: number, y: number, w: number, h: number, angle = 0) =>
-      Bodies.rectangle(x, y, w, h, { isStatic: true, angle, friction: 0.5, restitution: 0.1 });
-    const bevel = Math.min(st.side * 1.2, width / 4);
-    const T = 200;
-    const off = (T / 2) * Math.SQRT1_2;
-    st.walls = [
-      wall(width / 2, height + T / 2, width + 2 * T, T),
-      wall(-T / 2, height / 2, T, height * 4),
-      wall(width + T / 2, height / 2, T, height * 4),
-      wall(bevel / 2 - off, height - bevel / 2 + off, bevel * Math.SQRT2 + T, T, Math.PI / 4),
-      wall(
-        width - bevel / 2 + off,
-        height - bevel / 2 + off,
-        bevel * Math.SQRT2 + T,
-        T,
-        -Math.PI / 4,
+    // slabs lying outside the jar's inner outline, rounded bottom corners included
+    st.walls = wallSegments(st.geo, st.height).map((w) =>
+      Bodies.rectangle(
+        w.x + (w.nx * WALL_THICKNESS) / 2,
+        w.y + (w.ny * WALL_THICKNESS) / 2,
+        w.length + 4,
+        WALL_THICKNESS,
+        {
+          isStatic: true,
+          angle: w.angle,
+          friction: JAR_FEEL.friction,
+          restitution: JAR_FEEL.wallRestitution,
+        },
       ),
-    ];
+    );
     Composite.add(engine.world, st.walls);
   };
 
-  const makeBody = (id: string, x: number, y: number, angle: number): Body =>
-    Bodies.rectangle(x, y, st.side, st.side, {
-      label: id,
-      angle,
-      chamfer: { radius: st.side * 0.2, quality: 2 },
-      restitution: 0.12,
-      friction: 0.5,
-      frictionStatic: 0.7,
-      frictionAir: 0.012,
+  // convex parts around the shape's centre of mass; a compound body unless the shape is one part
+  const makeBody = (e: Entry, x: number, y: number, angle: number): Body => {
+    const { parts, centre } = e.shape;
+    const feel = {
+      label: e.id,
+      restitution: JAR_FEEL.restitution,
+      friction: JAR_FEEL.friction,
+      frictionStatic: JAR_FEEL.frictionStatic,
+      frictionAir: JAR_FEEL.frictionAir,
+      sleepThreshold: JAR_FEEL.sleepSteps,
       slop: 0.08,
+    };
+    const local = parts.map((part) =>
+      part.map(([px, py]) => ({ x: (px - centre[0]) * st.side, y: (py - centre[1]) * st.side })),
+    );
+    const only = local[0];
+    if (local.length === 1 && only) {
+      return Body.create({ ...feel, position: { x, y }, angle, vertices: only });
+    }
+    const pieces = local.map((v) => {
+      const c = polygonCentroid(v.map((p): [number, number] => [p.x, p.y]));
+      return Body.create({ position: { x: c[0], y: c[1] }, vertices: v });
     });
+    const body = Body.create({ ...feel, parts: pieces });
+    Body.setPosition(body, { x, y });
+    Body.setAngle(body, angle);
+    return body;
+  };
 
   const bodies = (): Body[] => [...st.entries.values()].flatMap((e) => (e.body ? [e.body] : []));
   const dynamicBodies = () => bodies().filter((b) => !b.isStatic);
 
-  // Blocks beyond the active cap (counted from the top of the pile) stay as a static pile.
+  const cost = (b: Body) => (b.parts.length > 1 ? b.parts.length - 1 : 1);
+
+  // Collision parts beyond the active budget (counted from the top of the pile) stay as a static pile.
   const applyCap = () => {
-    const cap = tier().activeCap;
+    const budget = tier().activeParts;
     bodies()
       .toSorted((a, b) => a.position.y - b.position.y)
-      .forEach((b, i) => {
-        const frozen = i >= cap;
+      .reduce((used, b) => {
+        const frozen = used >= budget;
         if (frozen !== b.isStatic) Body.setStatic(b, frozen);
-      });
+        return used + cost(b);
+      }, 0);
   };
   const wakeAll = () => {
     applyCap();
@@ -168,18 +207,37 @@ export function createJar(o: JarOptions): JarHandle {
   };
 
   const buildSprite = (e: Entry) => {
-    e.sprite = makeBlockSprite(e.sticker, st.slab, st.dark);
+    e.sprite = makeBlockSprite(e.sticker, e.shape, st.slab, st.dark);
     e.stale = false;
   };
   const needsSprite = (e: Entry) => !e.sprite || e.stale;
 
+  const dropPoint = () => {
+    const { mouth } = st.geo;
+    const pose = dropPose(st.slot++, { width: mouth.x1 - mouth.x0, height: 0 }, st.side);
+    return { x: mouth.x0 + pose.x, y: mouth.y + pose.y, angle: pose.angle };
+  };
+
   const spawn = (e: Entry) => {
-    const pose = dropPose(st.slot++, st, st.side);
-    const body = makeBody(e.id, pose.x, pose.y, pose.angle);
+    const at = dropPoint();
+    const body = makeBody(e, at.x, at.y, at.angle);
     Body.setVelocity(body, { x: 0, y: st.side * 0.2 });
     Composite.add(engine.world, body);
     e.body = body;
   };
+
+  // Many blocks pouring in at once can press a block into the glass or through it. Whatever
+  // has its centre outside the jar goes back in through the mouth.
+  const rescueStrays = () =>
+    dynamicBodies().forEach((b) => {
+      if (b.position.y < st.geo.mouth.y || insideJar(st.geo, b.position.x, b.position.y)) return;
+      const at = dropPoint();
+      Body.setPosition(b, at);
+      Body.setAngle(b, at.angle);
+      Body.setVelocity(b, { x: 0, y: st.side * 0.2 });
+      Sleeping.set(b, false);
+      st.rescued++;
+    });
 
   // First-time sprite generation is spread over frames; a block drops in once its sprite exists.
   const pump = () => {
@@ -212,13 +270,16 @@ export function createJar(o: JarOptions): JarHandle {
       const scale = st.slab / sprite.slab;
       const w = sprite.canvas.width * scale;
       const h = sprite.canvas.height * scale;
+      // the sprite is centred on the sticker square; the body turns about its centre of mass
+      const ox = e.shape.centre[0] * st.slab;
+      const oy = e.shape.centre[1] * st.slab;
       ctx.setTransform(c, sn, -sn, c, body.position.x * st.k, body.position.y * st.k);
-      ctx.drawImage(sprite.canvas, -w / 2, -h / 2, w, h);
+      ctx.drawImage(sprite.canvas, -w / 2 - ox, -h / 2 - oy, w, h);
       if (e.id === selected) {
         ctx.strokeStyle = st.ringColor;
         ctx.lineWidth = Math.max(2, st.k * 1.5);
-        ctx.beginPath();
-        ctx.roundRect(-st.slab / 2, -st.slab / 2, st.slab, st.slab, st.slab * 0.2);
+        ctx.translate(-ox, -oy);
+        silhouettePath(ctx, e.shape, st.slab);
         ctx.stroke();
       }
       return body.isSleeping || body.isStatic ? n : n + 1;
@@ -233,8 +294,8 @@ export function createJar(o: JarOptions): JarHandle {
       ctx.setTransform(c, sn, -sn, c, g.x * st.k, g.y * st.k);
       ctx.drawImage(
         g.sprite.canvas,
-        (-g.sprite.canvas.width * scale) / 2,
-        (-g.sprite.canvas.height * scale) / 2,
+        (-g.sprite.canvas.width / 2 - g.sprite.shape.centre[0] * g.sprite.slab) * scale,
+        (-g.sprite.canvas.height / 2 - g.sprite.shape.centre[1] * g.sprite.slab) * scale,
         g.sprite.canvas.width * scale,
         g.sprite.canvas.height * scale,
       );
@@ -247,22 +308,70 @@ export function createJar(o: JarOptions): JarHandle {
     st.ringColor = getComputedStyle(canvas).color;
   };
 
+  // speed limit and a little rolling resistance, applied after every physics step
+  // A pile under pressure can jitter below what Matter calls asleep for a long time: once nothing
+  // has moved visibly for a while, put everything to sleep.
+  const limitMotion = () => {
+    const awake = dynamicBodies().filter((b) => !b.isSleeping);
+    awake.forEach((b) => {
+      const v = capSpeed(b.velocity.x, b.velocity.y, st.side);
+      if (v.vx !== b.velocity.x || v.vy !== b.velocity.y) Body.setVelocity(b, { x: v.vx, y: v.vy });
+      Body.setAngularVelocity(b, b.angularVelocity * JAR_FEEL.spinKept);
+    });
+    const calm = awake.every((b) => isCalm(b.speed, b.angularSpeed, st.side));
+    st.calmSteps = calm && !st.drag && !st.shake ? st.calmSteps + 1 : 0;
+    if (st.calmSteps >= JAR_FEEL.calmSteps) {
+      awake.forEach((b) => Sleeping.set(b, true));
+      st.calmSteps = 0;
+    }
+  };
+
+  const runShake = (now: number) => {
+    const sh = st.shake;
+    if (!sh) return;
+    const { pulses } = JAR_FEEL.shake;
+    const due = pulses.filter((p, i) => i >= sh.fired && now - sh.start >= p.at);
+    due.forEach((pulse) => {
+      wakeAll();
+      dynamicBodies().forEach((b) => {
+        const k = shakeKick(pulse.amp, st.side, [Math.random(), Math.random(), Math.random()]);
+        Body.setVelocity(b, { x: b.velocity.x + k.vx, y: b.velocity.y + k.vy });
+        Body.setAngularVelocity(b, b.angularVelocity + k.spin);
+      });
+    });
+    sh.fired += due.length;
+    if (sh.fired >= pulses.length) st.shake = null;
+  };
+
   const settleStill = () => {
     bodies().forEach((b) => Composite.remove(engine.world, b));
     st.entries.forEach((e) => {
       e.body = null;
       if (needsSprite(e)) buildSprite(e);
     });
-    const poses = initialPile(st.entries.size, st, st.side);
+    // rows packed from the floor, kept clear of the rounded bottom corners
+    const { geo } = st;
+    const pile = {
+      width: geo.room.width - geo.corner * 0.7,
+      height: geo.room.height - geo.corner * 0.25,
+    };
+    const poses = initialPile(st.entries.size, pile, st.side);
     [...st.entries.values()].forEach((e, i) => {
       const p = poses[i];
       if (!p) return;
-      e.body = makeBody(e.id, p.x, p.y, p.angle);
+      e.body = makeBody(
+        e,
+        (st.width - pile.width) / 2 + p.x,
+        geo.floorY - geo.corner * 0.25 - pile.height + p.y,
+        p.angle,
+      );
       Composite.add(engine.world, e.body);
     });
     const all = bodies();
     Array.from({ length: STILL_STEPS }).some(() => {
       Engine.update(engine, FALLBACK_STEP_MS);
+      limitMotion();
+      rescueStrays();
       return all.every((b) => b.isSleeping);
     });
     paint(performance.now());
@@ -274,6 +383,7 @@ export function createJar(o: JarOptions): JarHandle {
   const frame = (now: number) => {
     st.loop.raf = 0;
     pump();
+    runShake(now);
     const step = stepMs();
     const dt = st.loop.last === 0 ? step : Math.min(now - st.loop.last, 100);
     st.loop.last = now;
@@ -282,7 +392,11 @@ export function createJar(o: JarOptions): JarHandle {
     st.loop.acc = due === MAX_STEPS_PER_FRAME ? 0 : st.loop.acc - due * step;
     if (due > 0) {
       const t0 = performance.now();
-      Array.from({ length: due }).forEach(() => Engine.update(engine, step));
+      Array.from({ length: due }).forEach(() => {
+        Engine.update(engine, step);
+        limitMotion();
+      });
+      rescueStrays();
       paint(now);
       const work = performance.now() - t0;
       stats.frames++;
@@ -299,7 +413,7 @@ export function createJar(o: JarOptions): JarHandle {
         if (st.quality.tier !== before) applyTier();
       }
     }
-    if (st.awake > 0 || st.drag || hasPending() || st.ghosts.length > 0) {
+    if (st.awake > 0 || st.drag || st.shake || hasPending() || st.ghosts.length > 0) {
       st.loop.raf = requestAnimationFrame(frame);
     } else {
       st.loop.last = 0;
@@ -325,7 +439,7 @@ export function createJar(o: JarOptions): JarHandle {
   };
 
   const relayout = (width: number, height: number, side: number) => {
-    const from = { width: st.width, height: st.height };
+    const from = { width: st.width, height: st.geo.floorY };
     const fromSide = st.side;
     st.width = width;
     st.height = height;
@@ -337,16 +451,18 @@ export function createJar(o: JarOptions): JarHandle {
       return;
     }
     const factor = side / fromSide;
+    const to = { width: st.width, height: st.geo.floorY };
     bodies().forEach((b) => {
       const p = rescalePose(
         { x: b.position.x, y: b.position.y, angle: b.angle },
         from,
-        st,
+        to,
         fromSide,
         side,
       );
+      const [x, y] = pushInside(st.geo, [p.x, p.y], side * 0.5);
       if (factor !== 1) Body.scale(b, factor, factor);
-      Body.setPosition(b, p);
+      Body.setPosition(b, { x, y });
       Body.setVelocity(b, { x: 0, y: 0 });
     });
     markAllStale();
@@ -380,6 +496,7 @@ export function createJar(o: JarOptions): JarHandle {
         st.entries.set(b.id, {
           id: b.id,
           sticker: b.sticker,
+          shape: blockShape(b.sticker),
           body: null,
           sprite: null,
           stale: false,
@@ -387,7 +504,7 @@ export function createJar(o: JarOptions): JarHandle {
       }
     });
     canvas.dataset.blocks = String(st.entries.size);
-    const side = fitSide(st.side, st.entries.size, st);
+    const side = fitSide(st.side, st.entries.size, st.geo.room);
     if (side !== st.side) {
       relayout(st.width, st.height, side);
       return;
@@ -484,6 +601,7 @@ export function createJar(o: JarOptions): JarHandle {
     "change",
     () => {
       st.dark = darkQuery.matches;
+      paintGlass();
       readRingColor();
       markAllStale();
       if (still) settleStill();
@@ -524,7 +642,14 @@ export function createJar(o: JarOptions): JarHandle {
   readRingColor();
   canvas.dataset.blocks = String(o.blocks.length);
   o.blocks.forEach((b) =>
-    st.entries.set(b.id, { id: b.id, sticker: b.sticker, body: null, sprite: null, stale: false }),
+    st.entries.set(b.id, {
+      id: b.id,
+      sticker: b.sticker,
+      shape: blockShape(b.sticker),
+      body: null,
+      sprite: null,
+      stale: false,
+    }),
   );
   if (still) settleStill();
   else kick();
@@ -535,6 +660,12 @@ export function createJar(o: JarOptions): JarHandle {
       reset: () => Object.assign(stats, { frames: 0, workMs: 0, worstMs: 0, steps: 0 }),
       blocks: () =>
         bodies().map((b) => ({ x: b.position.x, y: b.position.y, side: st.side, id: b.label })),
+      parts: () => bodies().reduce((n, b) => n + cost(b), 0),
+      rescued: () => st.rescued,
+      awake: () =>
+        dynamicBodies()
+          .filter((b) => !b.isSleeping)
+          .map((b) => ({ x: b.position.x, y: b.position.y, speed: b.speed, spin: b.angularSpeed })),
       size: () => ({ width: st.width, height: st.height }),
       tier: () => st.pinned ?? st.quality.tier,
       pinTier: (i) => {
@@ -547,15 +678,9 @@ export function createJar(o: JarOptions): JarHandle {
 
   return {
     shake: () => {
+      if (still) return;
       st.hapticUntil = performance.now() + HAPTIC_WINDOW_MS;
-      wakeAll();
-      dynamicBodies().forEach((b) => {
-        Body.setVelocity(b, {
-          x: (Math.random() - 0.5) * st.side * 0.5,
-          y: -st.side * (0.2 + Math.random() * 0.4),
-        });
-        Body.setAngularVelocity(b, (Math.random() - 0.5) * 0.3);
-      });
+      st.shake = { start: performance.now(), fired: 0 };
       kick();
     },
     setTilt: (on) => {
@@ -580,7 +705,7 @@ export function createJar(o: JarOptions): JarHandle {
     setBlocks,
     resize: (width, height) => {
       if (Math.abs(width - st.width) < 0.5 && Math.abs(height - st.height) < 0.5) return;
-      relayout(width, height, blockSide(st.entries.size, { width, height }));
+      relayout(width, height, blockSide(st.entries.size, jarGeometry(width, height).room));
     },
     repaint: () => {
       readRingColor();
