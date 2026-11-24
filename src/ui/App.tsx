@@ -1,6 +1,7 @@
 import { BookOpen, Ellipsis, FlaskRound, ImagePlus, Printer } from "lucide-react";
 import { Suspense, use, useReducer, useSyncExternalStore } from "react";
 import { isIos, isStandalone } from "../data/platform.ts";
+import { writeViewHint } from "../data/view-hint.ts";
 import { layoutAlbum } from "../core/print.ts";
 import { settings, stickerStore, type AddResult } from "../data/sticker-store.ts";
 import { ActionBar } from "./ActionBar.tsx";
@@ -10,7 +11,9 @@ import { initialState, reducer, type View } from "./app-state.ts";
 import styles from "./App.module.css";
 import common from "./common.module.css";
 import { blockSelection } from "./jar/block-selection.ts";
+import { jarChrome } from "./jar/chrome.ts";
 import { startupPrefs } from "./jar/jar-prefs.ts";
+import { jarSound } from "./jar/sound.ts";
 import { JarFrame } from "./jar/JarFrame.tsx";
 import { JarView } from "./jar/jar-lazy.ts";
 import { CreateDialog } from "./dialogs/create/CreateDialog.tsx";
@@ -80,12 +83,20 @@ function Shell({ initialView }: { readonly initialView: View }) {
   const switchView = () => {
     const next = inJar ? "album" : "jar";
     blockSelection.set(null);
+    // the click is the gesture that lets the jar make sound (iOS only allows it from here)
+    if (next === "jar") jarSound.unlock();
+    else jarSound.release();
     dispatch({ type: "view", view: next });
+    writeViewHint(next);
     void settings.set("view", next).catch(() => {});
   };
+  // the jar is a dark room: the page's theme follows the view in the same commit (and while the
+  // stickers are still loading, so a reload in the jar never shows the album's colours first)
+  const dark = state.view === "jar" && (!ready || stickers.length > 0);
+  const room = (el: HTMLElement | null) => (el ? jarChrome(dark) : undefined);
 
   return (
-    <div className={styles.shell}>
+    <div className={styles.shell} ref={room} data-jar={dark || undefined}>
       <nav className={styles.toolbar} aria-label={t.app.toolbar}>
         {!inJar && <PageIndicator count={Math.max(1, ready?.pages.length ?? 0)} />}
         {stickers.length > 0 && (

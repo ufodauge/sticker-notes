@@ -62,6 +62,12 @@
   }
 }
 
+/* in the jar the room runs behind the toolbar too */
+.shell[data-jar] .toolbar {
+  background: transparent;
+  border-block-start-color: transparent;
+}
+
 .main[data-dropping] {
   outline: 2px dashed var(--ink);
   outline-offset: -8px;

@@ -19,27 +19,19 @@ type Tone = {
   readonly shadow: number;
 };
 
-const LIGHT: Tone = {
-  tint: "96 165 182",
-  edge: "30 70 90",
-  shade: "20 50 70",
-  wall: 0.3,
-  cavity: 0.13,
-  glow: 1,
-  edgeAlpha: 0.42,
-  shadow: 0.34,
-};
-
-const DARK: Tone = {
-  tint: "140 195 225",
+// The jar always stands in a dark room: pale glass, a warm lamp above it.
+const TONE: Tone = {
+  tint: "150 200 228",
   edge: "205 230 250",
   shade: "0 0 0",
-  wall: 0.2,
-  cavity: 0.09,
-  glow: 0.8,
-  edgeAlpha: 0.38,
-  shadow: 0.7,
+  wall: 0.16,
+  cavity: 0.07,
+  glow: 1,
+  edgeAlpha: 0.34,
+  shadow: 0.9,
 };
+
+const LAMP = "255 238 205";
 
 const rgba = (rgb: string, a: number) => `rgb(${rgb} / ${Math.min(1, Math.max(0, a))})`;
 
@@ -115,8 +107,9 @@ function drawBack(ctx: CanvasRenderingContext2D, geo: JarGeometry, tone: Tone) {
   ctx.translate(cx, bottomY + ry * 0.9);
   ctx.scale(1, (ry * 0.9) / (rx * 0.62));
   const caustic = ctx.createRadialGradient(0, 0, 0, 0, 0, rx * 0.62);
-  caustic.addColorStop(0, rgba(tone.tint, 0.2 * tone.glow));
-  caustic.addColorStop(1, rgba(tone.tint, 0));
+  caustic.addColorStop(0, rgba(LAMP, 0.34 * tone.glow));
+  caustic.addColorStop(0.5, rgba(LAMP, 0.12 * tone.glow));
+  caustic.addColorStop(1, rgba(LAMP, 0));
   ctx.fillStyle = caustic;
   ctx.beginPath();
   ctx.arc(0, 0, rx * 0.62, 0, Math.PI * 2);
@@ -148,6 +141,25 @@ function drawBack(ctx: CanvasRenderingContext2D, geo: JarGeometry, tone: Tone) {
   floor.addColorStop(1, rgba(tone.shade, 0.16));
   ctx.fillStyle = floor;
   ctx.fillRect(0, geo.floorY - wall * 5, width, wall * 5);
+  // the lamp's light entering the mouth, thinning out on its way down, and a warm pool where
+  // it lands on the inside of the base
+  const lamp = ctx.createLinearGradient(0, geo.rim.y1, 0, geo.floorY);
+  lamp.addColorStop(0, rgba(LAMP, 0.1));
+  lamp.addColorStop(0.55, rgba(LAMP, 0.03));
+  lamp.addColorStop(1, rgba(LAMP, 0));
+  ctx.fillStyle = lamp;
+  ctx.fillRect(0, 0, width, geo.height);
+  ctx.save();
+  ctx.translate(cx, geo.floorY);
+  ctx.scale(1, 0.16);
+  const landing = ctx.createRadialGradient(0, 0, 0, 0, 0, bodyW * 0.42);
+  landing.addColorStop(0, rgba(LAMP, 0.28));
+  landing.addColorStop(1, rgba(LAMP, 0));
+  ctx.fillStyle = landing;
+  ctx.beginPath();
+  ctx.arc(0, 0, bodyW * 0.42, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
   ctx.restore();
 
   // far side of the rim
@@ -316,6 +328,22 @@ function drawFront(ctx: CanvasRenderingContext2D, geo: JarGeometry, tone: Tone) 
   rimArc(ctx, geo, true, -e.lineWidth * 0.5);
   ctx.strokeStyle = rgba(tone.edge, tone.edgeAlpha * 0.6);
   ctx.stroke();
+  // the lamp is straight above: the lip glows along its nearest arc, brightest toward the
+  // middle and again where the lip curves round at both ends
+  ctx.save();
+  const glow = ctx.createLinearGradient(e.cx - e.rx, 0, e.cx + e.rx, 0);
+  glow.addColorStop(0, rgba(LAMP, 0.35));
+  glow.addColorStop(0.18, rgba(LAMP, 0.95));
+  glow.addColorStop(0.5, rgba(LAMP, 0.45));
+  glow.addColorStop(0.82, rgba(LAMP, 0.95));
+  glow.addColorStop(1, rgba(LAMP, 0.35));
+  ctx.shadowColor = rgba(LAMP, 0.9);
+  ctx.shadowBlur = wall * 1.4;
+  rimArc(ctx, geo, true, e.lineWidth * 0.5);
+  ctx.lineWidth = 1.6;
+  ctx.strokeStyle = glow;
+  ctx.stroke();
+  ctx.restore();
   // sparkle where the lip catches the light
   const px = e.cx - e.rx * 0.62;
   const py = e.cy + e.ry * 0.78;
@@ -326,12 +354,11 @@ function drawFront(ctx: CanvasRenderingContext2D, geo: JarGeometry, tone: Tone) 
   ctx.fillRect(px - wall, py - wall, wall * 2, wall * 2);
 }
 
-// Both layers are drawn once per size and theme into their own canvases, stacked behind and in
-// front of the block canvas, so a frame costs nothing for the glass.
-export function drawGlass(geo: JarGeometry, k: number, dark: boolean, layers: GlassLayers) {
-  const tone = dark ? DARK : LIGHT;
+// Both layers are drawn once per size into their own canvases, stacked behind and in front of
+// the block canvas, so a frame costs nothing for the glass.
+export function drawGlass(geo: JarGeometry, k: number, layers: GlassLayers) {
   const back = layer(layers.back, geo, k);
   const front = layer(layers.front, geo, k);
-  if (back) drawBack(back, geo, tone);
-  if (front) drawFront(front, geo, tone);
+  if (back) drawBack(back, geo, TONE);
+  if (front) drawFront(front, geo, TONE);
 }

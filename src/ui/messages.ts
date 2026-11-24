@@ -27,6 +27,7 @@ export const t = {
     list: "瓶の中のステッカー",
     shake: "振る",
     tilt: "傾きで動かす",
+    sound: "音",
     shuffle: "シャッフル",
     pick: "選ぶ",
   },

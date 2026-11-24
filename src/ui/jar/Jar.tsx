@@ -1,5 +1,6 @@
-import { ListChecks, Shuffle, Smartphone, Vibrate } from "lucide-react";
-import { useReducer, useRef, useSyncExternalStore } from "react";
+import { ListChecks, Shuffle, Smartphone, Vibrate, Volume2, VolumeOff } from "lucide-react";
+import { useReducer, useRef, useSyncExternalStore, type CSSProperties } from "react";
+import { dustMotes, type Mote } from "../../core/jar-light.ts";
 import { JAR_DEFAULT_COUNT } from "../../core/jar-selection.ts";
 import { snsDisplay } from "../../core/sns.ts";
 import { stickerStore } from "../../data/sticker-store.ts";
@@ -9,16 +10,30 @@ import { blockSelection } from "./block-selection.ts";
 import { askTilt, reducedMotion, tiltAvailable } from "./device.ts";
 import { createJar, type JarHandle } from "./engine.ts";
 import styles from "./Jar.module.css";
-import { currentShown, jarContent, shownStickers } from "./jar-prefs.ts";
+import { currentShown, jarContent, shownStickers, soundPref } from "./jar-prefs.ts";
 import { JarFrame } from "./JarFrame.tsx";
 import { publishStress } from "./probe.ts";
 
 type Props = { readonly onPick: () => void };
 
+const MOTES = dustMotes(12);
+
+const moteStyle = (m: Mote): CSSProperties =>
+  ({
+    "--x": m.x,
+    "--y": m.y,
+    "--size": m.size,
+    "--dx": m.dx,
+    "--dy": m.dy,
+    "--seconds": m.seconds,
+    "--delay": m.delay,
+  }) as CSSProperties;
+
 export function Jar({ onPick }: Props) {
   const reduced = useSyncExternalStore(reducedMotion.subscribe, reducedMotion.get);
   const snap = useSyncExternalStore(stickerStore.subscribe, stickerStore.getSnapshot);
   const selection = useSyncExternalStore(jarContent.subscribe, jarContent.get);
+  const soundOn = useSyncExternalStore(soundPref.subscribe, soundPref.get);
   const handle = useRef<JarHandle | null>(null);
   const backGlass = useRef<HTMLCanvasElement>(null);
   const frontGlass = useRef<HTMLCanvasElement>(null);
@@ -91,6 +106,22 @@ export function Jar({ onPick }: Props) {
           <Vibrate aria-hidden="true" size={22} strokeWidth={1.5} />
         </button>
       )}
+      {!reduced && (
+        <button
+          type="button"
+          className={common.icon}
+          aria-label={t.jar.sound}
+          title={t.jar.sound}
+          aria-pressed={soundOn}
+          onClick={() => soundPref.set(!soundOn)}
+        >
+          {soundOn ? (
+            <Volume2 aria-hidden="true" size={22} strokeWidth={1.5} />
+          ) : (
+            <VolumeOff aria-hidden="true" size={22} strokeWidth={1.5} />
+          )}
+        </button>
+      )}
       {!reduced && tiltAvailable() && (
         <button
           type="button"
@@ -128,9 +159,23 @@ export function Jar({ onPick }: Props) {
 
   return (
     <JarFrame tools={tools}>
+      <div className={styles.scene} aria-hidden="true">
+        <div className={styles.table} />
+        <div className={styles.pool} />
+        <div className={styles.beam} />
+        <div className={styles.dust}>
+          {MOTES.map((m) => (
+            <i key={m.y} className={styles.mote} style={moteStyle(m)} />
+          ))}
+        </div>
+      </div>
       <canvas ref={backGlass} className={styles.glass} aria-hidden="true" />
       <canvas ref={attach} className={styles.canvas} aria-hidden="true" />
-      <canvas ref={frontGlass} className={styles.glass} aria-hidden="true" />
+      <canvas
+        ref={frontGlass}
+        className={`${styles.glass} ${styles.reflected}`}
+        aria-hidden="true"
+      />
       <ul className={common.visuallyHidden} aria-label={t.jar.list}>
         {shown.map((s) => (
           <li key={s.id}>{snsDisplay(s.sticker.snsKind, s.sticker.snsId)}</li>

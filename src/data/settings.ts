@@ -7,6 +7,7 @@ export const SETTINGS = {
   lastSns: v.object({ kind: v.picklist(SNS_KINDS), id: v.string() }),
   view: v.picklist(["album", "jar"]),
   jar: JarSelectionSchema,
+  sound: v.boolean(),
   invitationShown: v.literal(true),
   backup: v.object({ receivedCount: v.pipe(v.number(), v.integer()), date: LocalDateSchema }),
 };

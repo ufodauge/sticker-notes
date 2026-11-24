@@ -47,6 +47,28 @@
   }
 }
 
+/* The jar is always a dark room, whatever the system theme. The attribute is set while the jar
+   is shown (`ui/jar/chrome.ts`, and by a script in index.html before the first paint), so the
+   toolbar, the action bar and every dialog opened from the jar inherit these tokens. */
+:root[data-view="jar"] {
+  color-scheme: dark;
+  --paper: #08080a;
+  --ink: #e6e4df;
+  --ink-soft: #9a9aa2;
+  --line: #34343b;
+  --line-faint: #1b1b20;
+  --surface: #131318;
+  --scrim: rgb(0 0 0 / 0.6);
+  --focus: #e6e4df;
+  --text-warn: oklab(0.905 -0.003 0.12);
+}
+
+:root[data-view="jar"] body {
+  background:
+    radial-gradient(ellipse 120% 90% at 50% 40%, transparent 52%, rgb(0 0 0 / 0.7) 100%),
+    radial-gradient(ellipse 70% 55% at 50% 0%, #1a1a20, transparent 72%), var(--paper);
+}
+
 @media (prefers-reduced-motion: reduce) {
   :root {
     --t-fast: 0ms;

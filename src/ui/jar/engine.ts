@@ -10,17 +10,28 @@ import {
   type JarQuality,
   type QualityState,
 } from "../../core/jar-quality.ts";
+import {
+  beamOf,
+  glintPhase,
+  glintPoint,
+  glintStrength,
+  lightAt,
+  type Beam,
+} from "../../core/jar-light.ts";
+import { surfaceOf } from "../../core/jar-sound.ts";
 import { blockShape, polygonCentroid, type BlockShape } from "../../core/jar-shape.ts";
 import type { Sticker } from "../../core/payload.ts";
 import { drawGlass, type GlassLayers } from "./glass.ts";
+import { makeGlint, makeGrade } from "./lighting.ts";
 import { publishProbe } from "./probe.ts";
+import { jarSound } from "./sound.ts";
 import { makeBlockSprite, silhouettePath, type BlockSprite } from "./sprite.ts";
 
 type JarBlock = { readonly id: string; readonly sticker: Sticker };
 
 export type JarOptions = {
   readonly canvas: HTMLCanvasElement;
-  // static canvases stacked behind and in front of `canvas`, drawn only when the size or theme changes
+  // static canvases stacked behind and in front of `canvas`, drawn only when the size changes
   readonly glass: GlassLayers;
   // the whole jar canvas in CSS px (the glass, its walls and the room above it)
   readonly width: number;
@@ -45,6 +56,10 @@ type Entry = {
   readonly id: string;
   readonly sticker: Sticker;
   readonly shape: BlockShape;
+  // where this block's glint is in its flash cycle, [0, 1)
+  readonly phase: number;
+  // blocks that were in the jar from the start do not plop when they first drop in
+  readonly quiet: boolean;
   body: Body | null;
   sprite: BlockSprite | null;
   stale: boolean;
@@ -73,12 +88,14 @@ const HAPTIC_WINDOW_MS = 1500;
 const HAPTIC_GAP_MS = 120;
 const HAPTIC_MS = 8;
 const HAPTIC_SPEED_PER_SIDE = 0.3;
+const GLINT_SIZE = 0.5;
+const GLINT_MIN = 0.04;
 
 export function createJar(o: JarOptions): JarHandle {
   const { canvas, still } = o;
   const ctx = canvas.getContext("2d");
   const dpr = () => window.devicePixelRatio || 1;
-  const darkQuery = matchMedia("(prefers-color-scheme: dark)");
+  const glint = makeGlint();
 
   const geo0 = jarGeometry(o.width, o.height);
   const st = {
@@ -86,18 +103,20 @@ export function createJar(o: JarOptions): JarHandle {
     height: o.height,
     geo: geo0,
     glassKey: "",
+    beam: null as Beam | null,
+    grade: null as HTMLCanvasElement | null,
     shake: null as { start: number; fired: number } | null,
     calmSteps: 0,
     rescued: 0,
     side: blockSide(o.blocks.length, geo0.room),
     k: 1,
     slab: 1,
-    dark: darkQuery.matches,
     ringColor: "",
     slot: 0,
     awake: 0,
     entries: new Map<string, Entry>(),
     walls: [] as Body[],
+    wallSet: new Set<Body>(),
     ghosts: [] as Ghost[],
     quality: INITIAL_QUALITY as QualityState,
     pinned: null as number | null,
@@ -121,10 +140,12 @@ export function createJar(o: JarOptions): JarHandle {
   const pixelRatio = () => (still ? Math.min(2, dpr()) : Math.min(tier().pixelRatioCap, dpr()));
 
   const paintGlass = () => {
-    const key = `${canvas.width}x${canvas.height}:${st.width}x${st.height}:${st.dark}`;
+    const key = `${canvas.width}x${canvas.height}:${st.width}x${st.height}`;
     if (key === st.glassKey) return;
     st.glassKey = key;
-    drawGlass(st.geo, st.k, st.dark, o.glass);
+    drawGlass(st.geo, st.k, o.glass);
+    st.beam = beamOf(st.geo);
+    st.grade = makeGrade(st.beam, st.width, st.height, st.k);
   };
 
   const sizeCanvas = () => {
@@ -154,6 +175,7 @@ export function createJar(o: JarOptions): JarHandle {
       ),
     );
     Composite.add(engine.world, st.walls);
+    st.wallSet = new Set(st.walls);
   };
 
   // convex parts around the shape's centre of mass; a compound body unless the shape is one part
@@ -207,7 +229,7 @@ export function createJar(o: JarOptions): JarHandle {
   };
 
   const buildSprite = (e: Entry) => {
-    e.sprite = makeBlockSprite(e.sticker, e.shape, st.slab, st.dark);
+    e.sprite = makeBlockSprite(e.sticker, e.shape, st.slab);
     e.stale = false;
   };
   const needsSprite = (e: Entry) => !e.sprite || e.stale;
@@ -224,6 +246,7 @@ export function createJar(o: JarOptions): JarHandle {
     Body.setVelocity(body, { x: 0, y: st.side * 0.2 });
     Composite.add(engine.world, body);
     e.body = body;
+    if (!e.quiet) jarSound.plop(st.side);
   };
 
   // Many blocks pouring in at once can press a block into the glass or through it. Whatever
@@ -257,6 +280,60 @@ export function createJar(o: JarOptions): JarHandle {
   };
   const hasPending = () => [...st.entries.values()].some(needsSprite);
 
+  // The lamp's light on the blocks: the pre-drawn grade over the block pixels only, then a flash
+  // on the edge of each block whose angle catches the light.
+  const lightBlocks = (c: CanvasRenderingContext2D) => {
+    const { grade, beam } = st;
+    if (!grade || !beam) return;
+    // only where blocks are: a settled pile at the bottom is a third of the canvas
+    const box = { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity };
+    const extend = (x: number, y: number) => {
+      box.x0 = Math.min(box.x0, x);
+      box.y0 = Math.min(box.y0, y);
+      box.x1 = Math.max(box.x1, x);
+      box.y1 = Math.max(box.y1, y);
+    };
+    st.entries.forEach((e) => e.body && extend(e.body.position.x, e.body.position.y));
+    st.ghosts.forEach((g) => extend(g.x, g.y));
+    if (box.x0 === Infinity) return;
+    const reach = st.side * 1.3;
+    const x0 = Math.max(0, Math.floor((box.x0 - reach) * st.k));
+    const y0 = Math.max(0, Math.floor((box.y0 - reach) * st.k));
+    const x1 = Math.min(canvas.width, Math.ceil((box.x1 + reach) * st.k));
+    const y1 = Math.min(canvas.height, Math.ceil((box.y1 + reach) * st.k));
+    const shrink = grade.width / canvas.width;
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.globalCompositeOperation = "source-atop";
+    c.drawImage(
+      grade,
+      x0 * shrink,
+      y0 * shrink,
+      (x1 - x0) * shrink,
+      (y1 - y0) * shrink,
+      x0,
+      y0,
+      x1 - x0,
+      y1 - y0,
+    );
+    c.globalCompositeOperation = "lighter";
+    st.entries.forEach((e) => {
+      const { body } = e;
+      if (!body) return;
+      const strength = glintStrength(body.angle, e.phase);
+      if (strength < GLINT_MIN) return;
+      const [lx, ly] = glintPoint(e.shape.outline, e.shape.centre, body.angle);
+      const c0 = Math.cos(body.angle);
+      const s0 = Math.sin(body.angle);
+      const x = body.position.x + (lx * c0 - ly * s0) * st.side;
+      const y = body.position.y + (lx * s0 + ly * c0) * st.side;
+      c.globalAlpha = Math.min(1, strength * lightAt(beam, x, y) * 1.1);
+      const size = st.slab * GLINT_SIZE;
+      c.drawImage(glint, x * st.k - size / 2, y * st.k - size / 2, size, size);
+    });
+    c.globalAlpha = 1;
+    c.globalCompositeOperation = "source-over";
+  };
+
   const paint = (now: number) => {
     if (!ctx) return;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -275,13 +352,6 @@ export function createJar(o: JarOptions): JarHandle {
       const oy = e.shape.centre[1] * st.slab;
       ctx.setTransform(c, sn, -sn, c, body.position.x * st.k, body.position.y * st.k);
       ctx.drawImage(sprite.canvas, -w / 2 - ox, -h / 2 - oy, w, h);
-      if (e.id === selected) {
-        ctx.strokeStyle = st.ringColor;
-        ctx.lineWidth = Math.max(2, st.k * 1.5);
-        ctx.translate(-ox, -oy);
-        silhouettePath(ctx, e.shape, st.slab);
-        ctx.stroke();
-      }
       return body.isSleeping || body.isStatic ? n : n + 1;
     }, 0);
     st.ghosts = st.ghosts.filter((g) => now - g.born < VANISH_MS);
@@ -301,6 +371,19 @@ export function createJar(o: JarOptions): JarHandle {
       );
     });
     ctx.globalAlpha = 1;
+    lightBlocks(ctx);
+    const chosen = selected ? st.entries.get(selected) : undefined;
+    if (chosen?.body) {
+      const { body } = chosen;
+      const c = Math.cos(body.angle);
+      const sn = Math.sin(body.angle);
+      ctx.setTransform(c, sn, -sn, c, body.position.x * st.k, body.position.y * st.k);
+      ctx.strokeStyle = st.ringColor;
+      ctx.lineWidth = Math.max(2, st.k * 1.5);
+      ctx.translate(-chosen.shape.centre[0] * st.slab, -chosen.shape.centre[1] * st.slab);
+      silhouettePath(ctx, chosen.shape, st.slab);
+      ctx.stroke();
+    }
     st.awake = awake;
   };
 
@@ -332,6 +415,7 @@ export function createJar(o: JarOptions): JarHandle {
     const { pulses } = JAR_FEEL.shake;
     const due = pulses.filter((p, i) => i >= sh.fired && now - sh.start >= p.at);
     due.forEach((pulse) => {
+      jarSound.rattle(pulse.amp);
       wakeAll();
       dynamicBodies().forEach((b) => {
         const k = shakeKick(pulse.amp, st.side, [Math.random(), Math.random(), Math.random()]);
@@ -497,6 +581,8 @@ export function createJar(o: JarOptions): JarHandle {
           id: b.id,
           sticker: b.sticker,
           shape: blockShape(b.sticker),
+          phase: glintPhase(b.id),
+          quiet: false,
           body: null,
           sprite: null,
           stale: false,
@@ -526,6 +612,7 @@ export function createJar(o: JarOptions): JarHandle {
   canvas.addEventListener(
     "pointerdown",
     (down) => {
+      jarSound.unlock();
       if (st.drag) return;
       const rect = canvas.getBoundingClientRect();
       const start = pointInJar(down, rect);
@@ -597,36 +684,35 @@ export function createJar(o: JarOptions): JarHandle {
     },
     { signal: input.signal },
   );
-  darkQuery.addEventListener(
-    "change",
-    () => {
-      st.dark = darkQuery.matches;
-      paintGlass();
-      readRingColor();
-      markAllStale();
-      if (still) settleStill();
-      else kick();
-    },
-    { signal: input.signal },
-  );
-
-  if (typeof navigator.vibrate === "function") {
-    Events.on(engine, "collisionStart", (event) => {
-      const now = performance.now();
-      if (now > st.hapticUntil || now - st.lastHaptic < HAPTIC_GAP_MS) return;
-      const strong = event.pairs.some(
-        (p) =>
-          Math.hypot(
-            p.bodyA.velocity.x - p.bodyB.velocity.x,
-            p.bodyA.velocity.y - p.bodyB.velocity.y,
-          ) >
-          st.side * HAPTIC_SPEED_PER_SIDE,
-      );
-      if (!strong) return;
+  const vibrates = typeof navigator.vibrate === "function";
+  Events.on(engine, "collisionStart", (event) => {
+    if (still) return;
+    const audible = jarSound.listening();
+    const now = performance.now();
+    const buzz = vibrates && now <= st.hapticUntil && now - st.lastHaptic >= HAPTIC_GAP_MS;
+    if (!audible && !buzz) return;
+    const hardest = event.pairs.reduce(
+      (best, p) => {
+        const a = p.bodyA.parent;
+        const b = p.bodyB.parent;
+        const speed = Math.hypot(a.velocity.x - b.velocity.x, a.velocity.y - b.velocity.y);
+        if (speed <= best.speed) return best;
+        return {
+          speed,
+          wall: st.wallSet.has(a) || st.wallSet.has(b),
+          normalY: p.collision.normal.y,
+        };
+      },
+      { speed: 0, wall: false, normalY: 0 },
+    );
+    if (audible) {
+      jarSound.hit(surfaceOf(hardest.wall, hardest.normalY), hardest.speed / st.side, st.side);
+    }
+    if (buzz && hardest.speed > st.side * HAPTIC_SPEED_PER_SIDE) {
       st.lastHaptic = now;
       navigator.vibrate(HAPTIC_MS);
-    });
-  }
+    }
+  });
 
   const setGravity = (x: number, y: number) => {
     const g = engine.gravity;
@@ -646,6 +732,8 @@ export function createJar(o: JarOptions): JarHandle {
       id: b.id,
       sticker: b.sticker,
       shape: blockShape(b.sticker),
+      phase: glintPhase(b.id),
+      quiet: true,
       body: null,
       sprite: null,
       stale: false,
@@ -679,6 +767,7 @@ export function createJar(o: JarOptions): JarHandle {
   return {
     shake: () => {
       if (still) return;
+      jarSound.unlock();
       st.hapticUntil = performance.now() + HAPTIC_WINDOW_MS;
       st.shake = { start: performance.now(), fired: 0 };
       kick();
@@ -716,6 +805,7 @@ export function createJar(o: JarOptions): JarHandle {
       cancelAnimationFrame(st.loop.raf);
       st.tilt?.abort();
       input.abort();
+      jarSound.release();
       Composite.clear(engine.world, false);
       Engine.clear(engine);
     },

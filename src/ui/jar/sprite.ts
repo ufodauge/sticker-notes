@@ -82,18 +82,7 @@ type Palette = {
   readonly gloss: number;
 };
 
-const LIGHT: Palette = {
-  shadow: "rgb(10 30 50 / 0.34)",
-  side: "rgb(92 150 178)",
-  body: ["rgb(238 247 255 / 0.5)", "rgb(212 232 245 / 0.28)", "rgb(160 196 220 / 0.42)"],
-  glow: "255 255 255",
-  glowAlpha: [0.1, 0.16, 0.26],
-  rim: ["rgb(255 255 255 / 1)", "rgb(255 255 255 / 0.15)", "rgb(40 80 110 / 0.5)"],
-  line: "rgb(30 70 100 / 0.4)",
-  gloss: 0.5,
-};
-
-const DARK: Palette = {
+const PALETTE: Palette = {
   shadow: "rgb(0 0 0 / 0.7)",
   side: "rgb(58 92 128)",
   body: ["rgb(205 225 250 / 0.28)", "rgb(170 195 225 / 0.12)", "rgb(120 150 190 / 0.3)"],
@@ -107,12 +96,7 @@ const DARK: Palette = {
 // One acrylic block, cut to the sticker's silhouette, drawn once: shadow, extruded side wall,
 // tinted top face, the art seen slightly magnified through the top, inner glow, bevel and gloss.
 // Each frame is a drawImage. `slab` is the sticker's side in device pixels.
-export function makeBlockSprite(
-  sticker: Sticker,
-  shape: BlockShape,
-  slab: number,
-  dark: boolean,
-): BlockSprite {
+export function makeBlockSprite(sticker: Sticker, shape: BlockShape, slab: number): BlockSprite {
   const pad = Math.ceil(slab * SHADOW_PAD);
   const total = slab + pad * 2;
   const canvas = document.createElement("canvas");
@@ -120,7 +104,7 @@ export function makeBlockSprite(
   canvas.height = total;
   const ctx = canvas.getContext("2d");
   if (!ctx) return { canvas, slab, shape };
-  const pal = dark ? DARK : LIGHT;
+  const pal = PALETTE;
   const edge = Math.max(1, Math.round(slab / 56));
   const depth = Math.max(2, Math.round(slab * DEPTH));
   const origin = pad + slab / 2;
@@ -171,7 +155,7 @@ export function makeBlockSprite(
   ctx.restore();
 
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.globalAlpha = dark ? 0.62 : 0.7;
+  ctx.globalAlpha = 0.62;
   ctx.drawImage(side, 0, 0);
   ctx.globalAlpha = 1;
 
