@@ -1,5 +1,13 @@
 import { describe, expect, test } from "vite-plus/test";
-import { JAR3D, cameraPosition, innerProfile, outerProfile, spawnPose } from "./jar3d.ts";
+import {
+  JAR3D,
+  cameraPosition,
+  innerProfile,
+  jarCollisionPieces,
+  outerProfile,
+  outerRadiusAt,
+  spawnPose,
+} from "./jar3d.ts";
 
 describe("jar profile", () => {
   test("the outer wall rises from the base centre to the lip", () => {
@@ -40,5 +48,20 @@ describe("spawn", () => {
     const pose = spawnPose(0, [0.1, 0.9, 0.5, 0.5]);
     expect(pose.y).toBeGreaterThan(JAR3D.height);
     expect(Math.hypot(pose.x, pose.z)).toBeLessThan(JAR3D.neckRadius);
+  });
+});
+
+describe("collision pieces", () => {
+  test("the wall is a ring of convex pieces and the base is one", () => {
+    const pieces = jarCollisionPieces();
+    expect(pieces.length).toBeGreaterThan(100);
+    expect(pieces.length).toBeLessThan(200);
+    expect(pieces.every((p) => p.length % 3 === 0 && p.length >= 12)).toBe(true);
+  });
+
+  test("the radius follows the profile and closes at the neck", () => {
+    expect(outerRadiusAt(2)).toBeCloseTo(JAR3D.outerRadius);
+    expect(outerRadiusAt(JAR3D.height)).toBeCloseTo(JAR3D.neckRadius);
+    expect(outerRadiusAt(4.2)).toBeLessThan(JAR3D.outerRadius);
   });
 });

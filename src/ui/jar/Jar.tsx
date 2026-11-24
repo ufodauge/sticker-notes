@@ -1,4 +1,12 @@
-import { ListChecks, Shuffle, Smartphone, Vibrate, Volume2, VolumeOff } from "lucide-react";
+import {
+  ListChecks,
+  RotateCcw,
+  Shuffle,
+  Smartphone,
+  Vibrate,
+  Volume2,
+  VolumeOff,
+} from "lucide-react";
 import { useReducer, useRef, useSyncExternalStore, type CSSProperties } from "react";
 import { dustMotes, type Mote } from "../../core/jar-light.ts";
 import { JAR_DEFAULT_COUNT } from "../../core/jar-selection.ts";
@@ -37,7 +45,7 @@ export function Jar({ onPick }: Props) {
   const snap = useSyncExternalStore(stickerStore.subscribe, stickerStore.getSnapshot);
   const selection = useSyncExternalStore(jarContent.subscribe, jarContent.get);
   const soundOn = useSyncExternalStore(soundPref.subscribe, soundPref.get);
-  const handle = useRef<JarHandle | null>(null);
+  const handle = useRef<(JarHandle & { reset?: () => void }) | null>(null);
   const backGlass = useRef<HTMLCanvasElement>(null);
   const frontGlass = useRef<HTMLCanvasElement>(null);
   const [tilting, setTilting] = useReducer((_: boolean, next: boolean) => next, false);
@@ -112,6 +120,17 @@ export function Jar({ onPick }: Props) {
           onClick={() => handle.current?.shake()}
         >
           <Vibrate aria-hidden="true" size={22} strokeWidth={1.5} />
+        </button>
+      )}
+      {!reduced && USE_3D && (
+        <button
+          type="button"
+          className={common.icon}
+          aria-label={t.jar.reset}
+          title={t.jar.reset}
+          onClick={() => handle.current?.reset?.()}
+        >
+          <RotateCcw aria-hidden="true" size={22} strokeWidth={1.5} />
         </button>
       )}
       {!reduced && (

@@ -1,7 +1,7 @@
 export const JAR3D = {
   side: 1.25,
   thickness: 0.36,
-  gravity: 26,
+  gravity: 20,
   outerRadius: 2.45,
   neckRadius: 1.95,
   wall: 0.14,
@@ -102,3 +102,57 @@ export const spawnPose = (
     rz: (r[2] + r[3]) * 3,
   };
 };
+
+const WALL_BANDS: readonly number[] = [0, 0.5, 1.6, 2.8, 3.6, 4.05, 4.5, JAR3D.height];
+const WALL_SEGMENTS = 20;
+
+export const outerRadiusAt = (y: number): number => {
+  const profile = outerProfile();
+  const upper = profile.findIndex(([, py]) => py >= y);
+  if (upper <= 0) return profile[0]?.[0] ?? 0;
+  const [r1, y1] = profile[upper] ?? [0, 0];
+  const [r0, y0] = profile[upper - 1] ?? [0, 0];
+  return y1 === y0 ? r1 : r0 + ((r1 - r0) * (y - y0)) / (y1 - y0);
+};
+
+type Triples = number[];
+
+const ring = (radius: number, y: number, a0: number, a1: number): Triples => [
+  radius * Math.cos(a0),
+  y,
+  radius * Math.sin(a0),
+  radius * Math.cos(a1),
+  y,
+  radius * Math.sin(a1),
+];
+
+export function jarCollisionPieces(): readonly Float32Array[] {
+  const base = Array.from({ length: WALL_SEGMENTS }, (_, k) => {
+    const a = (k / WALL_SEGMENTS) * Math.PI * 2;
+    const r = outerRadiusAt(JAR3D.baseThickness) - 0.05;
+    return [
+      r * Math.cos(a),
+      0,
+      r * Math.sin(a),
+      r * Math.cos(a),
+      JAR3D.baseThickness,
+      r * Math.sin(a),
+    ];
+  }).flat();
+  const walls = WALL_BANDS.slice(0, -1).flatMap((y0, j) => {
+    const y1 = WALL_BANDS[j + 1] ?? y0;
+    const outer0 = outerRadiusAt(y0);
+    const outer1 = outerRadiusAt(y1);
+    return Array.from({ length: WALL_SEGMENTS }, (_, k) => {
+      const a0 = (k / WALL_SEGMENTS) * Math.PI * 2;
+      const a1 = ((k + 1) / WALL_SEGMENTS) * Math.PI * 2;
+      return Float32Array.from([
+        ...ring(outer0, y0, a0, a1),
+        ...ring(outer1, y1, a0, a1),
+        ...ring(Math.max(0.1, outer0 - JAR3D.wall), y0, a0, a1),
+        ...ring(Math.max(0.1, outer1 - JAR3D.wall), y1, a0, a1),
+      ]);
+    });
+  });
+  return [Float32Array.from(base), ...walls];
+}

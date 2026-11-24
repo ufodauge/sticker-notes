@@ -8,7 +8,7 @@ import {
   qualityOf,
   type QualityState,
 } from "../../core/jar-quality.ts";
-import { JAR3D, cameraPosition, spawnPose } from "../../core/jar3d.ts";
+import { JAR3D, cameraPosition, jarCollisionPieces, spawnPose } from "../../core/jar3d.ts";
 import type { Sticker } from "../../core/payload.ts";
 import { jarSound } from "../jar/sound.ts";
 import { buildBlock, buildScene, type BlockVisual, type Scene3d } from "./scene3d.ts";
@@ -26,6 +26,7 @@ export type Jar3dOptions = {
 };
 
 export type Jar3dHandle = {
+  readonly reset: () => void;
   readonly shake: () => void;
   readonly setTilt: (on: boolean) => void;
   readonly setBlocks: (blocks: readonly JarBlock[]) => void;
@@ -50,6 +51,8 @@ type Kind =
   | { readonly kind: "desk" };
 
 const STEP = 1 / 60;
+const DESK_HALF = 9.5;
+const FALL_LIMIT = -6;
 const MAX_STEPS_PER_FRAME = 6;
 const PROBE_STEPS_PER_FRAME = 16;
 const MAX_SPAWNS_PER_FRAME = 2;
@@ -61,6 +64,13 @@ const TAP_MAX_MS = 600;
 const DRAG_GAIN = 16;
 const DRAG_MAX_SPEED = 16;
 const TILT_RANGE = 0.55;
+const PILE_CALM_SPEED = 0.7;
+const PILE_CALM_SPIN = 1.2;
+const PILE_CALM_STEPS = 90;
+const JAR_CALM_SPEED = 0.05;
+const JAR_CALM_STEPS = 40;
+const JAR_PULL = 0.14;
+const JAR_PULL_CAP = 1.4;
 const SOUND_SIDE_PX = 48;
 const HIT_SPEED_SCALE = 1 / (60 * 0.5);
 
@@ -82,6 +92,10 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
     scene: null as Scene3d | null,
     world: null as RAPIER.World | null,
     events: null as RAPIER.EventQueue | null,
+    jar: null as RAPIER.RigidBody | null,
+    jarColliders: [] as RAPIER.Collider[],
+    jarLive: { on: false, calm: 0 },
+    pileCalm: 0,
     entries: new Map<string, Entry>(),
     kinds: new Map<number, Kind>(),
     spawnQueue: [] as string[],
@@ -89,7 +103,8 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
     quality: INITIAL_QUALITY as QualityState,
     loop: { raf: 0, last: 0, acc: 0, calm: 0 },
     drag: null as null | {
-      id: string;
+      id: string | null;
+      anchor: THREE.Vector3 | null;
       plane: THREE.Plane;
       target: THREE.Vector3;
       start: { x: number; y: number; t: number };
@@ -134,26 +149,52 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
     collider.setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS);
   };
 
-  const buildStatics = (world: RAPIER.World, sc: Scene3d) => {
+  const buildStatics = (world: RAPIER.World) => {
     const desk = world.createCollider(
-      RAPIER.ColliderDesc.cuboid(JAR3D.deskHalfWidth, JAR3D.deskThickness / 2, JAR3D.deskHalfDepth)
+      RAPIER.ColliderDesc.cuboid(DESK_HALF, JAR3D.deskThickness / 2, DESK_HALF)
         .setTranslation(0, -JAR3D.deskThickness / 2, 0)
         .setFriction(0.7)
         .setRestitution(0.1),
     );
     registerCollider(desk, { kind: "desk" });
-    sc.jarGeometries.forEach((g) => {
-      const position = g.getAttribute("position").array as Float32Array;
-      const index = g.getIndex()?.array;
-      if (!index) return;
-      const jar = world.createCollider(
-        RAPIER.ColliderDesc.trimesh(new Float32Array(position), Uint32Array.from(index))
-          .setFriction(0.35)
-          .setRestitution(0.05),
-      );
-      registerCollider(jar, { kind: "jar" });
+  };
+
+  const swapJarColliders = (kind: "smooth" | "pieces") => {
+    const world = st.world;
+    const jar = st.jar;
+    const sc = st.scene;
+    if (!world || !jar || !sc) return;
+    st.jarColliders.splice(0).forEach((c) => {
+      st.kinds.delete(c.handle);
+      world.removeCollider(c, false);
+    });
+    const descs =
+      kind === "smooth"
+        ? sc.jarGeometries.flatMap((g) => {
+            const index = g.getIndex()?.array;
+            if (!index) return [];
+            const position = new Float32Array(g.getAttribute("position").array as Float32Array);
+            return [RAPIER.ColliderDesc.trimesh(position, Uint32Array.from(index))];
+          })
+        : jarCollisionPieces().flatMap((points) => {
+            const desc = RAPIER.ColliderDesc.convexHull(points);
+            return desc ? [desc.setDensity(4)] : [];
+          });
+    descs.forEach((desc) => {
+      const collider = world.createCollider(desc.setFriction(0.4).setRestitution(0.05), jar);
+      registerCollider(collider, { kind: "jar" });
+      st.jarColliders.push(collider);
     });
   };
+
+  const buildJar = (world: RAPIER.World) =>
+    world.createRigidBody(
+      RAPIER.RigidBodyDesc.fixed()
+        .setTranslation(0, 0.02, 0)
+        .setLinearDamping(0.5)
+        .setAngularDamping(1.2)
+        .setCcdEnabled(true),
+    );
 
   const hullPoints = (entry: Entry, part: readonly (readonly [number, number])[]) => {
     const [cx, cy] = entry.shape.centre;
@@ -178,15 +219,14 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
       RAPIER.RigidBodyDesc.dynamic()
         .setTranslation(pose.x, pose.y, pose.z)
         .setRotation({ x: q.x, y: q.y, z: q.z, w: q.w })
-        .setLinearDamping(0.12)
-        .setAngularDamping(0.6)
-        .setCcdEnabled(true),
+        .setLinearDamping(0.4)
+        .setAngularDamping(1.2),
     );
     entry.shape.parts.forEach((part) => {
       const desc = RAPIER.ColliderDesc.convexHull(hullPoints(entry, part));
       if (!desc) return;
       const collider = world.createCollider(
-        desc.setFriction(0.5).setRestitution(0.12).setDensity(1),
+        desc.setFriction(0.7).setRestitution(0.04).setDensity(1),
         body,
       );
       registerCollider(collider, { kind: "block", id: entry.id });
@@ -253,6 +293,13 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
 
   const syncMeshes = () => {
     const selected = o.selected();
+    const jar = st.jar;
+    if (jar && st.scene) {
+      const t = jar.translation();
+      const r = jar.rotation();
+      st.scene.jarGroup.position.set(t.x, t.y, t.z);
+      st.scene.jarGroup.quaternion.set(r.x, r.y, r.z, r.w);
+    }
     st.entries.forEach((e) => {
       const body = e.body;
       if (!body) return;
@@ -267,6 +314,7 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
 
   const anyAwake = () =>
     [...st.entries.values()].some((e) => e.body && !e.body.isSleeping()) ||
+    st.jarLive.on ||
     st.spawnQueue.length > 0;
 
   const applyGravity = () => {
@@ -284,9 +332,33 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
 
   const wakeAll = () => st.entries.forEach((e) => e.body?.wakeUp());
 
+  const jarDragStep = (d: NonNullable<typeof st.drag>) => {
+    const jar = st.jar;
+    if (!jar || !d.anchor) return;
+    const t = jar.translation();
+    const r = jar.rotation();
+    const world = new THREE.Vector3()
+      .copy(d.anchor)
+      .applyQuaternion(new THREE.Quaternion(r.x, r.y, r.z, r.w));
+    world.add(new THREE.Vector3(t.x, t.y, t.z));
+    const toTarget = new THREE.Vector3().subVectors(d.target, world);
+    const push = toTarget.multiplyScalar(JAR_PULL * jar.mass());
+    const cap = JAR_PULL_CAP * jar.mass();
+    if (push.length() > cap) push.setLength(cap);
+    jar.applyImpulseAtPoint(
+      { x: push.x, y: push.y, z: push.z },
+      { x: world.x, y: world.y, z: world.z },
+      true,
+    );
+  };
+
   const dragStep = () => {
     const d = st.drag;
     if (!d) return;
+    if (d.id === null) {
+      jarDragStep(d);
+      return;
+    }
     const body = st.entries.get(d.id)?.body;
     if (!body) return;
     const p = body.translation();
@@ -355,6 +427,39 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
     });
   };
 
+  const freezeJarWhenCalm = () => {
+    const jar = st.jar;
+    if (!jar || !st.jarLive.on || st.drag?.id === null) return;
+    const v = jar.linvel();
+    const w = jar.angvel();
+    const calm =
+      Math.hypot(v.x, v.y, v.z) < JAR_CALM_SPEED && Math.hypot(w.x, w.y, w.z) < JAR_CALM_SPEED;
+    st.jarLive.calm = calm ? st.jarLive.calm + 1 : 0;
+    if (st.jarLive.calm < JAR_CALM_STEPS) return;
+    jar.setBodyType(RAPIER.RigidBodyType.Fixed, true);
+    swapJarColliders("smooth");
+    st.jarLive.on = false;
+  };
+
+  const sleepPileWhenCalm = () => {
+    const awake = [...st.entries.values()].filter((e) => e.body && !e.body.isSleeping());
+    const calm =
+      st.drag === null &&
+      st.shakes.length === 0 &&
+      awake.every((e) => {
+        const v = e.body?.linvel();
+        const w = e.body?.angvel();
+        return (
+          Math.hypot(v?.x ?? 0, v?.y ?? 0, v?.z ?? 0) < PILE_CALM_SPEED &&
+          Math.hypot(w?.x ?? 0, w?.y ?? 0, w?.z ?? 0) < PILE_CALM_SPIN
+        );
+      });
+    st.pileCalm = calm ? st.pileCalm + 1 : 0;
+    if (st.pileCalm < PILE_CALM_STEPS) return;
+    awake.forEach((e) => e.body?.sleep());
+    st.pileCalm = 0;
+  };
+
   const step = () => {
     const world = st.world;
     const events = st.events;
@@ -367,6 +472,50 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
     dragStep();
     world.step(events);
     drainHits();
+    freezeJarWhenCalm();
+    sleepPileWhenCalm();
+  };
+
+  const dropBody = (entry: Entry) => {
+    const world = st.world;
+    if (!entry.body || !world) return;
+    Array.from({ length: entry.body.numColliders() }).forEach((_, i) => {
+      const c = entry.body?.collider(i);
+      if (c) st.kinds.delete(c.handle);
+    });
+    world.removeRigidBody(entry.body);
+    entry.body = null;
+    entry.visual.group.visible = false;
+  };
+
+  const standJarUp = () => {
+    const jar = st.jar;
+    if (!jar) return;
+    jar.setBodyType(RAPIER.RigidBodyType.Fixed, true);
+    swapJarColliders("smooth");
+    jar.setTranslation({ x: 0, y: 0.02, z: 0 }, true);
+    jar.setRotation({ x: 0, y: 0, z: 0, w: 1 }, true);
+    st.jarLive.on = false;
+  };
+
+  const rescueStrays = () => {
+    st.entries.forEach((e) => {
+      if (e.body && e.body.translation().y < FALL_LIMIT) {
+        dropBody(e);
+        st.spawnQueue.push(e.id);
+      }
+    });
+    if (st.jar && st.jar.translation().y < FALL_LIMIT) standJarUp();
+  };
+
+  const resetAll = () => {
+    standJarUp();
+    st.entries.forEach((e) => {
+      if (e.vanishing !== 0) return;
+      dropBody(e);
+      st.spawnQueue.push(e.id);
+    });
+    kick();
   };
 
   const frame = (now: number) => {
@@ -395,12 +544,25 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
     st.loop.acc = due === MAX_STEPS_PER_FRAME ? 0 : st.loop.acc - due * stepSeconds;
     if (st.world) st.world.timestep = stepSeconds;
     Array.from({ length: due }).forEach(step);
+    rescueStrays();
     syncMeshes();
     render();
-    if (import.meta.env.VITE_JAR_PROBE)
+    if (import.meta.env.VITE_JAR_PROBE) {
       canvas.dataset.awake = String(
         [...st.entries.values()].filter((e) => e.body && !e.body.isSleeping()).length,
       );
+      const jar = st.jar;
+      const v = jar?.linvel();
+      const w = jar?.angvel();
+      canvas.dataset.jar = `live=${st.jarLive.on} calm=${st.jarLive.calm} ${jar?.isSleeping() ? "sleep" : "awake"} v=${Math.hypot(v?.x ?? 0, v?.y ?? 0, v?.z ?? 0).toFixed(3)} w=${Math.hypot(w?.x ?? 0, w?.y ?? 0, w?.z ?? 0).toFixed(3)} y=${jar?.translation().y.toFixed(3)}`;
+      canvas.dataset.speeds = [...st.entries.values()]
+        .filter((e) => e.body && !e.body.isSleeping())
+        .map((e) => {
+          const lv = e.body?.linvel();
+          return Math.hypot(lv?.x ?? 0, lv?.y ?? 0, lv?.z ?? 0).toFixed(2);
+        })
+        .join(",");
+    }
     const work = performance.now() - t0;
     const before = st.quality.tier;
     st.quality = nextQuality(st.quality, {
@@ -477,30 +639,64 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
     raycaster.ray.intersectPlane(d.plane, d.target);
   };
 
-  const onDown = (e: PointerEvent) => {
-    if (still || !st.ready) return;
-    jarSound.unlock();
-    const hit = pick(e.clientX, e.clientY);
-    if (!hit || !hit.body || !st.scene) {
-      st.drag = null;
-      o.onSelect(null);
-      return;
-    }
+  const startDrag = (
+    e: PointerEvent,
+    id: string | null,
+    point: THREE.Vector3,
+    anchor: THREE.Vector3 | null,
+  ) => {
+    const sc = st.scene;
+    if (!sc) return;
     canvas.setPointerCapture(e.pointerId);
-    const p = hit.body.translation();
-    const normal = st.scene.camera.getWorldDirection(new THREE.Vector3()).negate();
+    const normal = sc.camera.getWorldDirection(new THREE.Vector3()).negate();
     st.drag = {
-      id: hit.id,
-      plane: new THREE.Plane().setFromNormalAndCoplanarPoint(
-        normal,
-        new THREE.Vector3(p.x, p.y, p.z),
-      ),
-      target: new THREE.Vector3(p.x, p.y, p.z),
+      id,
+      anchor,
+      plane: new THREE.Plane().setFromNormalAndCoplanarPoint(normal, point),
+      target: point.clone(),
       start: { x: e.clientX, y: e.clientY, t: performance.now() },
       moved: false,
     };
-    hit.body.wakeUp();
+    wakeAll();
     kick();
+  };
+
+  const pickJar = (clientX: number, clientY: number): THREE.Vector3 | null => {
+    const sc = st.scene;
+    if (!sc) return null;
+    const rect = canvas.getBoundingClientRect();
+    pointer.set(
+      ((clientX - rect.left) / rect.width) * 2 - 1,
+      -((clientY - rect.top) / rect.height) * 2 + 1,
+    );
+    raycaster.setFromCamera(pointer, sc.camera);
+    return raycaster.intersectObject(sc.jarFront, false)[0]?.point ?? null;
+  };
+
+  const onDown = (e: PointerEvent) => {
+    if (still || !st.ready || !st.scene) return;
+    jarSound.unlock();
+    const hit = pick(e.clientX, e.clientY);
+    if (hit?.body) {
+      const p = hit.body.translation();
+      startDrag(e, hit.id, new THREE.Vector3(p.x, p.y, p.z), null);
+      return;
+    }
+    o.onSelect(null);
+    const point = pickJar(e.clientX, e.clientY);
+    const jar = st.jar;
+    if (!point || !jar) return;
+    swapJarColliders("pieces");
+    jar.setBodyType(RAPIER.RigidBodyType.Dynamic, true);
+    st.jarLive.on = true;
+    st.jarLive.calm = 0;
+    const t = jar.translation();
+    const r = jar.rotation();
+    const anchor = point
+      .clone()
+      .sub(new THREE.Vector3(t.x, t.y, t.z))
+      .applyQuaternion(new THREE.Quaternion(r.x, r.y, r.z, r.w).invert());
+    startDrag(e, null, point, anchor);
   };
 
   const onMove = (e: PointerEvent) => {
@@ -516,7 +712,7 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
     st.drag = null;
     if (!d) return;
     const tap = !d.moved && performance.now() - d.start.t < TAP_MAX_MS;
-    if (tap) o.onSelect(d.id);
+    if (tap && d.id !== null) o.onSelect(d.id);
     kick();
   };
 
@@ -543,7 +739,9 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
     st.scene = sc;
     st.world = world;
     st.events = new RAPIER.EventQueue(true);
-    buildStatics(world, sc);
+    buildStatics(world);
+    st.jar = buildJar(world);
+    swapJarColliders("smooth");
     applySize();
     st.ready = true;
     syncBlocks();
@@ -553,6 +751,9 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
   void boot();
 
   return {
+    reset: () => {
+      if (!still && st.ready) resetAll();
+    },
     shake: () => {
       if (still || !st.ready) return;
       jarSound.unlock();

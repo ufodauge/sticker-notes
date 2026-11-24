@@ -98,9 +98,10 @@ export type Scene3d = {
   readonly scene: THREE.Scene;
   readonly camera: THREE.PerspectiveCamera;
   readonly spot: THREE.SpotLight;
-  readonly jarBack: THREE.Mesh;
-  readonly jarFront: THREE.Mesh;
+  readonly jarGroup: THREE.Group;
   readonly jarGeometries: readonly THREE.BufferGeometry[];
+  readonly jarFront: THREE.Mesh;
+  readonly contact: THREE.Mesh;
   readonly dispose: () => void;
 };
 
@@ -196,7 +197,9 @@ export function buildScene(canvas: HTMLCanvasElement): Scene3d {
   jarFront.renderOrder = 10;
   const innerWall = new THREE.Mesh(inner, frontMaterial);
   innerWall.renderOrder = 9;
-  scene.add(jarBack, jarFront, innerWall);
+  const jarGroup = new THREE.Group();
+  jarGroup.add(jarBack, jarFront, innerWall);
+  scene.add(jarGroup);
 
   const dispose = () => {
     scene.traverse((o) => {
@@ -217,9 +220,10 @@ export function buildScene(canvas: HTMLCanvasElement): Scene3d {
     scene,
     camera,
     spot,
-    jarBack,
-    jarFront,
+    jarGroup,
     jarGeometries: [outer, inner],
+    jarFront,
+    contact,
     dispose,
   };
 }
