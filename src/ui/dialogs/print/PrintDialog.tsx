@@ -12,13 +12,14 @@ import { SnsIcon } from "../../SnsIcon.tsx";
 import type { Ready, StoredSticker } from "../../../data/sticker-store.ts";
 import common from "../../common.module.css";
 import { Dialog } from "../../Dialog.tsx";
+import { t } from "../../messages.ts";
 import { StickerView } from "../../StickerView.tsx";
 import styles from "./PrintDialog.module.css";
 import { PrinterCopy, SheetSvg, Symbols } from "./Sheets.tsx";
 
 const MODES = {
-  album: { label: "シール帳", Icon: BookOpen },
-  grid: { label: "ならべる", Icon: LayoutGrid },
+  album: { Icon: BookOpen },
+  grid: { Icon: LayoutGrid },
 } as const;
 type Mode = keyof typeof MODES;
 
@@ -73,12 +74,13 @@ export function PrintDialog({ album, onClose }: Props) {
         );
 
   return (
-    <Dialog label="印刷" onClose={onClose}>
+    <Dialog label={t.print.dialog} onClose={onClose}>
       <div className={styles.body}>
         <div className={styles.headers}>
-          <div className={styles.modes} role="radiogroup" aria-label="印刷のしかた">
+          <div className={styles.modes} role="radiogroup" aria-label={t.print.modeGroup}>
             {(Object.keys(MODES) as Mode[]).map((m) => {
-              const { label, Icon } = MODES[m];
+              const { Icon } = MODES[m];
+              const label = t.print.mode[m];
               return (
                 <button
                   key={m}
@@ -95,7 +97,11 @@ export function PrintDialog({ album, onClose }: Props) {
             })}
           </div>
 
-          <label className={styles.cut} title="カットライン" data-on={state.cutLine || undefined}>
+          <label
+            className={styles.cut}
+            title={t.print.cutLine}
+            data-on={state.cutLine || undefined}
+          >
             <input
               type="checkbox"
               className={common.visuallyHidden}
@@ -103,7 +109,7 @@ export function PrintDialog({ album, onClose }: Props) {
               onChange={(e) => dispatch({ type: "cut", on: e.currentTarget.checked })}
             />
             <Scissors aria-hidden="true" size={20} strokeWidth={1.5} />
-            <span className={common.visuallyHidden}>カットライン</span>
+            <span className={common.visuallyHidden}>{t.print.cutLine}</span>
           </label>
         </div>
 
@@ -117,7 +123,7 @@ export function PrintDialog({ album, onClose }: Props) {
                 prefix="p"
                 cutLine={state.cutLine}
                 frame={state.mode === "album"}
-                label={`印刷シート ${i + 1}`}
+                label={t.print.sheet(i + 1)}
               />
             ))}
           </div>
@@ -133,7 +139,7 @@ export function PrintDialog({ album, onClose }: Props) {
           onClick={() => window.print()}
         >
           <Printer aria-hidden="true" size={18} strokeWidth={1.5} />
-          印刷
+          {t.print.submit}
         </button>
       </div>
       <PrinterCopy sheets={sheets} stickers={album.stickers} cutLine={state.cutLine} />
@@ -153,7 +159,7 @@ function GridOptions({
   const sizeMm = Math.round(36 * Math.min(MAX_DOT_MM, Math.max(MIN_DOT_MM, state.dotMm)));
   return (
     <>
-      <ul className={styles.list} aria-label="印刷するステッカー">
+      <ul className={styles.list} aria-label={t.print.stickers}>
         {stickers.map((s) => {
           const n = state.copies[s.id] ?? 0;
           const name = snsDisplay(s.sticker.snsKind, s.sticker.snsId);
@@ -167,7 +173,7 @@ function GridOptions({
               <button
                 type="button"
                 className={common.icon}
-                aria-label={`${name} を減らす`}
+                aria-label={t.print.fewer(name)}
                 disabled={n === 0}
                 onClick={() => dispatch({ type: "copies", id: s.id, copies: n - 1 })}
               >
@@ -181,7 +187,7 @@ function GridOptions({
                 max={MAX_COPIES}
                 step={1}
                 value={n}
-                aria-label={`${name} の枚数`}
+                aria-label={t.print.count(name)}
                 onChange={(e) =>
                   dispatch({ type: "copies", id: s.id, copies: e.currentTarget.valueAsNumber })
                 }
@@ -189,7 +195,7 @@ function GridOptions({
               <button
                 type="button"
                 className={common.icon}
-                aria-label={`${name} を増やす`}
+                aria-label={t.print.more(name)}
                 onClick={() =>
                   dispatch({ type: "copies", id: s.id, copies: Math.min(MAX_COPIES, n + 1) })
                 }
@@ -209,10 +215,10 @@ function GridOptions({
           max={MAX_DOT_MM}
           step={0.1}
           value={state.dotMm}
-          aria-label="1ドットの大きさ(mm)"
+          aria-label={t.print.dotSize}
           onChange={(e) => dispatch({ type: "dot", dotMm: e.currentTarget.valueAsNumber })}
         />
-        <span className={common.muted}>mm/ドット・約{sizeMm}mm角</span>
+        <span className={common.muted}>{t.print.dotSummary(sizeMm)}</span>
       </label>
     </>
   );

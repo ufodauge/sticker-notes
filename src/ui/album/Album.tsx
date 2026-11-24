@@ -3,6 +3,7 @@ import { useCallback, useRef, type PointerEvent, type WheelEvent } from "react";
 import { slotCenter, sortedPages } from "../../core/album.ts";
 import { stickerStore, type Ready } from "../../data/sticker-store.ts";
 import type { Highlight } from "../feedback.ts";
+import { t } from "../messages.ts";
 import styles from "./Album.module.css";
 import { trackPages } from "./page-position.ts";
 import { PageCanvas } from "./PageCanvas.tsx";
@@ -102,7 +103,7 @@ export function Album(props: Props) {
               type="button"
               className={styles.slot}
               style={{ left: `${first.x * 100}%`, top: `${first.y * 100}%` }}
-              aria-label="画像からステッカーを作る"
+              aria-label={t.album.createFirst}
               onClick={onCreate}
             >
               <ImagePlus aria-hidden="true" size={28} strokeWidth={1.25} />
@@ -118,7 +119,7 @@ export function Album(props: Props) {
                 key={page.id}
                 className={styles.page}
                 data-page={page.id}
-                aria-label={`${i + 1}`}
+                aria-label={t.album.pageLabel(i + 1)}
               >
                 <PageCanvas
                   pageId={page.id}
@@ -134,8 +135,8 @@ export function Album(props: Props) {
                     <button
                       type="button"
                       className={styles.removePage}
-                      aria-label={`${i + 1}ページ目を消す`}
-                      title="空のページを消す"
+                      aria-label={t.album.removePage.label(i + 1)}
+                      title={t.album.removePage.tooltip}
                       onClick={() => void stickerStore.deletePage(page.id)}
                     >
                       <Trash2 aria-hidden="true" size={18} strokeWidth={1.5} />
@@ -149,8 +150,8 @@ export function Album(props: Props) {
             <button
               type="button"
               className={styles.newPage}
-              aria-label="ページを足す"
-              title="ページを足す"
+              aria-label={t.album.addPage}
+              title={t.album.addPage}
               onClick={() => void addPage()}
             >
               <Plus aria-hidden="true" size={32} strokeWidth={1.25} />

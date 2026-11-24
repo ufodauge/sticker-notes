@@ -33,7 +33,7 @@ import { installPrompt } from "../../../data/install.ts";
 import { settings, stickerStore } from "../../../data/sticker-store.ts";
 import common from "../../common.module.css";
 import { Dialog } from "../../Dialog.tsx";
-import { BACKUP_ERROR_TEXT } from "../../text.ts";
+import { t } from "../../messages.ts";
 import { backupMarkCache } from "./backup-mark.ts";
 import styles from "./MenuDialog.module.css";
 
@@ -41,15 +41,11 @@ type Props = { readonly onClose: () => void };
 
 export function MenuDialog({ onClose }: Props) {
   return (
-    <Dialog label="メニュー" onClose={onClose}>
+    <Dialog label={t.menu.dialog} onClose={onClose}>
       <div className={styles.body}>
         {isIos() && !isStandalone() && (
           <Row icon={<Share aria-hidden="true" size={20} strokeWidth={1.5} />}>
-            <p className={common.warn}>
-              共有からホーム画面に追加
-              <br />
-              追加しないと、しばらく開かないときに消えることがある
-            </p>
+            <p className={`${common.warn} ${styles.pre}`}>{t.menu.iosInstall}</p>
           </Row>
         )}
         <Backup />
@@ -90,10 +86,9 @@ async function exportBackup(): Promise<void> {
 
 async function importBackupFile(file: File): Promise<string> {
   const r = await stickerStore.importBackup(await file.text()).catch(() => undefined);
-  if (!r) return "読み込めなかった";
-  if (!r.ok) return BACKUP_ERROR_TEXT[r.reason];
-  const skipped = r.skipped > 0 ? `\n読めない項目${r.skipped}件は飛ばした` : "";
-  return `${r.stickers}枚を貼った${skipped}`;
+  if (!r) return t.menu.restoreFailed;
+  if (!r.ok) return t.menu.backupError[r.reason];
+  return t.menu.restored(r.stickers, r.skipped);
 }
 
 function Backup() {
@@ -110,11 +105,11 @@ function Backup() {
       <div className={common.row}>
         <button type="button" className={common.button} onClick={() => void exportBackup()}>
           <Download aria-hidden="true" size={18} strokeWidth={1.5} />
-          バックアップ
+          {t.menu.backup}
         </button>
         <label className={common.button} data-busy={state.kind === "busy" || undefined}>
           <Upload aria-hidden="true" size={18} strokeWidth={1.5} />
-          読み込む
+          {t.menu.restore}
           <input
             type="file"
             accept="application/json,.json"
@@ -165,7 +160,7 @@ function StorageSwitch({ state: first }: { readonly state: PersistState }) {
   return (
     <Row icon={<ShieldCheck aria-hidden="true" size={20} strokeWidth={1.5} />}>
       <label className={styles.switch}>
-        <span>データを自動削除されないようにする</span>
+        <span>{t.menu.keepData}</span>
         <input
           type="checkbox"
           role="switch"
@@ -174,7 +169,7 @@ function StorageSwitch({ state: first }: { readonly state: PersistState }) {
           onChange={() => void ask()}
         />
       </label>
-      {s.state === "unsupported" && <p className={common.muted}>このブラウザは非対応</p>}
+      {s.state === "unsupported" && <p className={common.muted}>{t.menu.keepUnsupported}</p>}
       {s.refused && <KeepFailed />}
     </Row>
   );
@@ -184,26 +179,24 @@ function KeepFailed() {
   const canInstall = useSyncExternalStore(installPrompt.subscribe, installPrompt.canInstall);
   return (
     <div className={styles.failed} role="status">
-      <p className={common.warn}>失敗しました</p>
+      <p className={common.warn}>{t.menu.keepFailed}</p>
       {isStandalone() ? (
-        <p className={common.muted}>ブラウザの設定でこのアプリのデータ保存を許可してください</p>
+        <p className={common.muted}>{t.menu.keepAllowInSettings}</p>
       ) : canInstall ? (
         <>
-          <p className={common.muted}>ホーム画面に追加すると許可されやすくなります</p>
+          <p className={common.muted}>{t.menu.installHint}</p>
           <button
             type="button"
             className={common.button}
             onClick={() => void installPrompt.install()}
           >
             <Smartphone aria-hidden="true" size={18} strokeWidth={1.5} />
-            ホーム画面に追加
+            {t.menu.install}
           </button>
         </>
       ) : (
         <p className={`${common.muted} ${styles.pre}`}>
-          {isIos()
-            ? "ホーム画面に追加すると許可されやすくなります\nSafari の共有ボタン →「ホーム画面に追加」"
-            : "ホーム画面に追加すると許可されやすくなります\nブラウザのメニュー →「アプリをインストール」または「ホーム画面に追加」"}
+          {`${t.menu.installHint}\n${isIos() ? t.menu.installStepsIos : t.menu.installStepsOther}`}
         </p>
       )}
     </div>
@@ -211,9 +204,8 @@ function KeepFailed() {
 }
 
 const PALETTE_EXPORTS = {
-  png: { label: "PNG(16×1)", blob: (p: PaletteDef) => rgbaToPng(paletteRgba(p)) },
+  png: { blob: (p: PaletteDef) => rgbaToPng(paletteRgba(p)) },
   gpl: {
-    label: "GIMP パレット(.gpl)",
     blob: async (p: PaletteDef) => new Blob([paletteGpl(p)], { type: "text/plain" }),
   },
 } as const;
@@ -228,7 +220,7 @@ function Palettes() {
     <Row icon={<Palette aria-hidden="true" size={20} strokeWidth={1.5} />}>
       <details className={styles.details}>
         <summary className={styles.summary}>
-          パレット
+          {t.menu.palettes}
           <ChevronDown aria-hidden="true" className={styles.chevron} size={18} strokeWidth={1.5} />
         </summary>
         <ul className={styles.palettes}>
@@ -257,8 +249,8 @@ function PaletteMenu({ palette }: { readonly palette: PaletteDef }) {
         type="button"
         className={common.icon}
         popoverTarget={id}
-        aria-label={`${palette.name} を保存`}
-        title="保存"
+        aria-label={t.menu.paletteSave.label(palette.name)}
+        title={t.menu.paletteSave.tooltip}
         style={{ anchorName: anchor } as CSSProperties}
       >
         <Ellipsis aria-hidden="true" size={18} strokeWidth={1.5} />
@@ -282,7 +274,7 @@ function PaletteMenu({ palette }: { readonly palette: PaletteDef }) {
             }}
           >
             <Download aria-hidden="true" size={16} strokeWidth={1.5} />
-            {PALETTE_EXPORTS[format].label}
+            {t.menu.paletteFormat[format]}
           </button>
         ))}
       </div>

@@ -1,0 +1,110 @@
+// All user-facing UI text lives here. Edit wording in this file only.
+// - Plain strings are used as-is; functions take the dynamic parts (counts, names).
+// - "\n" is a line break (the element must be `white-space: pre-line` / `styles.pre`).
+// - Not here: SNS names (`core/sns.ts`, brand names), palette names (`core/palette-data.ts`,
+//   part of payload v1), the PWA manifest and <title> (`vite.config.ts`, `index.html`).
+import type { BackupError } from "../core/backup.ts";
+
+export const t = {
+  common: {
+    close: "閉じる",
+    undo: "元に戻す",
+  },
+
+  app: {
+    storageUnavailable: "保存領域を開けなかった",
+    toolbar: "操作",
+    create: { label: "画像からステッカーを作る", tooltip: "作る" },
+    print: "印刷",
+    menu: "メニュー",
+  },
+
+  album: {
+    createFirst: "画像からステッカーを作る",
+    pageLabel: (n: number) => `${n}`,
+    removePage: { label: (n: number) => `${n}ページ目を消す`, tooltip: "空のページを消す" },
+    addPage: "ページを足す",
+    pageJump: "ページへ移る",
+    handle: { label: "回転と大きさ(ドラッグ)", tooltip: "回転と大きさ" },
+  },
+
+  actionBar: {
+    showQr: "QRを出す",
+    discard: "捨てる",
+  },
+
+  feedback: {
+    discarded: "ポイした",
+    receivedInvalid: "読み込めないステッカー",
+    receivedAdded: (who: string) => `${who} を貼った`,
+    receivedDuplicate: "もう貼ってある",
+  },
+
+  qr: {
+    dialog: "交換用のQR",
+    code: (who: string) => `${who} のQRコード`,
+    fullscreen: "全画面",
+    share: "リンクを共有",
+    copy: "リンクをコピー",
+    copied: "コピーした",
+    copyFailed: "コピーできなかった",
+  },
+
+  create: {
+    dialog: "ステッカーを作る",
+    loadFailed: "この画像は読み込めない",
+    preview: "作成中のステッカー",
+    exactMatch: "パレットと完全一致",
+    saveFailed: "保存できなかった",
+    submit: "貼る",
+    palette: "パレット",
+    transparent: "透明にする色",
+    transparentNone: "透明なし",
+    transparentColor: (hex: string) => `#${hex} を透明に`,
+    snsKind: "SNSの種類",
+    sns: "SNS",
+    snsId: "ID",
+  },
+
+  menu: {
+    dialog: "メニュー",
+    iosInstall: "共有からホーム画面に追加\n追加しないと、しばらく開かないときに消えることがある",
+    backup: "バックアップ",
+    restore: "読み込む",
+    restoreFailed: "読み込めなかった",
+    restored: (stickers: number, skipped: number) =>
+      `${stickers}枚を貼った${skipped > 0 ? `\n読めない項目${skipped}件は飛ばした` : ""}`,
+    backupError: {
+      "not-json": "バックアップのファイルではない",
+      "not-backup": "バックアップのファイルではない",
+      "newer-version": "新しい版のアプリで作ったファイル\nアプリを更新してから読み込む",
+      "too-large": "ファイルが大きすぎる",
+    } satisfies Readonly<Record<BackupError, string>>,
+    keepData: "データを自動削除されないようにする",
+    keepUnsupported: "このブラウザは非対応",
+    keepFailed: "失敗しました",
+    keepAllowInSettings: "ブラウザの設定でこのアプリのデータ保存を許可してください",
+    installHint: "ホーム画面に追加すると許可されやすくなります",
+    install: "ホーム画面に追加",
+    installStepsIos: "Safari の共有ボタン →「ホーム画面に追加」",
+    installStepsOther: "ブラウザのメニュー →「アプリをインストール」または「ホーム画面に追加」",
+    palettes: "パレット",
+    paletteSave: { label: (name: string) => `${name} を保存`, tooltip: "保存" },
+    paletteFormat: { png: "PNG(16×1)", gpl: "GIMP パレット(.gpl)" },
+  },
+
+  print: {
+    dialog: "印刷",
+    modeGroup: "印刷のしかた",
+    mode: { album: "シール帳", grid: "ならべる" },
+    cutLine: "カットライン",
+    sheet: (n: number) => `印刷シート ${n}`,
+    submit: "印刷",
+    stickers: "印刷するステッカー",
+    fewer: (who: string) => `${who} を減らす`,
+    more: (who: string) => `${who} を増やす`,
+    count: (who: string) => `${who} の枚数`,
+    dotSize: "1ドットの大きさ(mm)",
+    dotSummary: (mm: number) => `mm/ドット・約${mm}mm角`,
+  },
+} as const;

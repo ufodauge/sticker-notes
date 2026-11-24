@@ -3,6 +3,7 @@ import { snsDisplay, snsProfileUrl, type SnsKind } from "../core/sns.ts";
 import type { StoredSticker } from "../data/sticker-store.ts";
 import styles from "./ActionBar.module.css";
 import common from "./common.module.css";
+import { t } from "./messages.ts";
 import { SnsIcon } from "./SnsIcon.tsx";
 
 type Props = {
@@ -21,8 +22,8 @@ export function ActionBar({ sticker, onQr, onDiscard }: Props) {
         <button
           type="button"
           className={common.icon}
-          aria-label="QRを出す"
-          title="QRを出す"
+          aria-label={t.actionBar.showQr}
+          title={t.actionBar.showQr}
           onClick={onQr}
         >
           <QrCode aria-hidden="true" size={20} strokeWidth={1.5} />
@@ -31,8 +32,8 @@ export function ActionBar({ sticker, onQr, onDiscard }: Props) {
       <button
         type="button"
         className={common.icon}
-        aria-label="捨てる"
-        title="捨てる"
+        aria-label={t.actionBar.discard}
+        title={t.actionBar.discard}
         onClick={onDiscard}
       >
         <Trash2 aria-hidden="true" size={20} strokeWidth={1.5} />

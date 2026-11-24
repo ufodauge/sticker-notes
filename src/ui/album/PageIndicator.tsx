@@ -1,4 +1,5 @@
 import { useSyncExternalStore, type CSSProperties, type PointerEvent } from "react";
+import { t } from "../messages.ts";
 import styles from "./PageIndicator.module.css";
 import { pagePosition, showPage } from "./page-position.ts";
 
@@ -19,7 +20,7 @@ export function PageIndicator({ count }: { readonly count: number }) {
       <button
         type="button"
         className={styles.track}
-        aria-label="ページへ移る"
+        aria-label={t.album.pageJump}
         onPointerDown={jump}
         style={{ "--n": count, "--i": current } as CSSProperties}
       >

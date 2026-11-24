@@ -16,6 +16,7 @@ import { PrintDialog } from "./dialogs/print/PrintDialog.tsx";
 import { QrDialog } from "./dialogs/QrDialog.tsx";
 import { PrinterCopy } from "./dialogs/print/Sheets.tsx";
 import { feedback } from "./feedback.ts";
+import { t } from "./messages.ts";
 import { printMode } from "./print-mode.ts";
 import { Toast } from "./Toast.tsx";
 import { discardSticker, undo } from "./undo.ts";
@@ -43,7 +44,7 @@ export function App() {
   };
 
   if (snap.status === "error") {
-    return <p className={`${common.warn} ${styles.error}`}>保存領域を開けなかった</p>;
+    return <p className={`${common.warn} ${styles.error}`}>{t.app.storageUnavailable}</p>;
   }
   const ready = snap.status === "ready" ? snap : null;
   const stickers = ready?.stickers ?? [];
@@ -58,13 +59,13 @@ export function App() {
 
   return (
     <div className={styles.shell}>
-      <nav className={styles.toolbar} aria-label="操作">
+      <nav className={styles.toolbar} aria-label={t.app.toolbar}>
         <PageIndicator count={Math.max(1, ready?.pages.length ?? 0)} />
         <button
           type="button"
           className={common.icon}
-          aria-label="画像からステッカーを作る"
-          title="作る"
+          aria-label={t.app.create.label}
+          title={t.app.create.tooltip}
           onClick={() => dispatch({ type: "open", overlay: { kind: "create" } })}
         >
           <ImagePlus aria-hidden="true" size={22} strokeWidth={1.5} />
@@ -73,8 +74,8 @@ export function App() {
           <button
             type="button"
             className={common.icon}
-            aria-label="印刷"
-            title="印刷"
+            aria-label={t.app.print}
+            title={t.app.print}
             onClick={() => dispatch({ type: "open", overlay: { kind: "print" } })}
           >
             <Printer aria-hidden="true" size={22} strokeWidth={1.5} />
@@ -83,8 +84,8 @@ export function App() {
         <button
           type="button"
           className={`${common.icon} ${styles.menu}`}
-          aria-label="メニュー"
-          title="メニュー"
+          aria-label={t.app.menu}
+          title={t.app.menu}
           data-dot={menuDot || undefined}
           onClick={() => dispatch({ type: "open", overlay: { kind: "menu" } })}
         >

@@ -11,6 +11,7 @@ import { settings, stickerStore, type AddResult } from "../../../data/sticker-st
 import common from "../../common.module.css";
 import { Dialog } from "../../Dialog.tsx";
 import { useCloseDialog } from "../../dialog-context.ts";
+import { t } from "../../messages.ts";
 import { SnsIcon } from "../../SnsIcon.tsx";
 import { StickerView } from "../../StickerView.tsx";
 import styles from "./CreateDialog.module.css";
@@ -36,7 +37,7 @@ type Props = {
 
 export function CreateDialog({ file, onClose, onSaved }: Props) {
   return (
-    <Dialog label="ステッカーを作る" onClose={onClose}>
+    <Dialog label={t.create.dialog} onClose={onClose}>
       <CreateFlow last={lastSns()} file={file} onSaved={onSaved} />
     </Dialog>
   );
@@ -140,7 +141,7 @@ function PickImage({
           onChange={(e: ChangeEvent<HTMLInputElement>) => onFile(e.currentTarget.files?.[0])}
         />
       </label>
-      {failed && <p className={common.warn}>この画像は読み込めない</p>}
+      {failed && <p className={common.warn}>{t.create.loadFailed}</p>}
     </div>
   );
 }
@@ -184,12 +185,12 @@ function Editor({ state, dispatch, onSaved }: EditorProps) {
       <div className={styles.editor}>
         <div className={styles.preview}>
           <span className={styles.previewArt}>
-            <StickerView sticker={d.sticker} scale={0} label="作成中のステッカー" />
+            <StickerView sticker={d.sticker} scale={0} label={t.create.preview} />
           </span>
           {d.exact && (
-            <span className={styles.badge} title="パレットと完全一致">
+            <span className={styles.badge} title={t.create.exactMatch}>
               <Check aria-hidden="true" size={14} strokeWidth={2} />
-              <span className={common.visuallyHidden}>パレットと完全一致</span>
+              <span className={common.visuallyHidden}>{t.create.exactMatch}</span>
             </span>
           )}
         </div>
@@ -199,14 +200,14 @@ function Editor({ state, dispatch, onSaved }: EditorProps) {
           <PaletteField d={d} dispatch={dispatch} />
           <TransparentField d={d} dispatch={dispatch} />
           <SnsField state={state} d={d} dispatch={dispatch} />
-          {state.failed && d.snsValid && <p className={common.warn}>保存できなかった</p>}
+          {state.failed && d.snsValid && <p className={common.warn}>{t.create.saveFailed}</p>}
           <button
             type="button"
             className={common.primary}
             disabled={state.saving}
             onClick={() => void save()}
           >
-            貼る
+            {t.create.submit}
           </button>
         </div>
       </div>
@@ -252,7 +253,7 @@ function PaletteField({
 }) {
   return (
     <fieldset className={styles.field}>
-      <legend className={common.visuallyHidden}>パレット</legend>
+      <legend className={common.visuallyHidden}>{t.create.palette}</legend>
       <ul className={styles.paletteGrid}>
         {d.ranked.map((c, rank) => {
           const p = PALETTES[c.paletteId];
@@ -307,14 +308,14 @@ function TransparentField({
   if (!palette) return null;
   return (
     <fieldset className={styles.field}>
-      <legend className={common.visuallyHidden}>透明にする色</legend>
-      <div className={styles.swatches} role="radiogroup" aria-label="透明にする色">
+      <legend className={common.visuallyHidden}>{t.create.transparent}</legend>
+      <div className={styles.swatches} role="radiogroup" aria-label={t.create.transparent}>
         <button
           type="button"
           role="radio"
           aria-checked={d.transparentIndex === null}
-          aria-label="透明なし"
-          title="透明なし"
+          aria-label={t.create.transparentNone}
+          title={t.create.transparentNone}
           className={`${styles.swatch} ${styles.none}`}
           onClick={() => dispatch({ type: "transparent-on", on: false })}
         />
@@ -324,8 +325,8 @@ function TransparentField({
             type="button"
             role="radio"
             aria-checked={d.transparentIndex === i}
-            aria-label={`#${hex} を透明に`}
-            title={`#${hex} を透明に`}
+            aria-label={t.create.transparentColor(hex)}
+            title={t.create.transparentColor(hex)}
             className={`${styles.swatch} ${styles.checker}`}
             style={{ "--swatch": `#${hex}` } as React.CSSProperties}
             onClick={() => dispatch({ type: "transparent-pick", paletteId: d.paletteId, index: i })}
@@ -344,9 +345,9 @@ function SnsField({
   const showError = state.snsTouched && !d.snsValid;
   return (
     <fieldset className={styles.field}>
-      <legend className={common.visuallyHidden}>SNS</legend>
+      <legend className={common.visuallyHidden}>{t.create.sns}</legend>
       <div className={styles.sns}>
-        <div className={styles.kinds} role="radiogroup" aria-label="SNSの種類">
+        <div className={styles.kinds} role="radiogroup" aria-label={t.create.snsKind}>
           {SNS_KINDS.map((k) => (
             <button
               key={k}
@@ -364,8 +365,8 @@ function SnsField({
         </div>
         <input
           className={common.input}
-          aria-label="ID"
-          placeholder="ID"
+          aria-label={t.create.snsId}
+          placeholder={t.create.snsId}
           value={state.snsInput}
           autoComplete="off"
           autoCapitalize="none"

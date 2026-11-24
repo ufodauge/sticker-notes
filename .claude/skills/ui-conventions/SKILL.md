@@ -68,7 +68,8 @@ UI を作成・改修するときの規約。利用者が繰り返し指摘し�
 ## 6. 宣言は 1 か所(関連する情報を分けない)
 
 - 種類ごとの情報(ラベル、ヒント、規則、URL など)は 1 つのテーブルにまとめる(例: `core/sns.ts` の `SNS`)。配列とラベルの Record を別々に宣言しない
-- UI の文言を core のユニオン型に対応させるときは `Readonly<Record<Union, string>>` にして、抜けを型エラーにする(`ui/text.ts`)
+- UI の文言を core のユニオン型に対応させるときは `Readonly<Record<Union, string>>` にして、抜けを型エラーにする(`ui/messages.ts` の `satisfies Readonly<Record<…>>`)
+- 画面の文言は `src/ui/messages.ts` の `t` にだけ書く。コンポーネントに文字列リテラルを直書きしない(動的な部分は関数にする)
 - 判別用の値の一覧は `as const` のオブジェクトか valibot の `picklist` から型を導く。型と値を二重に書かない
 
 ## 7. 入力の検証は valibot

@@ -23,6 +23,7 @@ import {
   type Live,
   type Pt,
 } from "./gesture.ts";
+import { t } from "../messages.ts";
 import styles from "./PageCanvas.module.css";
 
 type Props = {
@@ -352,8 +353,8 @@ export function PageCanvas(props: Props) {
             <button
               type="button"
               className={styles.handle}
-              aria-label="回転と大きさ(ドラッグ)"
-              title="回転と大きさ"
+              aria-label={t.album.handle.label}
+              title={t.album.handle.tooltip}
               onPointerDown={onSpinDown(p)}
               onPointerMove={onSpinMove}
               onPointerUp={onSpinUp}

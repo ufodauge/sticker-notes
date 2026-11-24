@@ -9,6 +9,7 @@ import { appBaseUrl, copyText, enterFullscreen } from "../../data/platform.ts";
 import common from "../common.module.css";
 import { Dialog } from "../Dialog.tsx";
 import { useViewport } from "../effects/useViewport.ts";
+import { t } from "../messages.ts";
 import { StickerView } from "../StickerView.tsx";
 import { holdWakeLock } from "../wake-lock.ts";
 import styles from "./QrDialog.module.css";
@@ -21,7 +22,7 @@ type Props = { readonly sticker: Sticker; readonly onClose: () => void };
 
 export function QrDialog({ sticker, onClose }: Props) {
   return (
-    <Dialog label="交換用のQR" variant="full" onClose={onClose}>
+    <Dialog label={t.qr.dialog} variant="full" onClose={onClose}>
       <QrBody sticker={sticker} />
     </Dialog>
   );
@@ -50,7 +51,7 @@ function QrBody({ sticker }: { readonly sticker: Sticker }) {
         height={canvasPx}
         style={{ inlineSize: canvasPx / viewport.dpr, blockSize: canvasPx / viewport.dpr }}
         role="img"
-        aria-label={`${snsDisplay(sticker.snsKind, sticker.snsId)} のQRコード`}
+        aria-label={t.qr.code(snsDisplay(sticker.snsKind, sticker.snsId))}
       />
       <div className={styles.who}>
         <StickerView sticker={sticker} scale={1} label="" decorative />
@@ -65,8 +66,8 @@ function QrBody({ sticker }: { readonly sticker: Sticker }) {
           <button
             type="button"
             className={common.icon}
-            aria-label="全画面"
-            title="全画面"
+            aria-label={t.qr.fullscreen}
+            title={t.qr.fullscreen}
             onClick={() => root.current && void enterFullscreen(root.current)}
           >
             <Maximize aria-hidden="true" size={20} strokeWidth={1.5} />
@@ -90,12 +91,12 @@ function ShareLink({ url, title }: { readonly url: string; readonly title: strin
     set((await copyText(url)) ? "copied" : "failed");
   };
   const label = canShare
-    ? "リンクを共有"
+    ? t.qr.share
     : state === "copied"
-      ? "コピーした"
+      ? t.qr.copied
       : state === "failed"
-        ? "コピーできなかった"
-        : "リンクをコピー";
+        ? t.qr.copyFailed
+        : t.qr.copy;
   const Icon = canShare ? Share2 : state === "copied" ? Check : Copy;
   return (
     <button

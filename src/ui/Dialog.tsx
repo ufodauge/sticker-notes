@@ -3,6 +3,7 @@ import { useRef, type ReactNode } from "react";
 import common from "./common.module.css";
 import { CloseContext } from "./dialog-context.ts";
 import styles from "./Dialog.module.css";
+import { t } from "./messages.ts";
 
 const CLOSE_MS = 220;
 
@@ -46,7 +47,7 @@ export function Dialog({ label, onClose, children, variant, className }: Props) 
         <button
           type="button"
           className={`${common.icon} ${styles.close}`}
-          aria-label="閉じる"
+          aria-label={t.common.close}
           onClick={close}
         >
           <X aria-hidden="true" size={20} strokeWidth={1.5} />
