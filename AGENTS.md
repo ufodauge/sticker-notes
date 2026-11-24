@@ -81,6 +81,6 @@ These commands map to their corresponding tools. For example, `vp dev --port 300
 - UI work: load the `ui-conventions` skill (`.claude/skills/ui-conventions/SKILL.md`) first.
 - `src/core` is pure (no DOM / browser storage; enforced by lint). `src/data` wraps browser APIs. `src/ui` is React.
 - No effect-fired async: Suspense (`use`), browser events (`data/inbox.ts`), ref-callback cleanup, AbortController. `useEffect` only inside `src/ui/effects/` with a cleanup (custom rules in `lint/plugin.js`).
-- Never change `src/core/palette-data.ts` entries or `test/vectors/payload-v1.json`: both are part of payload v1.
+- `test/vectors/payload-v1.json` is part of payload v1: never change it. Palette contents (`src/core/palette-data.ts`) may change while the app is unpublished; once announced, the contents of each ID are frozen (new IDs only, 32-ID cap).
 - Verify: `vp run verify` (= `vp check` + `tsc -b --runExternalCode` + React Compiler bail-out check + `vp test run`); E2E: `vp run test:e2e`.
 - CSS Modules are typed by the local TS content mapper `tools/css-modules-content-mapper` (no generated .d.ts). Editors must allow external code for it (TS 7 `runExternalCode`).

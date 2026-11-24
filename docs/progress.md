@@ -50,3 +50,14 @@ WebKit の読み込みの遅さは Windows 版 WebKit 固有の可能性があ�
 - 単色系(Grayscale / Sepia / Matcha / Indigo / Crimson)は `kind: "filter"` で、自動選択の対象外。作成ダイアログでは自然なパレットの下に区切って並べ、手動で選べる(ドット絵が完全一致するときは従来どおり選ばれる)
 - 個人写真 77 枚: 単色系の自動選択は 66% から 0%、自然なパレット 27 種のうち一度も選ばれないものは 11 種
 - `node scripts/palette-eval.ts <写真フォルダ> <出力フォルダ>` で plain / blur3-all / app(アプリと同じ `rankPalettes`)を比べる。写真と出力はコミットしない
+
+## パレットの入れ替え(P6)
+
+- 凍結の方針を変更: 公開(告知)前は中身を変えてよい(AGENTS.md、plan.md、palette-data.ts 冒頭を更新)。公開後は ID ごとに凍結
+- 一度も選ばれず、フィルターとしての価値も薄い 9 種(Macintosh II、Neon、Sunset、Candy、Twilight、Rainbow Light、Rainbow Vivid、Night City、Desert)と、近い茶系の Portrait を、自作の 10 種に置き換えた: Skin Tones(10)、Overcast(7)、Mist(12)、Daylight(15)、Clear Sky(16)、Stage Light(20)、Lamplight(21)、Everyday(25)、Snapshot(26)、Night(30)
+- 色は学習用の写真(77 枚のうち 52 枚)の OKLab k-means で出し、手で調整(各パレットで最小色間距離 0.03 超、暗色と白に近い色を含む)。写真と派生画像はコミットしていない。いずれも `source: "self"`。M0 の「公開パレットのライセンス確認」の対象は、残った Lospec 由来の 9 種だけになる
+- 茶系は Sepia(フィルター)、Fire、Autumn、Bakery に整理(最近接距離 0.055 以上)
+- 残した古典系: PICO-8、CGA、Commodore 64(ID 0 はテストが使う)
+- 数値(自動選択と同じ、ぼかし後の平均誤差。評価用は 3 つに 1 つの 25 枚): 入れ替え前 学習 1.274 / 評価 1.261 → 後 学習 0.953 / 評価 0.797。全 77 枚で 1.270 → 0.902
+- 一度も選ばれない自然なパレットは 11 種のまま(PICO-8、Sweetie 16、Endesga 16、Arne 16、Commodore 64、CGA、Pastel、Forest、Ocean、Sakura、Mint Cherry)。ドット絵向けと好みの色味で、写真向けではない。単色系の自動選択は 0%
+- 見た目: 夜景は紺や茶の塊が減った。ポートレートの肌色、屋外の青空と緑は改善。曇りの日と白い看板は、Overcast が 27% を占め、暖色の被写体(菓子、猫)が青灰色に寄るのが残る

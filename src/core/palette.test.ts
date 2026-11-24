@@ -13,7 +13,7 @@ test("32 palettes × 16 distinct colors, ids match positions", () => {
   });
 });
 
-test("palette contents are frozen (payload v1 compatibility)", async () => {
+test("palette contents are pinned (update the snapshot only while unpublished)", async () => {
   const text = PALETTES.map((p) => `${p.id}:${p.colors.join(",")}:${p.transparentDefault}`).join(
     "\n",
   );

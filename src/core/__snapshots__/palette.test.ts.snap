@@ -1,3 +1,3 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`palette contents are frozen (payload v1 compatibility) 1`] = `"dc8f4494dc2da902507cb0f91882197476a655db159c6719a671dc74e36f05de"`;
+exports[`palette contents are pinned (update the snapshot only while unpublished) 1`] = `"65e483248bf448c520a124d487f062c45aa1c86337dff95c01726ac02992b1a2"`;
