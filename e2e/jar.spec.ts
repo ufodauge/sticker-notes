@@ -97,10 +97,26 @@ test("jar: the toggle is hidden while the album is empty", async ({ page }) => {
   await expect(toggleToAlbum(page)).toHaveCount(0);
 });
 
+const savedView = (page: Page) =>
+  page.evaluate(
+    () =>
+      new Promise<unknown>((resolve) => {
+        const open = indexedDB.open("sticker-notes");
+        open.onsuccess = () => {
+          const q = open.result.transaction("settings").objectStore("settings").get("view");
+          q.onsuccess = () => {
+            open.result.close();
+            resolve(q.result?.value);
+          };
+        };
+      }),
+  );
+
 test("jar: the saved mode survives a reload without showing the album first", async ({ page }) => {
   await importStickers(page, 12);
   await toggleToJar(page).click();
   await expect(canvasOf(page)).toHaveAttribute("data-state", "settled", { timeout: 30_000 });
+  await expect.poll(() => savedView(page)).toBe("jar");
   await page.addInitScript(() => {
     const w = window as unknown as { __sawAlbum: boolean };
     w.__sawAlbum = false;
@@ -117,6 +133,7 @@ test("jar: the saved mode survives a reload without showing the album first", as
   await expect(toggleToAlbum(page)).toBeVisible();
 
   await toggleToAlbum(page).click();
+  await expect.poll(() => savedView(page)).toBe("album");
   await page.reload();
   await expect(page.locator("[data-scroller]")).toBeVisible();
   await expect(canvasOf(page)).toHaveCount(0);
