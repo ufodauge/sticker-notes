@@ -3,7 +3,7 @@ import { mulberry32 } from "./prng.ts";
 export type JarSize = { readonly width: number; readonly height: number };
 export type BlockPose = { readonly x: number; readonly y: number; readonly angle: number };
 
-const FILL = 0.4;
+const FILL = 0.7;
 const GAP = 0.04;
 const SIDE_HYSTERESIS = 1;
 export const MIN_SIDE = 16;

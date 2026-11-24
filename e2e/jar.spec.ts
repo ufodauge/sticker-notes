@@ -1,16 +1,18 @@
 /// <reference lib="dom" />
 import { expect, test, type Page } from "@playwright/test";
-import { serializeBackup } from "../src/core/backup.ts";
+import { distanceToWall, insideJar, jarGeometry } from "../src/core/jar-geometry.ts";
 import { JAR_DEFAULT_COUNT, JAR_MAX_COUNT } from "../src/core/jar-selection.ts";
-import { encodeBody, stickerIdOf } from "../src/core/payload.ts";
-import { FIXTURES } from "../src/core/testing/fixtures.ts";
 import { bigBackup } from "./backup-fixture.ts";
+import { shapesBackup } from "./jar-fixtures.ts";
 
 type Probe = {
   stats: { frames: number; workMs: number; worstMs: number; steps: number };
   reset: () => void;
   blocks: () => { x: number; y: number; side: number; id: string }[];
   size: () => { width: number; height: number };
+  parts: () => number;
+  rescued: () => number;
+  awake: () => { x: number; y: number; speed: number; spin: number }[];
   tier: () => number;
   pinTier: (tier: number | null) => void;
   frozen: () => number;
@@ -43,25 +45,19 @@ async function openJar(page: Page, count: number): Promise<void> {
 const probeBlocks = (page: Page) =>
   page.evaluate(() => (window as unknown as Win).__jarProbe?.blocks() ?? []);
 
-const shownIds = async (page: Page) => (await probeBlocks(page)).map((b) => b.id).toSorted();
-
-// hand-made sample art (no photos): the fixture slime in every palette
-async function sampleBackup(count: number): Promise<string> {
-  const slime = FIXTURES.slime;
-  if (!slime) throw new Error("no fixture");
-  const stickers = await Promise.all(
-    Array.from({ length: count }, async (_, i) => {
-      const body = encodeBody({ ...slime, paletteId: i % 32, snsId: `sample_${i}` });
-      return {
-        id: await stickerIdOf(body),
-        body,
-        origin: "received" as const,
-        receivedAt: "2026-11-23",
-      };
-    }),
-  );
-  return serializeBackup({ stickers, pages: [], placements: [] }, new Date());
+// every block's centre is inside the jar's inner outline (rounded bottom corners included),
+// and clear of the glass by at least a third of its side
+async function expectInsideJar(page: Page): Promise<void> {
+  const size = await page.evaluate(() => (window as unknown as Win).__jarProbe?.size());
+  expect(size?.width).toBeGreaterThan(0);
+  const geo = jarGeometry(size?.width ?? 0, size?.height ?? 0);
+  for (const b of await probeBlocks(page)) {
+    expect(insideJar(geo, b.x, b.y), `${b.id} at ${b.x},${b.y}`).toBe(true);
+    expect(distanceToWall(geo, b.x, b.y)).toBeGreaterThan(b.side / 3);
+  }
 }
+
+const shownIds = async (page: Page) => (await probeBlocks(page)).map((b) => b.id).toSorted();
 
 const paintedPixels = (page: Page) =>
   canvasOf(page).evaluate((c: HTMLCanvasElement) => {
@@ -79,10 +75,13 @@ test("jar: toggle, blocks settle, shake, back to the album", async ({ page }) =>
   ).toHaveCount(20);
   await expect(canvas).toHaveAttribute("data-state", "settled", { timeout: 30_000 });
   expect(await paintedPixels(page)).toBeGreaterThan(1000);
+  expect(await probeBlocks(page)).toHaveLength(20);
+  await expectInsideJar(page);
 
   await page.getByRole("button", { name: "振る" }).click();
   await expect(canvas).toHaveAttribute("data-state", "moving");
   await expect(canvas).toHaveAttribute("data-state", "settled", { timeout: 30_000 });
+  await expectInsideJar(page);
 
   await toggleToAlbum(page).click();
   await expect(canvas).toHaveCount(0);
@@ -157,6 +156,8 @@ test("jar: reduced motion renders a static pile", async ({ page }) => {
   const canvas = canvasOf(page);
   await expect(canvas).toHaveAttribute("data-state", "still");
   expect(await paintedPixels(page)).toBeGreaterThan(1000);
+  expect(await probeBlocks(page)).toHaveLength(20);
+  await expectInsideJar(page);
   await expect(page.getByRole("button", { name: "振る" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "傾きで動かす" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "選ぶ" })).toBeVisible();
@@ -178,22 +179,11 @@ test("jar: a resize keeps the pile inside the jar", async ({ page }) => {
   expect(before).toHaveLength(30);
 
   await resizeAndSettle(page, 330, 560);
-  const inside = async () => {
-    const size = await page.evaluate(() => (window as unknown as Win).__jarProbe?.size());
-    const blocks = await probeBlocks(page);
-    expect(size?.width).toBeGreaterThan(0);
-    for (const b of blocks) {
-      expect(b.x).toBeGreaterThan(0);
-      expect(b.x).toBeLessThan(size?.width ?? 0);
-      expect(b.y).toBeGreaterThan(0);
-      expect(b.y).toBeLessThan(size?.height ?? 0);
-    }
-  };
-  await inside();
+  await expectInsideJar(page);
   expect(await shownIds(page)).toEqual(before);
 
   await resizeAndSettle(page, 500, 900);
-  await inside();
+  await expectInsideJar(page);
   expect(await shownIds(page)).toEqual(before);
 });
 
@@ -297,7 +287,7 @@ test("jar: unchecking blocks makes them disappear without rebuilding the pile", 
 });
 
 test("jar: screenshots in both themes", async ({ page }, info) => {
-  await importJson(page, await sampleBackup(30), 30);
+  await importJson(page, await shapesBackup(20), 20);
   await toggleToJar(page).click();
   await expect(canvasOf(page)).toHaveAttribute("data-state", "settled", { timeout: 30_000 });
   await page.screenshot({ path: info.outputPath("jar-light.png"), scale: "css" });
@@ -307,11 +297,11 @@ test("jar: screenshots in both themes", async ({ page }, info) => {
 });
 
 // Measurements (headless desktop numbers, not phone numbers): run with JAR_PERF=1.
-for (const count of [20, 40, 100, 300]) {
+for (const count of [20, 40, 120, 300]) {
   test(`jar perf ${count}`, async ({ page }, info) => {
     test.skip(!process.env.JAR_PERF || info.project.name !== "chromium");
     test.setTimeout(240_000);
-    await importStickers(page, count);
+    await importJson(page, await shapesBackup(count), count);
     await toggleToJar(page).click();
     await expect(canvasOf(page)).toHaveAttribute("data-state", "settled", { timeout: 60_000 });
     if (count > JAR_DEFAULT_COUNT) {
@@ -331,8 +321,9 @@ for (const count of [20, 40, 100, 300]) {
       await expect(canvasOf(page)).toHaveAttribute("data-state", "settled", { timeout: 120_000 });
       const s = await page.evaluate(() => (window as unknown as Win).__jarProbe?.stats);
       const frozen = await page.evaluate(() => (window as unknown as Win).__jarProbe?.frozen());
+      const parts = await page.evaluate(() => (window as unknown as Win).__jarProbe?.parts());
       lines.push(
-        `tier=${tier} frames=${s?.frames} steps=${s?.steps} avgWork=${((s?.workMs ?? 0) / Math.max(1, s?.frames ?? 1)).toFixed(2)}ms worstWork=${s?.worstMs.toFixed(1)}ms frozen=${frozen}`,
+        `tier=${tier} parts=${parts} frames=${s?.frames} steps=${s?.steps} avgWork=${((s?.workMs ?? 0) / Math.max(1, s?.frames ?? 1)).toFixed(2)}ms worstWork=${s?.worstMs.toFixed(1)}ms frozen=${frozen}`,
       );
     }
     console.log(`JARPERF n=${count}\n${lines.join("\n")}`);

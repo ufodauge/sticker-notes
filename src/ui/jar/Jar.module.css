@@ -15,47 +15,28 @@
   margin-block-end: 14px;
 }
 
-/* glass: thin ink outline, rounded bottom, a lip at the top that stands for the lid line */
+/* the canvas draws the whole glass jar; this box only sizes it */
 .jar {
   position: relative;
   inline-size: min(100%, 440px);
+}
+
+/* the empty outline shown while the jar code loads */
+.jarEmpty {
   border: 1.5px solid var(--ink-soft);
   border-block-start-color: transparent;
   border-radius: 6px 6px 40px 40px;
-  background:
-    linear-gradient(
-      105deg,
-      rgb(255 255 255 / 0.22) 0 6%,
-      transparent 6% 12%,
-      rgb(255 255 255 / 0.1) 12% 14%,
-      transparent 14%
-    ),
-    color-mix(in oklab, var(--ink) 4%, transparent);
+  margin-block-end: 5%;
+  background: color-mix(in oklab, var(--ink) 4%, transparent);
 }
 
-@media (prefers-color-scheme: dark) {
-  .jar {
-    background:
-      linear-gradient(
-        105deg,
-        rgb(255 255 255 / 0.1) 0 6%,
-        transparent 6% 12%,
-        rgb(255 255 255 / 0.05) 12% 14%,
-        transparent 14%
-      ),
-      color-mix(in oklab, var(--ink) 4%, transparent);
-  }
-}
-
-.jar::before {
-  content: "";
+/* the glass layers are drawn once; they sit behind and in front of the blocks */
+.glass {
   position: absolute;
-  inset-block-start: -14px;
-  inset-inline: -6px;
-  block-size: 12px;
-  border: 1.5px solid var(--ink-soft);
-  border-radius: 4px;
-  background: var(--paper);
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  pointer-events: none;
 }
 
 .canvas {
@@ -63,7 +44,6 @@
   inset: 0;
   inline-size: 100%;
   block-size: 100%;
-  border-radius: inherit;
   color: var(--ink);
   touch-action: none;
   user-select: none;
