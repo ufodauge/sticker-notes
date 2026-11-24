@@ -344,8 +344,8 @@ function DitherField({ state, dispatch }: Pick<EditorProps, "state" | "dispatch"
       type="button"
       className={styles.toggle}
       aria-pressed={state.dither}
-      aria-label="網点でなめらかに"
-      title="網点でなめらかに"
+      aria-label={t.create.dither}
+      title={t.create.dither}
       onClick={() => dispatch({ type: "dither", on: !state.dither })}
     >
       <Grid2x2 aria-hidden="true" size={18} strokeWidth={1.5} />

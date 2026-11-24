@@ -64,6 +64,7 @@ export const t = {
     snsKind: "SNSの種類",
     sns: "SNS",
     snsId: "ID",
+    dither: "網点でなめらかに",
   },
 
   menu: {
