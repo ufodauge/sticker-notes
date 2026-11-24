@@ -8,7 +8,13 @@ import {
   qualityOf,
   type QualityState,
 } from "../../core/jar-quality.ts";
-import { JAR3D, cameraPosition, jarCollisionPieces, spawnPose } from "../../core/jar3d.ts";
+import {
+  JAR3D,
+  cameraPosition,
+  jarCollisionPieces,
+  outerRadiusAt,
+  spawnPose,
+} from "../../core/jar3d.ts";
 import type { Sticker } from "../../core/payload.ts";
 import { jarSound } from "../jar/sound.ts";
 import { buildBlock, buildScene, type BlockVisual, type Scene3d } from "./scene3d.ts";
@@ -51,6 +57,9 @@ type Kind =
   | { readonly kind: "desk" };
 
 const STEP = 1 / 60;
+const SUBSTEPS = 2;
+const SOLVER_ITERATIONS = 8;
+const MAX_BODY_SPEED = 11;
 const DESK_HALF = 9.5;
 const FALL_LIMIT = -6;
 const MAX_STEPS_PER_FRAME = 6;
@@ -220,7 +229,8 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
         .setTranslation(pose.x, pose.y, pose.z)
         .setRotation({ x: q.x, y: q.y, z: q.z, w: q.w })
         .setLinearDamping(0.4)
-        .setAngularDamping(1.2),
+        .setAngularDamping(1.2)
+        .setSoftCcdPrediction(0.6),
     );
     entry.shape.parts.forEach((part) => {
       const desc = RAPIER.ColliderDesc.convexHull(hullPoints(entry, part));
@@ -467,10 +477,15 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
     st.entries.forEach((e) => {
       if (!e.body) return;
       const v = e.body.linvel();
-      e.lastSpeed = Math.hypot(v.x, v.y, v.z);
+      const speed = Math.hypot(v.x, v.y, v.z);
+      e.lastSpeed = speed;
+      if (speed > MAX_BODY_SPEED) {
+        const k = MAX_BODY_SPEED / speed;
+        e.body.setLinvel({ x: v.x * k, y: v.y * k, z: v.z * k }, true);
+      }
     });
     dragStep();
-    world.step(events);
+    Array.from({ length: SUBSTEPS }).forEach(() => world.step(events));
     drainHits();
     freezeJarWhenCalm();
     sleepPileWhenCalm();
@@ -542,7 +557,7 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
       ? PROBE_STEPS_PER_FRAME
       : Math.min(MAX_STEPS_PER_FRAME, Math.floor(st.loop.acc / stepSeconds));
     st.loop.acc = due === MAX_STEPS_PER_FRAME ? 0 : st.loop.acc - due * stepSeconds;
-    if (st.world) st.world.timestep = stepSeconds;
+    if (st.world) st.world.timestep = stepSeconds / SUBSTEPS;
     Array.from({ length: due }).forEach(step);
     rescueStrays();
     syncMeshes();
@@ -550,6 +565,16 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
     if (import.meta.env.VITE_JAR_PROBE) {
       canvas.dataset.awake = String(
         [...st.entries.values()].filter((e) => e.body && !e.body.isSleeping()).length,
+      );
+      canvas.dataset.leaked = String(
+        [...st.entries.values()].filter((e) => {
+          const t = e.body?.translation();
+          if (!t) return false;
+          return (
+            Math.hypot(t.x, t.z) > outerRadiusAt(Math.min(JAR3D.height, Math.max(0, t.y))) &&
+            t.y < JAR3D.height - 0.2
+          );
+        }).length,
       );
       const jar = st.jar;
       const v = jar?.linvel();
@@ -735,7 +760,8 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
     if (st.disposed) return;
     const sc = buildScene(canvas);
     const world = new RAPIER.World({ x: 0, y: -JAR3D.gravity, z: 0 });
-    world.timestep = STEP;
+    world.timestep = STEP / SUBSTEPS;
+    world.integrationParameters.numSolverIterations = SOLVER_ITERATIONS;
     st.scene = sc;
     st.world = world;
     st.events = new RAPIER.EventQueue(true);
