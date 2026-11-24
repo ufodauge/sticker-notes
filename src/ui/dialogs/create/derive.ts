@@ -51,7 +51,7 @@ export function derive(s: EditState): Derived {
 
   const pixels =
     quantizeDistinct(base, palette, transparentIndex)?.indices ??
-    quantize(base, palette, transparentIndex).indices;
+    quantize(base, palette, transparentIndex, undefined, s.dither && !s.source.art).indices;
 
   const snsId = normalizeSnsInput(s.snsKind, s.snsInput);
   const snsValid = isValidSnsId(s.snsKind, snsId);

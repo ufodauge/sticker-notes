@@ -4,6 +4,7 @@ import { PALETTES } from "../src/core/palette.ts";
 import { importPixelArt } from "../src/core/pixelart.ts";
 import { rankPalettes } from "../src/core/quantize.ts";
 import { decodeFragment } from "../src/core/payload.ts";
+import { renderRgba } from "../src/core/render.ts";
 import { FIXTURES } from "../src/core/testing/fixtures.ts";
 import { readQr } from "./helpers.ts";
 import { decodeRgba, encodeRgba } from "../test/png.ts";
@@ -22,6 +23,22 @@ function slimePng(scale: number): Buffer {
     }
   return Buffer.from(encodeRgba(side, side, rgba));
 }
+
+function photoPng(): Buffer {
+  const side = 64;
+  const rgba = new Uint8Array(side * side * 4);
+  for (let y = 0; y < side; y++)
+    for (let x = 0; x < side; x++)
+      rgba.set([x * 4, 40 + y * 2, 200 - x * 2, 255], (y * side + x) * 4);
+  return Buffer.from(encodeRgba(side, side, rgba));
+}
+
+const previewPixels = (page: Page) =>
+  page.getByRole("img", { name: "作成中のステッカー" }).evaluate((el) => {
+    const canvas = el as HTMLCanvasElement;
+    const data = canvas.getContext("2d")?.getImageData(0, 0, canvas.width, canvas.height).data;
+    return Array.from(data ?? []);
+  });
 
 async function openMaker(page: Page, name: string, buffer: Buffer) {
   await page.goto("/");
@@ -71,6 +88,28 @@ test("sample.png keeps its dots and its distinct colours", async ({ page }) => {
   expect(got?.pixels).toEqual(best?.result.indices);
   const used = new Set(Array.from(got?.pixels ?? []).filter((p) => p !== got?.transparentIndex));
   expect(used.size).toBe(5);
+});
+
+test("the dither toggle changes the preview and the saved sticker round-trips", async ({
+  page,
+}) => {
+  await openMaker(page, "photo.png", photoPng());
+  const toggle = page.getByRole("button", { name: "網点でなめらかに" });
+  await expect(toggle).toHaveAttribute("aria-pressed", "false");
+  const plain = await previewPixels(page);
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-pressed", "true");
+  await expect.poll(() => previewPixels(page)).not.toEqual(plain);
+  const dithered = await previewPixels(page);
+  await save(page, "dither_fan2026");
+  await openOwnQr(page, "X @dither_fan2026");
+  const got = await readQr(page);
+  expect(got && Array.from(renderRgba(got).rgba)).toEqual(dithered);
+});
+
+test("the dither toggle is absent for pixel art", async ({ page }) => {
+  await openMaker(page, "slime.png", slimePng(1));
+  await expect(page.getByRole("button", { name: "網点でなめらかに" })).toHaveCount(0);
 });
 
 test("an invalid ID keeps the dialog open and marks the field", async ({ page }) => {

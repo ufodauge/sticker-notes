@@ -1,4 +1,5 @@
 import { assignMinCost } from "./assign.ts";
+import { prefersSecond } from "./dither.ts";
 import { PALETTES, oklabDistanceSq, rgbToOklab, type Oklab, type Palette } from "./palette.ts";
 import { PIXEL_COUNT, STICKER_SIZE } from "./payload.ts";
 
@@ -84,6 +85,7 @@ export function quantize(
   palette: Palette,
   transparentIndex: number | null,
   lab: readonly Oklab[] = toOklab(img),
+  dither = false,
 ): QuantizeResult {
   const indices = new Uint8Array(PIXEL_COUNT);
   const white = rgbToOklab([255, 255, 255]);
@@ -96,16 +98,26 @@ export function quantize(
     }
     const target = transparent ? white : (lab[p] ?? white);
     const best = { index: 0, d: Number.POSITIVE_INFINITY };
+    const runnerUp = { index: -1, d: Number.POSITIVE_INFINITY };
     palette.oklab.forEach((c, k) => {
       if (k === transparentIndex) return;
       const d = oklabDistanceSq(target, c);
       if (d < best.d) {
+        runnerUp.index = best.index;
+        runnerUp.d = best.d;
         best.d = d;
         best.index = k;
+      } else if (d < runnerUp.d) {
+        runnerUp.index = k;
+        runnerUp.d = d;
       }
     });
-    indices[p] = best.index;
-    if (!transparent) acc.error += best.d;
+    const first = palette.oklab[best.index];
+    const second = palette.oklab[runnerUp.index];
+    const useSecond =
+      dither && !transparent && first && second && prefersSecond(target, first, second, p);
+    indices[p] = useSecond ? runnerUp.index : best.index;
+    if (!transparent) acc.error += useSecond ? runnerUp.d : best.d;
   }
   return { indices, error: acc.error };
 }

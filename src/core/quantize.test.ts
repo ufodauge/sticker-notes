@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vite-plus/test";
-import { PALETTES, type Palette } from "./palette.ts";
+import { PALETTES, oklabDistanceSq, rgbToOklab, type Palette } from "./palette.ts";
 import { PIXEL_COUNT, type Sticker } from "./payload.ts";
 import {
   exactPaletteMatch,
@@ -409,5 +409,92 @@ describe("exactPaletteMatch details", () => {
   test("an image using all 16 colours plus transparency cannot be converted exactly", () => {
     const img = image32((p) => (p === 0 ? [0, 0, 0, 0] : rgba(pico.rgb[p % 16] ?? [0, 0, 0])));
     expect(exactPaletteMatch(img)?.paletteId).not.toBe(0);
+  });
+});
+
+describe("ordered dither", () => {
+  const blackWhite: Palette = {
+    ...(PALETTES[0] as Palette),
+    rgb: [
+      [0, 0, 0],
+      [255, 255, 255],
+    ],
+    oklab: [rgbToOklab([0, 0, 0]), rgbToOklab([255, 255, 255])],
+  };
+  const gradient = (): Rgba => {
+    const data = new Uint8ClampedArray(PIXEL_COUNT * 4);
+    for (let p = 0; p < PIXEL_COUNT; p++) {
+      const v = Math.round(((p % 32) / 31) * 255);
+      data.set([v, v, v, 255], p * 4);
+    }
+    return { width: 32, height: 32, data };
+  };
+
+  test("is deterministic", () => {
+    const a = quantize(gradient(), blackWhite, null, undefined, true);
+    const b = quantize(gradient(), blackWhite, null, undefined, true);
+    expect(a.indices).toEqual(b.indices);
+  });
+
+  test("a gradient between two colours yields both in the lightness ratio", () => {
+    const { indices } = quantize(gradient(), blackWhite, null, undefined, true);
+    const whiteShare = indices.filter((k) => k === 1).length / PIXEL_COUNT;
+    const expected =
+      Array.from(
+        { length: 32 },
+        (_, x) => rgbToOklab([(x / 31) * 255, (x / 31) * 255, (x / 31) * 255])[0],
+      ).reduce((a, b) => a + b, 0) / 32;
+    expect(whiteShare).toBeGreaterThan(0);
+    expect(whiteShare).toBeLessThan(1);
+    expect(Math.abs(whiteShare - expected)).toBeLessThan(0.05);
+  });
+
+  test("without dither the gradient is a hard threshold", () => {
+    const { indices } = quantize(gradient(), blackWhite, null);
+    const row = Array.from(indices.subarray(0, 32));
+    expect(row).toEqual(row.toSorted());
+  });
+
+  test("flat palette colours stay flat", () => {
+    const palette = PALETTES[3] as Palette;
+    for (const k of [0, 5, 9]) {
+      const [r, g, b] = palette.rgb[k] ?? [0, 0, 0];
+      const { indices } = quantize(solid(32, 32, [r, g, b, 255]), palette, null, undefined, true);
+      expect(new Set(indices)).toEqual(new Set([k]));
+    }
+  });
+
+  test("keeps transparency and never uses the transparent slot for opaque pixels", () => {
+    const img = gradient();
+    for (let p = 0; p < PIXEL_COUNT; p += 7) img.data[p * 4 + 3] = 0;
+    const palette = PALETTES[1] as Palette;
+    const { indices } = quantize(img, palette, 4, undefined, true);
+    for (let p = 0; p < PIXEL_COUNT; p++) expect(indices[p] === 4).toBe(p % 7 === 0);
+  });
+
+  test("off is bit-identical to nearest-colour on every fixture", () => {
+    for (const s of Object.values(FIXTURES)) {
+      const palette = PALETTES[s.paletteId] as Palette;
+      const img = paint(s.paletteId, s.pixels, s.transparentIndex);
+      const got = quantize(img, palette, s.transparentIndex, undefined, false).indices;
+      const reference = Uint8Array.from({ length: PIXEL_COUNT }, (_, p) => {
+        if (s.transparentIndex !== null && (img.data[p * 4 + 3] ?? 255) < 128)
+          return s.transparentIndex;
+        const target = rgbToOklab([
+          img.data[p * 4] ?? 0,
+          img.data[p * 4 + 1] ?? 0,
+          img.data[p * 4 + 2] ?? 0,
+        ]);
+        return palette.oklab.reduce(
+          (best, c, k) =>
+            k !== s.transparentIndex &&
+            oklabDistanceSq(target, c) < oklabDistanceSq(target, palette.oklab[best] ?? c)
+              ? k
+              : best,
+          s.transparentIndex === 0 ? 1 : 0,
+        );
+      });
+      expect(got).toEqual(reference);
+    }
   });
 });

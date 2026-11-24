@@ -21,6 +21,7 @@ export type EditState = {
   readonly crop: CropRect;
   readonly paletteId: number | null;
   readonly transparentOn: boolean | null;
+  readonly dither: boolean;
   readonly transparentPick: { readonly paletteId: number; readonly index: number } | null;
   readonly snsKind: SnsKind;
   readonly snsInput: string;
@@ -45,6 +46,7 @@ export type CreateAction =
   | { readonly type: "zoom"; readonly zoom: number }
   | { readonly type: "crop-commit"; readonly crop: CropRect }
   | { readonly type: "palette"; readonly paletteId: number }
+  | { readonly type: "dither"; readonly on: boolean }
   | { readonly type: "transparent-on"; readonly on: boolean }
   | { readonly type: "transparent-pick"; readonly paletteId: number; readonly index: number }
   | { readonly type: "sns-kind"; readonly kind: SnsKind }
@@ -78,6 +80,7 @@ export function createReducer(state: CreateState, action: CreateAction): CreateS
           crop: defaultCrop(action.source.rgba.width, action.source.rgba.height),
           paletteId: null,
           transparentOn: null,
+          dither: false,
           transparentPick: null,
           snsKind: action.sns?.kind ?? 1,
           snsInput: action.sns?.id ?? "",
@@ -98,6 +101,8 @@ export function createReducer(state: CreateState, action: CreateAction): CreateS
       return { ...state, crop: action.crop };
     case "palette":
       return { ...state, paletteId: action.paletteId };
+    case "dither":
+      return { ...state, dither: action.on };
     case "transparent-on":
       return { ...state, transparentOn: action.on };
     case "transparent-pick":

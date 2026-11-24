@@ -1,4 +1,4 @@
-import { Check, ImagePlus, Sparkles } from "lucide-react";
+import { Check, Grid2x2, ImagePlus, Sparkles } from "lucide-react";
 import { useCallback, useReducer, useRef, type ChangeEvent, type DragEvent } from "react";
 import Cropper, { type Area } from "react-easy-crop";
 import { PALETTES } from "../../../core/palette.ts";
@@ -199,6 +199,7 @@ function Editor({ state, dispatch, onSaved }: EditorProps) {
           {!state.source.art && <CropField state={state} dispatch={dispatch} />}
           <PaletteField d={d} dispatch={dispatch} />
           <TransparentField d={d} dispatch={dispatch} />
+          {!state.source.art && <DitherField state={state} dispatch={dispatch} />}
           <SnsField state={state} d={d} dispatch={dispatch} />
           {state.failed && d.snsValid && <p className={common.warn}>{t.create.saveFailed}</p>}
           <button
@@ -334,6 +335,21 @@ function TransparentField({
         ))}
       </div>
     </fieldset>
+  );
+}
+
+function DitherField({ state, dispatch }: Pick<EditorProps, "state" | "dispatch">) {
+  return (
+    <button
+      type="button"
+      className={styles.toggle}
+      aria-pressed={state.dither}
+      aria-label="網点でなめらかに"
+      title="網点でなめらかに"
+      onClick={() => dispatch({ type: "dither", on: !state.dither })}
+    >
+      <Grid2x2 aria-hidden="true" size={18} strokeWidth={1.5} />
+    </button>
   );
 }
 
