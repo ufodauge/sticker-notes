@@ -1,15 +1,15 @@
 export type JarQuality = {
   readonly stepHz: 60 | 30;
   readonly pixelRatioCap: 2 | 1;
-  // blocks beyond this many (counted from the top of the pile) stay as a static pile
-  readonly activeCap: number;
+  // collision parts (a block has 1 to 6) beyond this many, counted from the top of the pile, stay as a static pile
+  readonly activeParts: number;
 };
 
 export const JAR_QUALITY_TIERS: readonly JarQuality[] = [
-  { stepHz: 60, pixelRatioCap: 2, activeCap: Number.POSITIVE_INFINITY },
-  { stepHz: 30, pixelRatioCap: 2, activeCap: Number.POSITIVE_INFINITY },
-  { stepHz: 30, pixelRatioCap: 1, activeCap: Number.POSITIVE_INFINITY },
-  { stepHz: 30, pixelRatioCap: 1, activeCap: 80 },
+  { stepHz: 60, pixelRatioCap: 2, activeParts: Number.POSITIVE_INFINITY },
+  { stepHz: 30, pixelRatioCap: 2, activeParts: Number.POSITIVE_INFINITY },
+  { stepHz: 30, pixelRatioCap: 1, activeParts: Number.POSITIVE_INFINITY },
+  { stepHz: 30, pixelRatioCap: 1, activeParts: 160 },
 ];
 
 const LAST_TIER = JAR_QUALITY_TIERS.length - 1;

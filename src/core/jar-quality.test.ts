@@ -20,7 +20,7 @@ describe("quality tiers", () => {
     const [full, ...rest] = JAR_QUALITY_TIERS;
     expect(full?.stepHz).toBe(60);
     expect(full?.pixelRatioCap).toBe(2);
-    expect(rest.at(-1)?.activeCap).toBeLessThan(Number.POSITIVE_INFINITY);
+    expect(rest.at(-1)?.activeParts).toBeLessThan(Number.POSITIVE_INFINITY);
     expect(rest.every((t) => t.stepHz <= 60 && t.pixelRatioCap <= 2)).toBe(true);
   });
 });
