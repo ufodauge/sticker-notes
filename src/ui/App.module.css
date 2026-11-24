@@ -23,6 +23,11 @@
   padding-block-end: max(var(--space-6), env(safe-area-inset-bottom));
 }
 
+.labeled {
+  border-color: var(--ink);
+  border-radius: 999px;
+}
+
 .menu {
   position: relative;
 }

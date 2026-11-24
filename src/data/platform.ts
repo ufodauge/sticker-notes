@@ -22,6 +22,12 @@ export function isStandalone(): boolean {
   );
 }
 
+const RECEIVE_VIBRATION_MS = 20;
+
+export function vibrateReceived(): void {
+  if ("vibrate" in navigator) navigator.vibrate(RECEIVE_VIBRATION_MS);
+}
+
 export function isIos(): boolean {
   return (
     /iPhone|iPad|iPod/.test(navigator.userAgent) ||

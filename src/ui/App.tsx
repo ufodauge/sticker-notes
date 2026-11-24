@@ -63,12 +63,13 @@ export function App() {
         <PageIndicator count={Math.max(1, ready?.pages.length ?? 0)} />
         <button
           type="button"
-          className={common.icon}
+          className={mine.length === 0 ? `${common.button} ${styles.labeled}` : common.icon}
           aria-label={t.app.create.label}
           title={t.app.create.tooltip}
           onClick={() => dispatch({ type: "open", overlay: { kind: "create" } })}
         >
           <ImagePlus aria-hidden="true" size={22} strokeWidth={1.5} />
+          {mine.length === 0 && t.app.create.text}
         </button>
         {stickers.length > 0 && (
           <button
@@ -148,6 +149,13 @@ export function App() {
           onUndo={() => {
             if (toast.undo) void undo(toast.undo);
           }}
+          onAction={() => {
+            feedback.dismiss(toast.id);
+            if (toast.action?.kind === "create") {
+              dispatch({ type: "open", overlay: { kind: "create" } });
+            }
+          }}
+          onDismiss={() => feedback.dismiss(toast.id)}
         />
       )}
 

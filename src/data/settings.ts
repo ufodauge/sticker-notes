@@ -4,6 +4,7 @@ import { SNS_KINDS } from "../core/sns.ts";
 
 export const SETTINGS = {
   lastSns: v.object({ kind: v.picklist(SNS_KINDS), id: v.string() }),
+  invitationShown: v.literal(true),
   backup: v.object({ receivedCount: v.pipe(v.number(), v.integer()), date: LocalDateSchema }),
 };
 

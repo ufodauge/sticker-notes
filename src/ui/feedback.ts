@@ -2,7 +2,7 @@ import type { Discarded } from "../data/sticker-store.ts";
 
 export type Highlight = {
   readonly stickerId: string;
-  readonly effect: "arrive" | "wiggle";
+  readonly effect: "arrive" | "received" | "wiggle";
   readonly nonce: number;
 };
 
@@ -10,10 +10,14 @@ export type Undo =
   | { readonly kind: "unreceive"; readonly stickerId: string }
   | { readonly kind: "restore"; readonly discarded: Discarded };
 
+type ToastAction = { readonly kind: "create" };
+
 export type Toast = {
   readonly id: number;
   readonly text: string;
   readonly undo: Undo | null;
+  readonly action?: ToastAction;
+  readonly persistent?: boolean;
 };
 
 export type Feedback = { readonly toast: Toast | null; readonly highlight: Highlight | null };
@@ -42,7 +46,7 @@ function showToast(t: Omit<Toast, "id"> | null): Toast | null {
   clearTimeout(state.timer);
   if (!t) return null;
   const toast = { ...t, id: ++state.seq };
-  state.timer = setTimeout(() => feedback.dismiss(toast.id), SHOW_MS);
+  if (!toast.persistent) state.timer = setTimeout(() => feedback.dismiss(toast.id), SHOW_MS);
   return toast;
 }
 

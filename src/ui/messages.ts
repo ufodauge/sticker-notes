@@ -9,12 +9,13 @@ export const t = {
   common: {
     close: "閉じる",
     undo: "元に戻す",
+    dismiss: "案内を閉じる",
   },
 
   app: {
     storageUnavailable: "保存領域を開けなかった",
     toolbar: "操作",
-    create: { label: "画像からステッカーを作る", tooltip: "作る" },
+    create: { label: "画像からステッカーを作る", tooltip: "作る", text: "作る" },
     print: "印刷",
     menu: "メニュー",
   },
@@ -38,6 +39,7 @@ export const t = {
     receivedInvalid: "読み込めないステッカー",
     receivedAdded: (who: string) => `${who} を貼った`,
     receivedDuplicate: "もう貼ってある",
+    inviteCreate: "自分のも作る",
   },
 
   qr: {
