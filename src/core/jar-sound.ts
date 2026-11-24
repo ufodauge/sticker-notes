@@ -73,43 +73,43 @@ export function impactVoice({ surface, speed, side, jitter }: Impact): Voice | n
   const parts = (ratios: readonly number[], base: number, many: number) =>
     ratios.slice(0, many).map((r, i) => base * r * (1 + 0.012 * jitter * (i + 1)));
   if (surface === "block") {
-    const base = lerp(3300, 1300, size) * detune * (1 + 0.12 * power);
+    const base = lerp(1150, 620, size) * detune * (1 + 0.06 * power);
     return {
       cls: "clack",
-      gain: 0.12 + 0.5 * loud,
-      freqs: parts([1, 1.47, 2.09], base, power < 0.3 ? 1 : power < 0.65 ? 2 : 3),
-      wave: "triangle",
-      duration: 0.035 + 0.05 * power + 0.02 * size,
-      drop: 1,
-      noise: 0.3 + 0.4 * power,
-      noiseSec: 0.003 + 0.004 * power,
-      noiseHz: 5000 + 3000 * power,
+      gain: 0.14 + 0.5 * loud,
+      freqs: parts([1, 2.42, 4.1], base, power < 0.3 ? 1 : power < 0.65 ? 2 : 3),
+      wave: "sine",
+      duration: 0.045 + 0.04 * power + 0.015 * size,
+      drop: 0.97,
+      noise: 0.25 + 0.25 * power,
+      noiseSec: 0.002 + 0.002 * power,
+      noiseHz: 1800 + 900 * power,
     };
   }
   if (surface === "glass") {
-    const base = lerp(700, 400, size) * detune;
+    const base = lerp(330, 210, size) * detune;
     return {
       cls: "tonk",
-      gain: 0.15 + 0.55 * loud,
-      freqs: parts([1, 2.32, 3.9], base, power < 0.5 ? 2 : 3),
+      gain: 0.16 + 0.5 * loud,
+      freqs: parts([1, 2.76, 5.4], base, power < 0.5 ? 2 : 3),
       wave: "sine",
-      duration: 0.12 + 0.16 * power,
-      drop: 0.97,
-      noise: 0.12,
-      noiseSec: 0.005,
-      noiseHz: 1800,
+      duration: 0.07 + 0.09 * power,
+      drop: 0.95,
+      noise: 0.18,
+      noiseSec: 0.004,
+      noiseHz: 700,
     };
   }
   return {
     cls: "thud",
-    gain: 0.2 + 0.6 * loud,
-    freqs: parts([1], lerp(150, 90, size) * detune, 1),
+    gain: 0.2 + 0.55 * loud,
+    freqs: parts([1], lerp(190, 130, size) * detune, 1),
     wave: "sine",
-    duration: 0.08 + 0.08 * power,
-    drop: 0.6,
-    noise: 0.2,
+    duration: 0.05 + 0.04 * power,
+    drop: 0.8,
+    noise: 0.4,
     noiseSec: 0.006,
-    noiseHz: 400,
+    noiseHz: 500,
   };
 }
 
@@ -142,13 +142,13 @@ export function rattleTicks(amp: number, jitters: readonly number[]): Tick[] {
       voice: {
         cls: "tick",
         gain: 0.07 + 0.1 * amp * (0.6 + 0.4 * tone),
-        freqs: [lerp(2200, 3600, tone)],
-        wave: "triangle",
-        duration: 0.018 + 0.012 * tone,
-        drop: 1,
-        noise: 0.35,
-        noiseSec: 0.003,
-        noiseHz: 6000,
+        freqs: [lerp(900, 1600, tone)],
+        wave: "sine",
+        duration: 0.025 + 0.015 * tone,
+        drop: 0.97,
+        noise: 0.2,
+        noiseSec: 0.002,
+        noiseHz: 2200,
       },
     };
   }).toSorted((a, b) => a.at - b.at);

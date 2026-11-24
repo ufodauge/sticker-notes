@@ -58,14 +58,17 @@ type Kind =
 
 const STEP = 1 / 60;
 const SUBSTEPS = 2;
+const CONTACT_SKIN = 0.012;
+const SOFT_CCD = 0.12;
 const SOLVER_ITERATIONS = 8;
 const MAX_BODY_SPEED = 11;
 const DESK_HALF = 9.5;
 const FALL_LIMIT = -6;
 const MAX_STEPS_PER_FRAME = 6;
 const PROBE_STEPS_PER_FRAME = 16;
-const MAX_SPAWNS_PER_FRAME = 2;
-const STILL_STEPS = 900;
+const SPAWN_CLEARANCE = 1.15;
+const STILL_SPAWN_EVERY = 4;
+const STILL_STEPS = 2400;
 const SLEEP_FRAMES_TO_SETTLE = 30;
 const VANISH_MS = 220;
 const TAP_SLOP_PX = 8;
@@ -73,9 +76,9 @@ const TAP_MAX_MS = 600;
 const DRAG_GAIN = 16;
 const DRAG_MAX_SPEED = 16;
 const TILT_RANGE = 0.55;
-const PILE_CALM_SPEED = 0.7;
-const PILE_CALM_SPIN = 1.2;
-const PILE_CALM_STEPS = 90;
+const PILE_WINDOW_STEPS = 45;
+const PILE_STILL_MOVE = 0.03;
+const PILE_STILL_TURN = 0.06;
 const JAR_CALM_SPEED = 0.05;
 const JAR_CALM_STEPS = 40;
 const JAR_PULL = 0.14;
@@ -89,6 +92,12 @@ const rand4 = (): [number, number, number, number] => [
   Math.random(),
   Math.random(),
 ];
+
+const softCcd = (): number => {
+  if (!import.meta.env.VITE_JAR_PROBE) return SOFT_CCD;
+  const m = /ccd=([\d.]+)/.exec(location.search);
+  return m ? Number(m[1]) : SOFT_CCD;
+};
 
 export function createJar3d(o: Jar3dOptions): Jar3dHandle {
   const { canvas, still } = o;
@@ -105,6 +114,8 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
     jarColliders: [] as RAPIER.Collider[],
     jarLive: { on: false, calm: 0 },
     pileCalm: 0,
+    marks: new Map<string, { t: THREE.Vector3; r: THREE.Quaternion }>(),
+    steps: 0,
     entries: new Map<string, Entry>(),
     kinds: new Map<number, Kind>(),
     spawnQueue: [] as string[],
@@ -178,7 +189,7 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
       world.removeCollider(c, false);
     });
     const descs =
-      kind === "smooth"
+      kind === "smooth" && !(import.meta.env.VITE_JAR_PROBE && location.search.includes("pieces=1"))
         ? sc.jarGeometries.flatMap((g) => {
             const index = g.getIndex()?.array;
             if (!index) return [];
@@ -229,14 +240,19 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
         .setTranslation(pose.x, pose.y, pose.z)
         .setRotation({ x: q.x, y: q.y, z: q.z, w: q.w })
         .setLinearDamping(0.4)
-        .setAngularDamping(1.2)
-        .setSoftCcdPrediction(0.6),
+        .setAngularDamping(2.4)
+        .setSoftCcdPrediction(softCcd())
+        .setAdditionalSolverIterations(2),
     );
-    entry.shape.parts.forEach((part) => {
+    const parts =
+      import.meta.env.VITE_JAR_PROBE && location.search.includes("hull=1")
+        ? [entry.shape.parts.flat()]
+        : entry.shape.parts;
+    parts.forEach((part) => {
       const desc = RAPIER.ColliderDesc.convexHull(hullPoints(entry, part));
       if (!desc) return;
       const collider = world.createCollider(
-        desc.setFriction(0.7).setRestitution(0.04).setDensity(1),
+        desc.setFriction(0.7).setRestitution(0.02).setDensity(1).setContactSkin(CONTACT_SKIN),
         body,
       );
       registerCollider(collider, { kind: "block", id: entry.id });
@@ -277,9 +293,42 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
     st.entries.delete(entry.id);
   };
 
-  const spawn = (entry: Entry) => {
-    entry.body = makeBody(entry, spawnPose(st.spawned++, rand4()));
+  const spawnClear = (pose: ReturnType<typeof spawnPose>): boolean => {
+    const world = st.world;
+    if (!world) return false;
+    const found = { blocked: false };
+    world.intersectionsWithShape(
+      { x: pose.x, y: pose.y, z: pose.z },
+      { x: 0, y: 0, z: 0, w: 1 },
+      new RAPIER.Ball(SPAWN_CLEARANCE),
+      () => {
+        found.blocked = true;
+        return false;
+      },
+    );
+    return !found.blocked;
+  };
+
+  const trySpawn = (entry: Entry): boolean => {
+    const pose = spawnPose(st.spawned, rand4());
+    if (!spawnClear(pose)) return false;
+    st.spawned++;
+    entry.body = makeBody(entry, pose);
     entry.visual.group.visible = true;
+    return true;
+  };
+
+  const spawnNext = (): boolean => {
+    const id = st.spawnQueue[0];
+    if (id === undefined) return false;
+    const entry = st.entries.get(id);
+    if (!entry || entry.body) {
+      st.spawnQueue.shift();
+      return true;
+    }
+    if (!trySpawn(entry)) return false;
+    st.spawnQueue.shift();
+    return true;
   };
 
   const syncBlocks = () => {
@@ -451,23 +500,42 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
     st.jarLive.on = false;
   };
 
+  const poseOf = (body: RAPIER.RigidBody) => {
+    const t = body.translation();
+    const r = body.rotation();
+    return { t: new THREE.Vector3(t.x, t.y, t.z), r: new THREE.Quaternion(r.x, r.y, r.z, r.w) };
+  };
+
   const sleepPileWhenCalm = () => {
     const awake = [...st.entries.values()].filter((e) => e.body && !e.body.isSleeping());
-    const calm =
-      st.drag === null &&
-      st.shakes.length === 0 &&
-      awake.every((e) => {
-        const v = e.body?.linvel();
-        const w = e.body?.angvel();
-        return (
-          Math.hypot(v?.x ?? 0, v?.y ?? 0, v?.z ?? 0) < PILE_CALM_SPEED &&
-          Math.hypot(w?.x ?? 0, w?.y ?? 0, w?.z ?? 0) < PILE_CALM_SPIN
-        );
-      });
-    st.pileCalm = calm ? st.pileCalm + 1 : 0;
-    if (st.pileCalm < PILE_CALM_STEPS) return;
-    awake.forEach((e) => e.body?.sleep());
+    if (
+      st.drag !== null ||
+      st.shakes.length > 0 ||
+      st.spawnQueue.length > 0 ||
+      awake.length === 0
+    ) {
+      st.pileCalm = 0;
+      st.marks.clear();
+      return;
+    }
+    st.pileCalm++;
+    if (st.pileCalm < PILE_WINDOW_STEPS) return;
     st.pileCalm = 0;
+    const still = awake.every((e) => {
+      const body = e.body;
+      const mark = st.marks.get(e.id);
+      if (!body || !mark) return false;
+      const now = poseOf(body);
+      return now.t.distanceTo(mark.t) < PILE_STILL_MOVE && now.r.angleTo(mark.r) < PILE_STILL_TURN;
+    });
+    st.marks.clear();
+    if (still) {
+      awake.forEach((e) => e.body?.sleep());
+      return;
+    }
+    awake.forEach((e) => {
+      if (e.body) st.marks.set(e.id, poseOf(e.body));
+    });
   };
 
   const step = () => {
@@ -486,6 +554,7 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
     });
     dragStep();
     Array.from({ length: SUBSTEPS }).forEach(() => world.step(events));
+    st.steps++;
     drainHits();
     freezeJarWhenCalm();
     sleepPileWhenCalm();
@@ -538,11 +607,7 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
     if (st.disposed) return;
     const t0 = performance.now();
     runShakes(now);
-    Array.from({ length: Math.min(MAX_SPAWNS_PER_FRAME, st.spawnQueue.length) }).forEach(() => {
-      const id = st.spawnQueue.shift();
-      const entry = id ? st.entries.get(id) : undefined;
-      if (entry && !entry.body) spawn(entry);
-    });
+    spawnNext();
     st.entries.forEach((e) => {
       if (e.vanishing === 0) return;
       const age = now - e.vanishing;
@@ -576,6 +641,9 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
           );
         }).length,
       );
+      canvas.dataset.steps = String(st.steps);
+      canvas.dataset.queue = String(st.spawnQueue.length);
+      canvas.dataset.calm = String(st.pileCalm);
       const jar = st.jar;
       const v = jar?.linvel();
       const w = jar?.angvel();
@@ -584,7 +652,8 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
         .filter((e) => e.body && !e.body.isSleeping())
         .map((e) => {
           const lv = e.body?.linvel();
-          return Math.hypot(lv?.x ?? 0, lv?.y ?? 0, lv?.z ?? 0).toFixed(2);
+          const av = e.body?.angvel();
+          return `${Math.hypot(lv?.x ?? 0, lv?.y ?? 0, lv?.z ?? 0).toFixed(2)}/${Math.hypot(av?.x ?? 0, av?.y ?? 0, av?.z ?? 0).toFixed(2)}`;
         })
         .join(",");
     }
@@ -618,16 +687,13 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
   };
 
   const settleOffscreen = () => {
-    st.spawnQueue.splice(0).forEach((id, i) => {
-      const entry = st.entries.get(id);
-      if (!entry) return;
-      const pose = spawnPose(i, rand4());
-      entry.body = makeBody(entry, { ...pose, y: pose.y + i * 0.55 });
-      entry.visual.group.visible = true;
-    });
+    const tries = { n: 0 };
     Array.from({ length: STILL_STEPS }).some(() => {
+      if (st.spawnQueue.length > 0 && tries.n++ % STILL_SPAWN_EVERY === 0) spawnNext();
       step();
-      return [...st.entries.values()].every((e) => e.body?.isSleeping());
+      return (
+        st.spawnQueue.length === 0 && [...st.entries.values()].every((e) => e.body?.isSleeping())
+      );
     });
     syncMeshes();
     render();

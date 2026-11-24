@@ -44,11 +44,12 @@ test("each surface has its own voice class and register", () => {
   expect([clack?.cls, tonk?.cls, thud?.cls]).toEqual(["clack", "tonk", "thud"]);
   expect(SURFACE_CLASS).toEqual({ block: "clack", glass: "tonk", base: "thud" });
   const lowest = (v: typeof clack) => Math.min(...(v?.freqs ?? [0]));
-  expect(lowest(clack)).toBeGreaterThan(1000);
-  expect(lowest(clack)).toBeLessThan(4000);
-  expect(lowest(tonk)).toBeGreaterThan(300);
-  expect(lowest(tonk)).toBeLessThan(800);
-  expect(lowest(thud)).toBeLessThan(200);
+  expect(lowest(clack)).toBeGreaterThan(500);
+  expect(lowest(clack)).toBeLessThan(1300);
+  expect(lowest(tonk)).toBeGreaterThan(150);
+  expect(lowest(tonk)).toBeLessThan(400);
+  expect(lowest(tonk)).toBeLessThan(lowest(clack));
+  expect(lowest(thud)).toBeLessThan(220);
   expect(tonk?.duration).toBeGreaterThan(clack?.duration ?? 1);
 });
 
