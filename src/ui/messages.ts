@@ -107,5 +107,13 @@ export const t = {
     count: (who: string) => `${who} の枚数`,
     dotSize: "1ドットの大きさ(mm)",
     dotSummary: (mm: number) => `mm/ドット・約${mm}mm角`,
+    qr: {
+      own: "自分のQR",
+      sticker: "QRにするステッカー",
+      size: "QRの大きさ",
+      sideMm: (mm: number) => `${mm}mm角`,
+      moduleMm: (mm: number) => `${mm.toFixed(2)}mm/モジュール`,
+      risky: "・読み取りにくいかも",
+    },
   },
 } as const;

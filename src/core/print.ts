@@ -1,5 +1,6 @@
 import { PAGE_ASPECT, type Page, type Placement } from "./album.ts";
 import { getPalette } from "./palette.ts";
+import { QUIET_ZONE } from "./qr.ts";
 import type { Sticker } from "./payload.ts";
 import {
   BASE_COLOR,
@@ -100,7 +101,8 @@ export function smoothPath(poly: readonly Point[]): string {
   return `M${smooth.map(f).join("L")}Z`;
 }
 
-type SheetItem = {
+type StickerItem = {
+  readonly kind: "sticker";
   readonly key: string;
   readonly stickerId: string;
   readonly x: number;
@@ -109,45 +111,101 @@ type SheetItem = {
   readonly dotMm: number;
   readonly rotation: number;
 };
+type QrItem = {
+  readonly kind: "qr";
+  readonly key: string;
+  readonly stickerId: string;
+  readonly x: number;
+  readonly y: number;
+  readonly size: number;
+  readonly moduleMm: number;
+};
+type SheetItem = StickerItem | QrItem;
 export type Sheet = { readonly items: readonly SheetItem[] };
+
+export const QR_SIZES_MM = [30, 40, 50] as const;
+export const DEFAULT_QR_MM: QrSizeMm = 40;
+export type QrSizeMm = (typeof QR_SIZES_MM)[number];
+export type QrBlock = {
+  readonly stickerId: string;
+  readonly sizeMm: QrSizeMm;
+  readonly matrixSize: number;
+};
+
+export const qrModuleMm = (sizeMm: number, matrixSize: number): number =>
+  sizeMm / (matrixSize + QUIET_ZONE * 2);
 
 const clampDot = (d: number) => Math.min(MAX_DOT_MM, Math.max(MIN_DOT_MM, d));
 const SIDE_DOTS = 32 + DEFAULT_OUTLINE * 2;
+const FIT_TOLERANCE = 1e-9;
+
+type Cell = { readonly size: number; readonly item: (x: number, y: number) => SheetItem };
+
+function flowIntoSheets(cells: readonly Cell[]): readonly Sheet[] {
+  const usableW = A4.width - SHEET_MARGIN * 2;
+  const usableH = A4.height - SHEET_MARGIN * 2;
+  const fits = (end: number, usable: number) => end <= usable + FIT_TOLERANCE;
+  const cursor = { x: 0, y: 0, rowH: 0 };
+  const sheets: SheetItem[][] = [[]];
+  for (const cell of cells) {
+    const onSheet = sheets[sheets.length - 1] ?? [];
+    if (cursor.x > 0 && !fits(cursor.x + cell.size, usableW)) {
+      Object.assign(cursor, { x: 0, y: cursor.y + cursor.rowH + SHEET_GAP, rowH: 0 });
+    }
+    if (onSheet.length > 0 && !fits(cursor.y + cell.size, usableH)) {
+      sheets.push([]);
+      Object.assign(cursor, { x: 0, y: 0, rowH: 0 });
+    }
+    (sheets[sheets.length - 1] ?? onSheet).push(
+      cell.item(round3(SHEET_MARGIN + cursor.x), round3(SHEET_MARGIN + cursor.y)),
+    );
+    Object.assign(cursor, {
+      x: cursor.x + cell.size + SHEET_GAP,
+      rowH: Math.max(cursor.rowH, cell.size),
+    });
+  }
+  return sheets.map((items) => ({ items }));
+}
 
 export function layoutGrid(
   entries: readonly { readonly stickerId: string; readonly copies: number }[],
   dotMm: number,
+  qr: QrBlock | null = null,
 ): readonly Sheet[] {
   const dot = clampDot(dotMm);
   const cell = round3(SIDE_DOTS * dot);
-  const copies = entries.flatMap((e) =>
+  const stickers: readonly Cell[] = entries.flatMap((e) =>
     Array.from({ length: Math.max(0, Math.floor(e.copies)) }, (_, i) => ({
-      key: `${e.stickerId}-${i}`,
-      stickerId: e.stickerId,
+      size: cell,
+      item: (x: number, y: number): SheetItem => ({
+        kind: "sticker",
+        key: `${e.stickerId}-${i}`,
+        stickerId: e.stickerId,
+        x,
+        y,
+        size: cell,
+        dotMm: dot,
+        rotation: 0,
+      }),
     })),
   );
-  if (copies.length === 0)
-    return [
-      {
-        items: [],
-      },
-    ];
-
-  const usableW = A4.width - SHEET_MARGIN * 2;
-  const usableH = A4.height - SHEET_MARGIN * 2;
-  const cols = Math.max(1, Math.floor((usableW + SHEET_GAP) / (cell + SHEET_GAP)));
-  const rows = Math.max(1, Math.floor((usableH + SHEET_GAP) / (cell + SHEET_GAP)));
-  const perSheet = cols * rows;
-  return Array.from({ length: Math.ceil(copies.length / perSheet) }, (_, s) => ({
-    items: copies.slice(s * perSheet, (s + 1) * perSheet).map((c, i) => ({
-      ...c,
-      x: round3(SHEET_MARGIN + (i % cols) * (cell + SHEET_GAP)),
-      y: round3(SHEET_MARGIN + Math.floor(i / cols) * (cell + SHEET_GAP)),
-      size: cell,
-      dotMm: dot,
-      rotation: 0,
-    })),
-  }));
+  const qrCell: readonly Cell[] = qr
+    ? [
+        {
+          size: qr.sizeMm,
+          item: (x, y) => ({
+            kind: "qr",
+            key: `qr-${qr.stickerId}`,
+            stickerId: qr.stickerId,
+            x,
+            y,
+            size: qr.sizeMm,
+            moduleMm: qrModuleMm(qr.sizeMm, qr.matrixSize),
+          }),
+        },
+      ]
+    : [];
+  return flowIntoSheets([...qrCell, ...stickers]);
 }
 
 export function albumPageBox(): {
@@ -183,6 +241,7 @@ export function layoutAlbum(
           const dotMm = (box.w / PAGE_DOTS) * p.scale;
           const size = SIDE_DOTS * dotMm;
           return {
+            kind: "sticker" as const,
             key: p.id,
             stickerId: p.stickerId,
             x: round3(box.x + p.x * box.w - size / 2),

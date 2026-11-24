@@ -1,11 +1,16 @@
-import { BookOpen, LayoutGrid, Minus, Plus, Printer, Scissors } from "lucide-react";
+import { BookOpen, LayoutGrid, Minus, Plus, Printer, QrCode, Scissors } from "lucide-react";
 import { useReducer } from "react";
 import {
   DEFAULT_DOT_MM,
+  DEFAULT_QR_MM,
   MAX_DOT_MM,
   MIN_DOT_MM,
+  QR_SIZES_MM,
   layoutAlbum,
   layoutGrid,
+  qrModuleMm,
+  type QrBlock,
+  type QrSizeMm,
 } from "../../../core/print.ts";
 import { snsDisplay } from "../../../core/sns.ts";
 import { SnsIcon } from "../../SnsIcon.tsx";
@@ -15,6 +20,7 @@ import { Dialog } from "../../Dialog.tsx";
 import { t } from "../../messages.ts";
 import { StickerView } from "../../StickerView.tsx";
 import styles from "./PrintDialog.module.css";
+import { qrArtworkOf } from "./qr-artwork.ts";
 import { PrinterCopy, SheetSvg, Symbols } from "./Sheets.tsx";
 
 const MODES = {
@@ -24,19 +30,28 @@ const MODES = {
 type Mode = keyof typeof MODES;
 
 const MAX_COPIES = 99;
+const RISKY_MODULE_MM = 0.4;
+
+type QrChoice = {
+  readonly on: boolean;
+  readonly stickerId: string | null;
+  readonly sizeMm: QrSizeMm;
+};
 
 type PrintState = {
   readonly mode: Mode;
   readonly copies: Readonly<Record<string, number>>;
   readonly dotMm: number;
   readonly cutLine: boolean;
+  readonly qr: QrChoice;
 };
 
 type PrintAction =
   | { readonly type: "mode"; readonly mode: Mode }
   | { readonly type: "copies"; readonly id: string; readonly copies: number }
   | { readonly type: "dot"; readonly dotMm: number }
-  | { readonly type: "cut"; readonly on: boolean };
+  | { readonly type: "cut"; readonly on: boolean }
+  | { readonly type: "qr"; readonly qr: Partial<QrChoice> };
 
 function reducer(s: PrintState, a: PrintAction): PrintState {
   switch (a.type) {
@@ -53,6 +68,8 @@ function reducer(s: PrintState, a: PrintAction): PrintState {
       return Number.isFinite(a.dotMm) ? { ...s, dotMm: a.dotMm } : s;
     case "cut":
       return { ...s, cutLine: a.on };
+    case "qr":
+      return { ...s, qr: { ...s.qr, ...a.qr } };
   }
 }
 
@@ -64,13 +81,25 @@ export function PrintDialog({ album, onClose }: Props) {
     copies: {},
     dotMm: DEFAULT_DOT_MM,
     cutLine: false,
+    qr: { on: false, stickerId: null, sizeMm: DEFAULT_QR_MM },
   });
+  const mine = album.stickers.filter((s) => s.origin === "mine");
+  const qrSticker = mine.find((s) => s.id === state.qr.stickerId) ?? mine[0];
+  const qrBlock: QrBlock | null =
+    state.qr.on && qrSticker
+      ? {
+          stickerId: qrSticker.id,
+          sizeMm: state.qr.sizeMm,
+          matrixSize: qrArtworkOf(qrSticker).matrixSize,
+        }
+      : null;
   const sheets =
     state.mode === "album"
       ? layoutAlbum(album.pages, album.placements)
       : layoutGrid(
           Object.entries(state.copies).map(([stickerId, copies]) => ({ stickerId, copies })),
           state.dotMm,
+          qrBlock,
         );
 
   return (
@@ -128,7 +157,13 @@ export function PrintDialog({ album, onClose }: Props) {
             ))}
           </div>
           {state.mode === "grid" && (
-            <GridOptions stickers={album.stickers} state={state} dispatch={dispatch} />
+            <GridOptions
+              stickers={album.stickers}
+              mine={mine}
+              qrSticker={qrSticker}
+              state={state}
+              dispatch={dispatch}
+            />
           )}
         </div>
 
@@ -149,16 +184,23 @@ export function PrintDialog({ album, onClose }: Props) {
 
 function GridOptions({
   stickers,
+  mine,
+  qrSticker,
   state,
   dispatch,
 }: {
   readonly stickers: readonly StoredSticker[];
+  readonly mine: readonly StoredSticker[];
+  readonly qrSticker: StoredSticker | undefined;
   readonly state: PrintState;
   readonly dispatch: (a: PrintAction) => void;
 }) {
   const sizeMm = Math.round(36 * Math.min(MAX_DOT_MM, Math.max(MIN_DOT_MM, state.dotMm)));
   return (
     <>
+      {qrSticker && (
+        <QrOption mine={mine} qrSticker={qrSticker} state={state} dispatch={dispatch} />
+      )}
       <ul className={styles.list} aria-label={t.print.stickers}>
         {stickers.map((s) => {
           const n = state.copies[s.id] ?? 0;
@@ -221,5 +263,69 @@ function GridOptions({
         <span className={common.muted}>{t.print.dotSummary(sizeMm)}</span>
       </label>
     </>
+  );
+}
+
+function QrOption({
+  mine,
+  qrSticker,
+  state,
+  dispatch,
+}: {
+  readonly mine: readonly StoredSticker[];
+  readonly qrSticker: StoredSticker;
+  readonly state: PrintState;
+  readonly dispatch: (a: PrintAction) => void;
+}) {
+  const moduleMm = qrModuleMm(state.qr.sizeMm, qrArtworkOf(qrSticker).matrixSize);
+  return (
+    <div className={styles.options}>
+      <label className={styles.option}>
+        <input
+          type="checkbox"
+          checked={state.qr.on}
+          onChange={(e) => dispatch({ type: "qr", qr: { on: e.currentTarget.checked } })}
+        />
+        <QrCode aria-hidden="true" size={18} strokeWidth={1.5} />
+        <span>{t.print.qr.own}</span>
+      </label>
+      {state.qr.on && (
+        <>
+          {mine.length > 1 && (
+            <select
+              className={common.input}
+              aria-label={t.print.qr.sticker}
+              value={qrSticker.id}
+              onChange={(e) => dispatch({ type: "qr", qr: { stickerId: e.currentTarget.value } })}
+            >
+              {mine.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {snsDisplay(s.sticker.snsKind, s.sticker.snsId)}
+                </option>
+              ))}
+            </select>
+          )}
+          <select
+            className={common.input}
+            aria-label={t.print.qr.size}
+            value={state.qr.sizeMm}
+            onChange={(e) => {
+              const sizeMm = QR_SIZES_MM.find((mm) => String(mm) === e.currentTarget.value);
+              if (sizeMm) dispatch({ type: "qr", qr: { sizeMm } });
+            }}
+          >
+            {QR_SIZES_MM.map((mm) => (
+              <option key={mm} value={mm}>
+                {t.print.qr.sideMm(mm)}
+              </option>
+            ))}
+          </select>
+          <span className={moduleMm < RISKY_MODULE_MM ? common.warn : common.muted}>
+            {t.print.qr.moduleMm(moduleMm)}
+            {moduleMm < RISKY_MODULE_MM && t.print.qr.risky}
+          </span>
+        </>
+      )}
+    </div>
   );
 }

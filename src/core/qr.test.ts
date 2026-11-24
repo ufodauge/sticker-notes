@@ -1,7 +1,17 @@
 import jsQR from "jsqr";
 import { describe, expect, test } from "vite-plus/test";
 import { encodeBody, type Sticker } from "./payload.ts";
-import { centerArea, qrForUrl, stickerUrl, type QrMatrix } from "./qr.ts";
+import {
+  QUIET_ZONE,
+  centerArea,
+  opaqueBox,
+  qrDrawing,
+  qrForUrl,
+  qrPathData,
+  stickerUrl,
+  type QrMatrix,
+} from "./qr.ts";
+import { renderRgba } from "./render.ts";
 import { FIXTURES } from "./testing/fixtures.ts";
 import { VECTOR_APP_BASE } from "./testing/vectors.ts";
 
@@ -99,4 +109,89 @@ test("stickerUrl keeps a base without a fragment whole", () => {
   expect(stickerUrl("https://a.example/s/", new Uint8Array([1, 2]))).toMatch(
     /^https:\/\/a\.example\/s\/#v1\./,
   );
+});
+
+describe("qrDrawing", () => {
+  const SCALE = 8;
+  const stickerAt = (s: Sticker) => {
+    const { size, rgba } = renderRgba(s);
+    return { size, rgba, box: opaqueBox(rgba, size) };
+  };
+
+  const rasterise = (qr: QrMatrix, s: Sticker, roundDots: boolean) => {
+    const { size, rgba, box } = stickerAt(s);
+    const drawing = qrDrawing(qr, SCALE, roundDots, box);
+    const side = drawing.side;
+    const image = new Uint8ClampedArray(side * side * 4).fill(255);
+    const paint = (px: number, py: number, v: number) =>
+      image.fill(v, (py * side + px) * 4, (py * side + px) * 4 + 3);
+    drawing.squares.forEach(([x, y]) => {
+      for (let dy = 0; dy < SCALE; dy++)
+        for (let dx = 0; dx < SCALE; dx++) paint(x + dx, y + dy, 0);
+    });
+    drawing.dots.forEach(([x, y]) => {
+      for (let dy = 0; dy < SCALE; dy++)
+        for (let dx = 0; dx < SCALE; dx++)
+          if (Math.hypot(dx + 0.5 - SCALE / 2, dy + 0.5 - SCALE / 2) <= SCALE / 2)
+            paint(x + dx, y + dy, 0);
+    });
+    const { art } = drawing;
+    if (art) {
+      for (let y = 0; y < art.crop.h * art.pixel; y++) {
+        for (let x = 0; x < art.crop.w * art.pixel; x++) {
+          const sx = art.crop.x + Math.floor(x / art.pixel);
+          const sy = art.crop.y + Math.floor(y / art.pixel);
+          const o = (sy * size + sx) * 4;
+          if (rgba[o + 3]) image.set(rgba.subarray(o, o + 3), ((art.y + y) * side + art.x + x) * 4);
+        }
+      }
+    }
+    return jsQR(image, side, side)?.data;
+  };
+
+  test.each(Object.entries(FIXTURES))("%s decodes from the drawing with round dots", (_n, s) => {
+    const url = stickerUrl(VECTOR_APP_BASE, encodeBody(s));
+    expect(rasterise(qrForUrl(url), s, true)).toBe(url);
+  });
+
+  test("square-only drawing has no dots and the same lit modules", () => {
+    const s = FIXTURES.slime as Sticker;
+    const qr = qrForUrl(stickerUrl(VECTOR_APP_BASE, encodeBody(s)));
+    const round = qrDrawing(qr, SCALE, true, null);
+    const square = qrDrawing(qr, SCALE, false, null);
+    expect(square.dots).toHaveLength(0);
+    expect(square.squares).toHaveLength(round.squares.length + round.dots.length);
+    expect(round.squares.length).toBeGreaterThan(0);
+  });
+
+  test("the sticker sits whole-number scaled inside the cleared centre", () => {
+    const s = FIXTURES.slime as Sticker;
+    const qr = qrForUrl(stickerUrl(VECTOR_APP_BASE, encodeBody(s)));
+    const { art } = qrDrawing(qr, SCALE, true, stickerAt(s).box);
+    const area = centerArea(qr.size).art;
+    const low = (area.start + QUIET_ZONE) * SCALE;
+    expect(art).not.toBeNull();
+    expect(Number.isInteger(art?.pixel)).toBe(true);
+    expect(art?.x).toBeGreaterThanOrEqual(low);
+    expect((art?.x ?? 0) + (art?.crop.w ?? 0) * (art?.pixel ?? 0)).toBeLessThanOrEqual(
+      low + area.side * SCALE,
+    );
+    expect((art?.y ?? 0) + (art?.crop.h ?? 0) * (art?.pixel ?? 0)).toBeLessThanOrEqual(
+      low + area.side * SCALE,
+    );
+  });
+
+  test("an empty sticker leaves the centre clear", () => {
+    const qr = qrForUrl("https://a.example/#v1.0000");
+    expect(qrDrawing(qr, SCALE, true, null).art).toBeNull();
+    expect(opaqueBox(new Uint8ClampedArray(16 * 4), 4)).toBeNull();
+  });
+
+  test("path data has one subpath per drawn module and no module in the hole", () => {
+    const qr = qrForUrl("https://a.example/#v1.0000");
+    const drawing = qrDrawing(qr, SCALE, true, null);
+    const d = qrPathData(drawing, SCALE);
+    expect(d.match(/M/g)).toHaveLength(drawing.squares.length + drawing.dots.length);
+    expect(d.match(/a/g)).toHaveLength(drawing.dots.length * 2);
+  });
 });

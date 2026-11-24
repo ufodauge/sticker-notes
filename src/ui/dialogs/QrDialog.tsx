@@ -1,7 +1,15 @@
 import { Check, Copy, Maximize, Share2 } from "lucide-react";
 import { useReducer, useRef } from "react";
 import { encodeBody, type Sticker } from "../../core/payload.ts";
-import { centerArea, isFinderModule, qrForUrl, stickerUrl, type QrMatrix } from "../../core/qr.ts";
+import {
+  QUIET_ZONE,
+  opaqueBox,
+  qrDrawing,
+  qrForUrl,
+  qrPathData,
+  stickerUrl,
+  type QrMatrix,
+} from "../../core/qr.ts";
 import { renderRgba } from "../../core/render.ts";
 import { snsDisplay } from "../../core/sns.ts";
 import { SnsIcon } from "../SnsIcon.tsx";
@@ -14,8 +22,6 @@ import { StickerView } from "../StickerView.tsx";
 import { holdWakeLock } from "../wake-lock.ts";
 import styles from "./QrDialog.module.css";
 
-const QUIET_ZONE = 4;
-const TOUCHING_DOT_RADIUS = 0.5;
 const MIN_DEVICE_PX_FOR_ROUND_DOTS_THAT_STILL_DECODE = 6;
 
 type Props = { readonly sticker: Sticker; readonly onClose: () => void };
@@ -114,49 +120,24 @@ function ShareLink({ url, title }: { readonly url: string; readonly title: strin
 function paintQr(canvas: HTMLCanvasElement, qr: QrMatrix, scale: number, sticker: Sticker): void {
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
+  const { size, rgba } = renderRgba(sticker);
+  const drawing = qrDrawing(
+    qr,
+    scale,
+    scale >= MIN_DEVICE_PX_FOR_ROUND_DOTS_THAT_STILL_DECODE,
+    opaqueBox(rgba, size),
+  );
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = "#000000";
-  const { hole, art } = centerArea(qr.size);
-  const inHole = (x: number, y: number) =>
-    x >= hole.start && x < hole.start + hole.side && y >= hole.start && y < hole.start + hole.side;
-  qr.modules.forEach((dark, i) => {
-    const mx = i % qr.size;
-    const my = Math.floor(i / qr.size);
-    if (!dark || inHole(mx, my)) return;
-    const x = (mx + QUIET_ZONE) * scale;
-    const y = (my + QUIET_ZONE) * scale;
-    if (scale < MIN_DEVICE_PX_FOR_ROUND_DOTS_THAT_STILL_DECODE || isFinderModule(qr.size, mx, my)) {
-      ctx.fillRect(x, y, scale, scale);
-      return;
-    }
-    ctx.beginPath();
-    ctx.arc(x + scale / 2, y + scale / 2, scale * TOUCHING_DOT_RADIUS, 0, Math.PI * 2);
-    ctx.fill();
-  });
-  const { size, rgba } = renderRgba(sticker);
+  ctx.fill(new Path2D(qrPathData(drawing, scale)));
+  const { art } = drawing;
+  if (!art) return;
   const tmp = document.createElement("canvas");
   tmp.width = size;
   tmp.height = size;
   tmp.getContext("2d")?.putImageData(new ImageData(rgba, size, size), 0, 0);
-  const box = { x0: size, y0: size, x1: -1, y1: -1 };
-  rgba.forEach((_, k) => {
-    if (k % 4 !== 3 || !rgba[k]) return;
-    const i = (k - 3) / 4;
-    Object.assign(box, {
-      x0: Math.min(box.x0, i % size),
-      y0: Math.min(box.y0, Math.floor(i / size)),
-      x1: Math.max(box.x1, i % size),
-      y1: Math.max(box.y1, Math.floor(i / size)),
-    });
-  });
-  if (box.x1 < 0) return;
-  const bw = box.x1 - box.x0 + 1;
-  const bh = box.y1 - box.y0 + 1;
-  const px = Math.max(1, Math.floor((art.side * scale) / Math.max(bw, bh)));
-  const side = art.side * scale;
-  const left = (art.start + QUIET_ZONE) * scale + Math.floor((side - bw * px) / 2);
-  const top = (art.start + QUIET_ZONE) * scale + Math.floor((side - bh * px) / 2);
+  const { crop, pixel } = art;
   ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(tmp, box.x0, box.y0, bw, bh, left, top, bw * px, bh * px);
+  ctx.drawImage(tmp, crop.x, crop.y, crop.w, crop.h, art.x, art.y, crop.w * pixel, crop.h * pixel);
 }

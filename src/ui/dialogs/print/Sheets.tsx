@@ -8,6 +8,7 @@ import {
   type StickerGeometry,
 } from "../../../core/print.ts";
 import type { StoredSticker } from "../../../data/sticker-store.ts";
+import { qrArtworkOf } from "./qr-artwork.ts";
 import styles from "./Sheets.module.css";
 
 const geometryCache = new Map<string, StickerGeometry>();
@@ -27,6 +28,9 @@ function usedStickers(
   return stickers.filter((s) => used.has(s.id));
 }
 
+const hasQr = (sheets: readonly Sheet[], id: string): boolean =>
+  sheets.some((sheet) => sheet.items.some((i) => i.kind === "qr" && i.stickerId === id));
+
 export function Symbols({
   prefix,
   sheets,
@@ -42,7 +46,27 @@ export function Symbols({
         {usedStickers(sheets, stickers).map((s) => {
           const g = geometryOf(s);
           const box = `0 0 ${g.size} ${g.size}`;
+          const qr = hasQr(sheets, s.id) ? qrArtworkOf(s) : null;
           return [
+            qr && (
+              <symbol
+                key={`q${s.id}`}
+                id={`${prefix}q-${s.id}`}
+                viewBox={`0 0 ${qr.side} ${qr.side}`}
+              >
+                <rect width={qr.side} height={qr.side} fill="#ffffff" />
+                <path d={qr.d} fill="#000000" />
+                {qr.art && (
+                  <use
+                    href={`#${prefix}a-${s.id}`}
+                    x={qr.art.x}
+                    y={qr.art.y}
+                    width={qr.art.size}
+                    height={qr.art.size}
+                  />
+                )}
+              </symbol>
+            ),
             <symbol key={`a${s.id}`} id={`${prefix}a-${s.id}`} viewBox={box}>
               <g shapeRendering="crispEdges">
                 {g.fills.map((f) => (
@@ -97,23 +121,34 @@ export function SheetSvg({
           strokeWidth={0.4}
         />
       )}
-      {sheet.items.map((item) => (
-        <g
-          key={item.key}
-          transform={`translate(${item.x} ${item.y}) rotate(${item.rotation} ${item.size / 2} ${item.size / 2})`}
-        >
-          <use href={`#${prefix}a-${item.stickerId}`} width={item.size} height={item.size} />
-          {cutLine && (
-            <use
-              href={`#${prefix}c-${item.stickerId}`}
-              width={item.size}
-              height={item.size}
-              // stroke width is in the symbol's dot units: keep it CUT_STROKE_MM on paper
-              strokeWidth={CUT_STROKE_MM / item.dotMm}
-            />
-          )}
-        </g>
-      ))}
+      {sheet.items.map((item) =>
+        item.kind === "qr" ? (
+          <use
+            key={item.key}
+            href={`#${prefix}q-${item.stickerId}`}
+            x={item.x}
+            y={item.y}
+            width={item.size}
+            height={item.size}
+          />
+        ) : (
+          <g
+            key={item.key}
+            transform={`translate(${item.x} ${item.y}) rotate(${item.rotation} ${item.size / 2} ${item.size / 2})`}
+          >
+            <use href={`#${prefix}a-${item.stickerId}`} width={item.size} height={item.size} />
+            {cutLine && (
+              <use
+                href={`#${prefix}c-${item.stickerId}`}
+                width={item.size}
+                height={item.size}
+                // stroke width is in the symbol's dot units: keep it CUT_STROKE_MM on paper
+                strokeWidth={CUT_STROKE_MM / item.dotMm}
+              />
+            )}
+          </g>
+        ),
+      )}
     </svg>
   );
 }

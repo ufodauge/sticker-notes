@@ -7,6 +7,7 @@ import {
   albumPageBox,
   layoutAlbum,
   layoutGrid,
+  qrModuleMm,
   smoothPath,
   stickerGeometry,
 } from "./print.ts";
@@ -365,4 +366,58 @@ test("cut paths of several blobs are joined by single spaces", () => {
   const loops = g.cutPath.split(/(?<=Z) (?=M)/);
   expect(loops).toHaveLength(2);
   loops.forEach((l) => expect(l).toMatch(/^M.*Z$/));
+});
+
+describe("layoutGrid with a QR block", () => {
+  const qr = { stickerId: "me", sizeMm: 40, matrixSize: 65 } as const;
+  const sticker = (copies: number) => [{ stickerId: "a", copies }];
+
+  test("the QR is the first cell of the row-major flow, with its real size", () => {
+    const items = layoutGrid(sticker(2), 1.5, qr)[0]?.items ?? [];
+    expect(items.map((i) => i.kind)).toEqual(["qr", "sticker", "sticker"]);
+    expect(items[0]).toMatchObject({ x: SHEET_MARGIN, y: SHEET_MARGIN, size: 40, key: "qr-me" });
+    expect(items[1]).toMatchObject({ x: SHEET_MARGIN + 40 + 3, y: SHEET_MARGIN, size: 54 });
+    expect(items[2]).toMatchObject({ x: SHEET_MARGIN + 40 + 3 + 54 + 3, y: SHEET_MARGIN });
+  });
+
+  test("the next row starts below the tallest cell of the previous row", () => {
+    const items = layoutGrid(sticker(4), 1.5, qr)[0]?.items ?? [];
+    expect(items.map((i) => [i.x, i.y])).toEqual([
+      [5, 5],
+      [48, 5],
+      [105, 5],
+      [5, 62],
+      [62, 62],
+    ]);
+  });
+
+  test("the QR alone fills a sheet with one cell and is not duplicated", () => {
+    const sheets = layoutGrid([], 1.5, qr);
+    expect(sheets).toHaveLength(1);
+    expect(sheets[0]?.items).toHaveLength(1);
+  });
+
+  test("overflow continues on the next sheet and nothing leaves the margins", () => {
+    const sheets = layoutGrid(sticker(30), 1.5, qr);
+    expect(sheets.length).toBeGreaterThan(1);
+    expect(sheets.flatMap((s) => s.items).filter((i) => i.kind === "qr")).toHaveLength(1);
+    expect(sheets.flatMap((s) => s.items)).toHaveLength(31);
+    sheets.forEach((sheet) =>
+      sheet.items.forEach((i) => {
+        expect(i.x + i.size).toBeLessThanOrEqual(A4.width - SHEET_MARGIN + 1e-6);
+        expect(i.y + i.size).toBeLessThanOrEqual(A4.height - SHEET_MARGIN + 1e-6);
+      }),
+    );
+    expect(sheets[1]?.items[0]).toMatchObject({ x: SHEET_MARGIN, y: SHEET_MARGIN });
+  });
+
+  test("module size in millimetres counts the quiet zone", () => {
+    expect(qrModuleMm(40, 65)).toBeCloseTo(40 / 73);
+    const item = layoutGrid([], 1.5, qr)[0]?.items[0];
+    expect(item).toMatchObject({ kind: "qr", moduleMm: 40 / 73 });
+  });
+
+  test("without a QR block the layout is unchanged", () => {
+    expect(layoutGrid(sticker(16), 1.5, null)).toEqual(layoutGrid(sticker(16), 1.5));
+  });
 });

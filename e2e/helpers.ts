@@ -3,7 +3,7 @@ import { expect, type Locator, type Page } from "@playwright/test";
 import * as jsqrModule from "jsqr";
 import vectorFile from "../test/vectors/payload-v1.json" with { type: "json" };
 import { decodeFragment, type Sticker } from "../src/core/payload.ts";
-import { decodeRgba } from "../test/png.ts";
+import { decodeRgba, type RgbaImage } from "../test/png.ts";
 
 export const fragmentOf = (name: string): string => {
   const v = vectorFile.vectors.find((x) => x.name === name);
@@ -23,13 +23,18 @@ const jsQR = (
   typeof jsqrAny === "function" ? jsqrAny : (jsqrAny as { default: unknown }).default
 ) as (data: Uint8ClampedArray, width: number, height: number) => { data: string } | null;
 
-export async function readQr(page: Page): Promise<Sticker | undefined> {
+export const decodeQrText = (image: RgbaImage): string | undefined =>
+  jsQR(image.data, image.width, image.height)?.data;
+
+export async function readQrUrl(page: Page): Promise<string | undefined> {
   const qr = page.getByRole("img", { name: /のQRコード$/ });
   await expect(qr).toBeVisible();
   await page.waitForTimeout(400);
-  const shot = decodeRgba(await qr.screenshot());
-  const decoded = jsQR(shot.data, shot.width, shot.height);
-  const r = decodeFragment(new URL(decoded?.data ?? "http://x/").hash);
+  return decodeQrText(decodeRgba(await qr.screenshot()));
+}
+
+export async function readQr(page: Page): Promise<Sticker | undefined> {
+  const r = decodeFragment(new URL((await readQrUrl(page)) ?? "http://x/").hash);
   return r.ok ? r.sticker : undefined;
 }
 
