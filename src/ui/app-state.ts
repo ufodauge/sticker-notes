@@ -5,7 +5,10 @@ type Overlay =
   | { readonly kind: "print" }
   | { readonly kind: "menu" };
 
+type View = "album" | "jar";
+
 export type AppState = {
+  readonly view: View;
   readonly overlay: Overlay;
   readonly selected: string | null;
   readonly leaving: { readonly placementId: string; readonly stickerId: string } | null;
@@ -14,11 +17,17 @@ export type AppState = {
 export type AppAction =
   | { readonly type: "open"; readonly overlay: Overlay }
   | { readonly type: "close" }
+  | { readonly type: "view"; readonly view: View }
   | { readonly type: "select"; readonly placementId: string | null }
   | { readonly type: "leave"; readonly placementId: string; readonly stickerId: string }
   | { readonly type: "left" };
 
-export const INITIAL: AppState = { overlay: { kind: "none" }, selected: null, leaving: null };
+export const INITIAL: AppState = {
+  view: "album",
+  overlay: { kind: "none" },
+  selected: null,
+  leaving: null,
+};
 
 export function reducer(s: AppState, a: AppAction): AppState {
   switch (a.type) {
@@ -26,6 +35,8 @@ export function reducer(s: AppState, a: AppAction): AppState {
       return { ...s, overlay: a.overlay, selected: null };
     case "close":
       return { ...s, overlay: { kind: "none" } };
+    case "view":
+      return { ...s, view: a.view, selected: null };
     case "select":
       return { ...s, selected: a.placementId };
     case "leave":

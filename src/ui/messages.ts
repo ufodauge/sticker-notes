@@ -18,6 +18,15 @@ export const t = {
     create: { label: "画像からステッカーを作る", tooltip: "作る", text: "作る" },
     print: "印刷",
     menu: "メニュー",
+    viewJar: "瓶で見る",
+    viewAlbum: "シール帳で見る",
+  },
+
+  jar: {
+    label: "瓶",
+    list: "瓶の中のステッカー",
+    shake: "振る",
+    tilt: "傾きで動かす",
   },
 
   album: {

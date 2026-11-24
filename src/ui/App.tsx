@@ -1,8 +1,9 @@
-import { Ellipsis, ImagePlus, Printer } from "lucide-react";
+import { BookOpen, Ellipsis, FlaskRound, ImagePlus, Printer } from "lucide-react";
 import { useReducer, useSyncExternalStore } from "react";
 import { isIos, isStandalone } from "../data/platform.ts";
 import { layoutAlbum } from "../core/print.ts";
-import { stickerStore, type AddResult } from "../data/sticker-store.ts";
+import { settings, stickerStore, type AddResult } from "../data/sticker-store.ts";
+import { Jar } from "./jar/Jar.tsx";
 import { ActionBar } from "./ActionBar.tsx";
 import { Album } from "./album/Album.tsx";
 import { PageIndicator } from "./album/PageIndicator.tsx";
@@ -56,11 +57,32 @@ export function App() {
   const qrSticker =
     overlay.kind === "qr" ? stickers.find((s) => s.id === overlay.stickerId) : undefined;
   const close = () => dispatch({ type: "close" });
+  const inJar = state.view === "jar";
+  const switchView = () => {
+    const next = inJar ? "album" : "jar";
+    dispatch({ type: "view", view: next });
+    void settings.set("view", next).catch(() => {});
+  };
 
   return (
     <div className={styles.shell}>
       <nav className={styles.toolbar} aria-label={t.app.toolbar}>
-        <PageIndicator count={Math.max(1, ready?.pages.length ?? 0)} />
+        {!inJar && <PageIndicator count={Math.max(1, ready?.pages.length ?? 0)} />}
+        {stickers.length > 0 && (
+          <button
+            type="button"
+            className={common.icon}
+            aria-label={inJar ? t.app.viewAlbum : t.app.viewJar}
+            title={inJar ? t.app.viewAlbum : t.app.viewJar}
+            onClick={switchView}
+          >
+            {inJar ? (
+              <BookOpen aria-hidden="true" size={22} strokeWidth={1.5} />
+            ) : (
+              <FlaskRound aria-hidden="true" size={22} strokeWidth={1.5} />
+            )}
+          </button>
+        )}
         <button
           type="button"
           className={mine.length === 0 ? `${common.button} ${styles.labeled}` : common.icon}
@@ -113,7 +135,8 @@ export function App() {
           dispatch({ type: "open", overlay: { kind: "create", file } });
         }}
       >
-        {ready && (
+        {ready && inJar && <Jar stickers={stickers} />}
+        {ready && !inJar && (
           <Album
             snap={ready}
             selected={state.selected}
