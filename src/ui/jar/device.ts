@@ -29,3 +29,11 @@ export async function askTilt(): Promise<boolean> {
   }
   return tiltPermission.granted;
 }
+
+export function webgl2Available(): boolean {
+  try {
+    return document.createElement("canvas").getContext("webgl2") !== null;
+  } catch {
+    return false;
+  }
+}

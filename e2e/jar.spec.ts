@@ -24,7 +24,7 @@ const toggleToJar = (page: Page) => page.getByRole("button", { name: "瓶で見�
 const toggleToAlbum = (page: Page) => page.getByRole("button", { name: "シール帳で見る" });
 
 async function importJson(page: Page, json: string, count: number): Promise<void> {
-  await page.goto("/");
+  await page.goto("/?jar=2d");
   await page.getByRole("button", { name: "メニュー" }).click();
   await page
     .getByLabel("読み込む")
@@ -91,7 +91,7 @@ test("jar: toggle, blocks settle, shake, back to the album", async ({ page }) =>
 });
 
 test("jar: the toggle is hidden while the album is empty", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/?jar=2d");
   await expect(page.getByRole("button", { name: "メニュー" })).toBeVisible();
   await expect(toggleToJar(page)).toHaveCount(0);
   await expect(toggleToAlbum(page)).toHaveCount(0);

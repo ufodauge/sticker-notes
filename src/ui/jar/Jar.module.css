@@ -169,3 +169,22 @@
 .canvas:active {
   cursor: grabbing;
 }
+
+.canvas3d {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  touch-action: none;
+  user-select: none;
+  cursor: grab;
+}
+
+.canvas3d:active {
+  cursor: grabbing;
+}
+
+.jar:has(> .canvas3d) {
+  inline-size: calc(100% + 2 * var(--space-4));
+  max-inline-size: none;
+}

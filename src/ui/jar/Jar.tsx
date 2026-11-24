@@ -7,7 +7,8 @@ import { stickerStore } from "../../data/sticker-store.ts";
 import common from "../common.module.css";
 import { t } from "../messages.ts";
 import { blockSelection } from "./block-selection.ts";
-import { askTilt, reducedMotion, tiltAvailable } from "./device.ts";
+import { askTilt, reducedMotion, tiltAvailable, webgl2Available } from "./device.ts";
+import { createJar3d } from "../jar3d/engine3d.ts";
 import { createJar, type JarHandle } from "./engine.ts";
 import styles from "./Jar.module.css";
 import { currentShown, jarContent, shownStickers, soundPref } from "./jar-prefs.ts";
@@ -17,6 +18,8 @@ import { publishStress } from "./probe.ts";
 type Props = { readonly onPick: () => void };
 
 const MOTES = dustMotes(12);
+
+const USE_3D = webgl2Available() && !location.search.includes("jar=2d");
 
 const moteStyle = (m: Mote): CSSProperties =>
   ({
@@ -49,21 +52,26 @@ export function Jar({ onPick }: Props) {
     const observer = new ResizeObserver(([entry]) => {
       const box = entry?.contentRect;
       const glass = { back: backGlass.current, front: frontGlass.current };
-      if (!box || box.width <= 0 || box.height <= 0 || !glass.back || !glass.front) return;
+      if (!box || box.width <= 0 || box.height <= 0) return;
       if (handle.current) {
         handle.current.resize(box.width, box.height);
         return;
       }
-      handle.current = createJar({
+      const common3 = {
         canvas,
-        glass: { back: glass.back, front: glass.front },
         width: box.width,
         height: box.height,
         blocks: currentShown(),
         still: reduced,
         selected: blockSelection.get,
         onSelect: blockSelection.set,
-      });
+      };
+      if (USE_3D) {
+        handle.current = createJar3d(common3);
+        return;
+      }
+      if (!glass.back || !glass.front) return;
+      handle.current = createJar({ ...common3, glass: { back: glass.back, front: glass.front } });
     });
     const release = [
       stickerStore.subscribe(sync),
@@ -159,23 +167,31 @@ export function Jar({ onPick }: Props) {
 
   return (
     <JarFrame tools={tools}>
-      <div className={styles.scene} aria-hidden="true">
-        <div className={styles.table} />
-        <div className={styles.pool} />
-        <div className={styles.beam} />
-        <div className={styles.dust}>
-          {MOTES.map((m) => (
-            <i key={m.y} className={styles.mote} style={moteStyle(m)} />
-          ))}
+      {!USE_3D && (
+        <div className={styles.scene} aria-hidden="true">
+          <div className={styles.table} />
+          <div className={styles.pool} />
+          <div className={styles.beam} />
+          <div className={styles.dust}>
+            {MOTES.map((m) => (
+              <i key={m.y} className={styles.mote} style={moteStyle(m)} />
+            ))}
+          </div>
         </div>
-      </div>
-      <canvas ref={backGlass} className={styles.glass} aria-hidden="true" />
-      <canvas ref={attach} className={styles.canvas} aria-hidden="true" />
+      )}
+      {!USE_3D && <canvas ref={backGlass} className={styles.glass} aria-hidden="true" />}
       <canvas
-        ref={frontGlass}
-        className={`${styles.glass} ${styles.reflected}`}
+        ref={attach}
+        className={USE_3D ? styles.canvas3d : styles.canvas}
         aria-hidden="true"
       />
+      {!USE_3D && (
+        <canvas
+          ref={frontGlass}
+          className={`${styles.glass} ${styles.reflected}`}
+          aria-hidden="true"
+        />
+      )}
       <ul className={common.visuallyHidden} aria-label={t.jar.list}>
         {shown.map((s) => (
           <li key={s.id}>{snsDisplay(s.sticker.snsKind, s.sticker.snsId)}</li>

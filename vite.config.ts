@@ -100,6 +100,14 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ["**/*.{js,css,html,png,webmanifest}"],
+        globIgnores: ["assets/Jar-*.js"],
+        runtimeCaching: [
+          {
+            urlPattern: /\/assets\/Jar-[^/]+\.js$/,
+            handler: "CacheFirst",
+            options: { cacheName: "jar-chunk", expiration: { maxEntries: 2 } },
+          },
+        ],
         navigateFallback: "index.html",
         cleanupOutdatedCaches: true,
       },

@@ -91,7 +91,7 @@ async function mockAudio(page: Page): Promise<void> {
 }
 
 async function importStickers(page: Page, count: number): Promise<void> {
-  await page.goto("/");
+  await page.goto("/?jar=2d");
   await page.getByRole("button", { name: "メニュー" }).click();
   await page.getByLabel("読み込む").setInputFiles({
     name: "b.json",
