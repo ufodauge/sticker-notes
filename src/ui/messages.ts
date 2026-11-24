@@ -27,6 +27,15 @@ export const t = {
     list: "瓶の中のステッカー",
     shake: "振る",
     tilt: "傾きで動かす",
+    shuffle: "シャッフル",
+    pick: "選ぶ",
+  },
+
+  jarPick: {
+    dialog: "瓶に入れるステッカー",
+    counter: (n: number, max: number) => `${n} / ${max}`,
+    apply: "瓶に入れる",
+    random: "ランダムに戻す",
   },
 
   album: {

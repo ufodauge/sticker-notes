@@ -5,6 +5,8 @@ export type BlockSprite = {
   readonly canvas: HTMLCanvasElement;
   // distance from the sprite edge to the slab edge (room for the baked shadow)
   readonly pad: number;
+  // device px of the slab this sprite was drawn for
+  readonly slab: number;
 };
 
 const SHADOW_PAD = 0.2;
@@ -22,20 +24,20 @@ function roundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, s: n
 
 // One acrylic slab (shadow, body, bevel, art, highlights) drawn once; each frame is a drawImage.
 // `slab` is in device pixels.
-export function makeBlockSprite(sticker: Sticker, slab: number): BlockSprite {
+export function makeBlockSprite(sticker: Sticker, slab: number, dark: boolean): BlockSprite {
   const pad = Math.ceil(slab * SHADOW_PAD);
   const total = slab + pad * 2;
   const canvas = document.createElement("canvas");
   canvas.width = total;
   canvas.height = total;
   const ctx = canvas.getContext("2d");
-  if (!ctx) return { canvas, pad };
+  if (!ctx) return { canvas, pad, slab };
   const radius = slab * 0.2;
   const edge = Math.max(1, Math.round(slab / 28));
 
   // soft shadow: cast from an opaque slab, then cut the slab out so the acrylic stays see-through
   ctx.save();
-  ctx.shadowColor = "rgb(0 0 0 / 0.38)";
+  ctx.shadowColor = dark ? "rgb(0 0 0 / 0.75)" : "rgb(0 0 0 / 0.38)";
   ctx.shadowBlur = slab * 0.16;
   ctx.shadowOffsetY = slab * 0.07;
   ctx.fillStyle = "#000";
@@ -50,9 +52,9 @@ export function makeBlockSprite(sticker: Sticker, slab: number): BlockSprite {
 
   // body: faint cool tint, denser toward the lower edge where the glass is thicker
   const body = ctx.createLinearGradient(pad, pad, pad + slab, pad + slab);
-  body.addColorStop(0, "rgb(235 245 255 / 0.55)");
-  body.addColorStop(0.55, "rgb(205 225 240 / 0.38)");
-  body.addColorStop(1, "rgb(150 180 205 / 0.5)");
+  body.addColorStop(0, dark ? "rgb(205 225 250 / 0.26)" : "rgb(235 245 255 / 0.55)");
+  body.addColorStop(0.55, dark ? "rgb(170 195 225 / 0.15)" : "rgb(205 225 240 / 0.38)");
+  body.addColorStop(1, dark ? "rgb(120 150 190 / 0.3)" : "rgb(150 180 205 / 0.5)");
   ctx.fillStyle = body;
   roundRectPath(ctx, pad, pad, slab, radius);
   ctx.fill();
@@ -86,7 +88,7 @@ export function makeBlockSprite(sticker: Sticker, slab: number): BlockSprite {
   ctx.stroke();
 
   // faint reflection: a diagonal band across the upper half
-  ctx.fillStyle = "rgb(255 255 255 / 0.2)";
+  ctx.fillStyle = dark ? "rgb(255 255 255 / 0.12)" : "rgb(255 255 255 / 0.2)";
   ctx.beginPath();
   ctx.moveTo(pad, pad + slab * 0.1);
   ctx.lineTo(pad + slab * 0.62, pad);
@@ -96,9 +98,9 @@ export function makeBlockSprite(sticker: Sticker, slab: number): BlockSprite {
   ctx.fill();
   ctx.restore();
 
-  ctx.strokeStyle = "rgb(30 60 90 / 0.35)";
+  ctx.strokeStyle = dark ? "rgb(190 215 245 / 0.4)" : "rgb(30 60 90 / 0.35)";
   ctx.lineWidth = 1;
   roundRectPath(ctx, pad + 0.5, pad + 0.5, slab - 1, radius);
   ctx.stroke();
-  return { canvas, pad };
+  return { canvas, pad, slab };
 }

@@ -3,9 +3,10 @@ type Overlay =
   | { readonly kind: "create"; readonly file?: File }
   | { readonly kind: "qr"; readonly stickerId: string }
   | { readonly kind: "print" }
-  | { readonly kind: "menu" };
+  | { readonly kind: "menu" }
+  | { readonly kind: "jarPick" };
 
-type View = "album" | "jar";
+export type View = "album" | "jar";
 
 export type AppState = {
   readonly view: View;
@@ -22,12 +23,12 @@ export type AppAction =
   | { readonly type: "leave"; readonly placementId: string; readonly stickerId: string }
   | { readonly type: "left" };
 
-export const INITIAL: AppState = {
-  view: "album",
+export const initialState = (view: View): AppState => ({
+  view,
   overlay: { kind: "none" },
   selected: null,
   leaving: null,
-};
+});
 
 export function reducer(s: AppState, a: AppAction): AppState {
   switch (a.type) {

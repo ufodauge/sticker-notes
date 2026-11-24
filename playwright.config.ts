@@ -14,6 +14,7 @@ export default defineConfig({
   webServer: {
     command: `vp build && vp preview --port ${PORT} --strictPort`,
     url: `http://localhost:${PORT}/`,
+    env: { VITE_JAR_PROBE: "1" },
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },

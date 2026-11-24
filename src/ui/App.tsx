@@ -1,17 +1,21 @@
 import { BookOpen, Ellipsis, FlaskRound, ImagePlus, Printer } from "lucide-react";
-import { useReducer, useSyncExternalStore } from "react";
+import { Suspense, use, useReducer, useSyncExternalStore } from "react";
 import { isIos, isStandalone } from "../data/platform.ts";
 import { layoutAlbum } from "../core/print.ts";
 import { settings, stickerStore, type AddResult } from "../data/sticker-store.ts";
-import { Jar } from "./jar/Jar.tsx";
 import { ActionBar } from "./ActionBar.tsx";
 import { Album } from "./album/Album.tsx";
 import { PageIndicator } from "./album/PageIndicator.tsx";
-import { INITIAL, reducer } from "./app-state.ts";
+import { initialState, reducer, type View } from "./app-state.ts";
 import styles from "./App.module.css";
 import common from "./common.module.css";
+import { blockSelection } from "./jar/block-selection.ts";
+import { startupPrefs } from "./jar/jar-prefs.ts";
+import { JarFrame } from "./jar/JarFrame.tsx";
+import { JarView } from "./jar/jar-lazy.ts";
 import { CreateDialog } from "./dialogs/create/CreateDialog.tsx";
 import { backupDue, backupMarkCache } from "./dialogs/menu/backup-mark.ts";
+import { JarPickDialog } from "./dialogs/jar/JarPickDialog.tsx";
 import { MenuDialog } from "./dialogs/menu/MenuDialog.tsx";
 import { PrintDialog } from "./dialogs/print/PrintDialog.tsx";
 import { QrDialog } from "./dialogs/QrDialog.tsx";
@@ -28,11 +32,24 @@ const hasImage = (dt: DataTransfer) =>
   );
 
 export function App() {
+  return (
+    <Suspense fallback={null}>
+      <Booted />
+    </Suspense>
+  );
+}
+
+function Booted() {
+  return <Shell initialView={use(startupPrefs()).view} />;
+}
+
+function Shell({ initialView }: { readonly initialView: View }) {
   const snap = useSyncExternalStore(stickerStore.subscribe, stickerStore.getSnapshot);
   const mark = useSyncExternalStore(backupMarkCache.subscribe, backupMarkCache.get);
   const { toast, highlight } = useSyncExternalStore(feedback.subscribe, feedback.get);
   const printing = useSyncExternalStore(printMode.subscribe, printMode.get);
-  const [state, dispatch] = useReducer(reducer, INITIAL);
+  const [state, dispatch] = useReducer(reducer, initialView, initialState);
+  const blockId = useSyncExternalStore(blockSelection.subscribe, blockSelection.get);
   const [dropping, setDropping] = useReducer((_: boolean, next: boolean) => next, false);
 
   const onSaved = (stickerId: string, result: AddResult) =>
@@ -57,9 +74,12 @@ export function App() {
   const qrSticker =
     overlay.kind === "qr" ? stickers.find((s) => s.id === overlay.stickerId) : undefined;
   const close = () => dispatch({ type: "close" });
-  const inJar = state.view === "jar";
+  const inJar = state.view === "jar" && stickers.length > 0;
+  const jarSticker =
+    inJar && overlay.kind === "none" ? stickers.find((s) => s.id === blockId) : undefined;
   const switchView = () => {
     const next = inJar ? "album" : "jar";
+    blockSelection.set(null);
     dispatch({ type: "view", view: next });
     void settings.set("view", next).catch(() => {});
   };
@@ -135,7 +155,11 @@ export function App() {
           dispatch({ type: "open", overlay: { kind: "create", file } });
         }}
       >
-        {ready && inJar && <Jar stickers={stickers} />}
+        {ready && inJar && (
+          <Suspense fallback={<JarFrame />}>
+            <JarView onPick={() => dispatch({ type: "open", overlay: { kind: "jarPick" } })} />
+          </Suspense>
+        )}
         {ready && !inJar && (
           <Album
             snap={ready}
@@ -165,6 +189,17 @@ export function App() {
           }
         />
       )}
+      {jarSticker && (
+        <ActionBar
+          key={jarSticker.id}
+          sticker={jarSticker}
+          onQr={() => dispatch({ type: "open", overlay: { kind: "qr", stickerId: jarSticker.id } })}
+          onDiscard={() => {
+            blockSelection.set(null);
+            void discardSticker(jarSticker.id);
+          }}
+        />
+      )}
       {toast && (
         <Toast
           key={toast.id}
@@ -187,6 +222,7 @@ export function App() {
       )}
       {qrSticker && <QrDialog sticker={qrSticker.sticker} onClose={close} />}
       {ready && overlay.kind === "print" && <PrintDialog album={ready} onClose={close} />}
+      {ready && overlay.kind === "jarPick" && <JarPickDialog stickers={stickers} onClose={close} />}
       {overlay.kind === "menu" && <MenuDialog onClose={close} />}
       {printing && ready && overlay.kind !== "print" && (
         <PrinterCopy
