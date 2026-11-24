@@ -1,7 +1,8 @@
 import { Check, Grid2x2, ImagePlus, Sparkles } from "lucide-react";
 import { useCallback, useReducer, useRef, type ChangeEvent, type DragEvent } from "react";
 import Cropper, { type Area } from "react-easy-crop";
-import { PALETTES } from "../../../core/palette.ts";
+import { PALETTES, type PaletteKind } from "../../../core/palette.ts";
+import type { PaletteCandidate } from "../../../core/quantize.ts";
 import { encodeBody, stickerIdOf } from "../../../core/payload.ts";
 import { importPixelArt } from "../../../core/pixelart.ts";
 import { SNS, SNS_KINDS } from "../../../core/sns.ts";
@@ -252,11 +253,45 @@ function PaletteField({
   readonly d: Derived;
   readonly dispatch: (a: CreateAction) => void;
 }) {
+  const group = (kind: PaletteKind) => d.ranked.filter((c) => PALETTES[c.paletteId]?.kind === kind);
   return (
     <fieldset className={styles.field}>
       <legend className={common.visuallyHidden}>{t.create.palette}</legend>
+      <PaletteGroup
+        label={t.create.paletteNatural}
+        candidates={group("natural")}
+        d={d}
+        dispatch={dispatch}
+        best={true}
+      />
+      <PaletteGroup
+        label={t.create.paletteFilter}
+        candidates={group("filter")}
+        d={d}
+        dispatch={dispatch}
+        best={false}
+      />
+    </fieldset>
+  );
+}
+
+function PaletteGroup({
+  label,
+  candidates,
+  d,
+  dispatch,
+  best,
+}: {
+  readonly label: string;
+  readonly candidates: readonly PaletteCandidate[];
+  readonly d: Derived;
+  readonly dispatch: (a: CreateAction) => void;
+  readonly best: boolean;
+}) {
+  return (
+    <div role="group" aria-label={label} className={styles.paletteGroup}>
       <ul className={styles.paletteGrid}>
-        {d.ranked.map((c, rank) => {
+        {candidates.map((c, rank) => {
           const p = PALETTES[c.paletteId];
           if (!p) return null;
           return (
@@ -281,7 +316,7 @@ function PaletteField({
                   label=""
                   decorative
                 />
-                {rank === 0 && (
+                {best && rank === 0 && (
                   <Sparkles
                     aria-hidden="true"
                     className={styles.best}
@@ -294,7 +329,7 @@ function PaletteField({
           );
         })}
       </ul>
-    </fieldset>
+    </div>
   );
 }
 

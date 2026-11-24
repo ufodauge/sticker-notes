@@ -141,6 +141,12 @@
   list-style: none;
 }
 
+.paletteGroup + .paletteGroup {
+  margin-block-start: var(--space-2);
+  padding-block-start: var(--space-2);
+  border-block-start: 1px solid var(--line);
+}
+
 .paletteItem {
   position: relative;
   display: grid;

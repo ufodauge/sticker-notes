@@ -8,11 +8,16 @@ import {
   type Oklab,
   type Palette,
 } from "../src/core/palette.ts";
-import { quantize, rankPalettes, resizeTo32, type Rgba } from "../src/core/quantize.ts";
+import {
+  quantize,
+  rankPalettes,
+  resizeTo32,
+  scorePalettes,
+  type Rgba,
+} from "../src/core/quantize.ts";
 import { encodeRgba } from "../test/png.ts";
 
 const N = 32;
-const MONOCHROME = ["Grayscale", "Sepia", "Matcha", "Indigo", "Crimson"];
 const BROWN_FAMILY = ["Sepia", "Desert", "Portrait", "Autumn", "Bakery", "Fire"];
 const DARK_MEAN_L = 0.2;
 const DUPLICATE_MEAN_DISTANCE = 0.05;
@@ -37,76 +42,21 @@ const labOf = (img: Rgba): Oklab[] =>
     rgbToOklab([img.data[p * 4] ?? 0, img.data[p * 4 + 1] ?? 0, img.data[p * 4 + 2] ?? 0]),
   );
 
-function boxBlur3(lab: readonly Oklab[]): Oklab[] {
-  return lab.map((_, p) => {
-    const x = p % N;
-    const y = Math.floor(p / N);
-    const sum: [number, number, number] = [0, 0, 0];
-    let count = 0;
-    for (let dy = -1; dy <= 1; dy++)
-      for (let dx = -1; dx <= 1; dx++) {
-        const c =
-          lab[Math.min(N - 1, Math.max(0, y + dy)) * N + Math.min(N - 1, Math.max(0, x + dx))];
-        if (!c) continue;
-        sum[0] += c[0];
-        sum[1] += c[1];
-        sum[2] += c[2];
-        count++;
-      }
-    return [sum[0] / count, sum[1] / count, sum[2] / count];
-  });
-}
-
-function centerWeight(p: number): number {
-  const reach = Math.max(Math.abs((p % N) - 15.5), Math.abs(Math.floor(p / N) - 15.5));
-  return Math.min(1, Math.max(0.4, 1 - (0.6 * (reach - 8)) / 7.5));
-}
-
-function quantizedLab(img: Rgba, palette: Palette): Oklab[] {
-  const { indices } = quantize(img, palette, null);
-  return Array.from(indices, (k) => palette.oklab[k] ?? [0, 0, 0]);
-}
-
 function sortRanking(r: Ranking): Ranking {
   return r.toSorted((a, b) => a.error - b.error || a.paletteId - b.paletteId);
 }
 
-const errorSum = (
-  a: readonly Oklab[],
-  b: readonly Oklab[],
-  weight: (p: number) => number,
-): number => a.reduce((sum, c, p) => sum + weight(p) * oklabDistanceSq(c, b[p] ?? c), 0);
+const fromCandidates = (img: Rgba, rank: typeof rankPalettes): Ranking =>
+  rank(img).map((c) => ({ paletteId: c.paletteId, error: c.rankError }));
 
 const CRITERIA: readonly Criterion[] = [
   {
-    name: "baseline",
+    name: "plain",
     rank: (img) =>
-      rankPalettes(img).map((c) => ({ paletteId: c.paletteId, error: c.result.error })),
+      sortRanking(PALETTES.map((p) => ({ paletteId: p.id, error: quantize(img, p, null).error }))),
   },
-  {
-    name: "blur3",
-    rank: (img) => {
-      const source = boxBlur3(labOf(img));
-      return sortRanking(
-        PALETTES.map((p) => ({
-          paletteId: p.id,
-          error: errorSum(source, boxBlur3(quantizedLab(img, p)), () => 1),
-        })),
-      );
-    },
-  },
-  {
-    name: "center",
-    rank: (img) => {
-      const source = labOf(img);
-      return sortRanking(
-        PALETTES.map((p) => ({
-          paletteId: p.id,
-          error: errorSum(source, quantizedLab(img, p), centerWeight),
-        })),
-      );
-    },
-  },
+  { name: "blur3-all", rank: (img) => fromCandidates(img, scorePalettes) },
+  { name: "app", rank: (img) => fromCandidates(img, rankPalettes) },
 ];
 
 async function loadPhoto(file: string): Promise<Photo> {
@@ -239,21 +189,27 @@ function choiceCounts(rankings: readonly Ranking[]): Map<string, number> {
   return counts;
 }
 
+const isFilterName = (name: string) => PALETTES.some((p) => p.name === name && p.kind === "filter");
+const filterShare = (counts: ReadonlyMap<string, number>) =>
+  [...counts].reduce((s, [name, n]) => s + (isFilterName(name) ? n : 0), 0);
+
 function histogramMd(total: number, all: readonly (readonly Ranking[])[]): string {
   const sections = CRITERIA.map((c, k) => {
     const counts = choiceCounts(all[k] ?? []);
-    const mono = MONOCHROME.reduce((s, n) => s + (counts.get(n) ?? 0), 0);
-    const never = [...counts].filter(([, n]) => n === 0).map(([name]) => name);
+    const mono = filterShare(counts);
+    const never = [...counts]
+      .filter(([name, n]) => n === 0 && (c.name !== "app" || !isFilterName(name)))
+      .map(([name]) => name);
     const lines = [...counts]
       .toSorted((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
       .map(
         ([name, n]) =>
-          `| ${MONOCHROME.includes(name) ? "**" + name + "**" : name} | ${n} | ${pct(n, total)} |`,
+          `| ${isFilterName(name) ? "**" + name + "**" : name} | ${n} | ${pct(n, total)} |`,
       );
     return [
       `## ${c.name}`,
       "",
-      `- monochrome (${MONOCHROME.join(", ")}): ${mono} / ${total} (${pct(mono, total)})`,
+      `- filter palettes: ${mono} / ${total} (${pct(mono, total)})`,
       `- never chosen (${never.length}): ${never.join(", ") || "-"}`,
       `- mean top-1 error: ${mean((all[k] ?? []).map((r) => r[0]?.error ?? 0)).toFixed(4)}`,
       "",
@@ -317,10 +273,12 @@ console.log(`photos: ${files.length} found, ${kept.length} used, ${excluded.leng
 for (const line of excluded) console.log(`  excluded ${line}`);
 CRITERIA.forEach((c, k) => {
   const counts = choiceCounts(all[k] ?? []);
-  const mono = MONOCHROME.reduce((s, n) => s + (counts.get(n) ?? 0), 0);
-  const never = [...counts].filter(([, n]) => n === 0).length;
+  const mono = filterShare(counts);
+  const never = [...counts].filter(
+    ([name, n]) => n === 0 && (c.name !== "app" || !isFilterName(name)),
+  ).length;
   const err = mean((all[k] ?? []).map((r) => r[0]?.error ?? 0));
   console.log(
-    `${c.name}: monochrome ${pct(mono, kept.length)}, never chosen ${never}, mean error ${err.toFixed(4)}`,
+    `${c.name}: filters ${pct(mono, kept.length)}, never chosen ${never}, mean error ${err.toFixed(4)}`,
   );
 });

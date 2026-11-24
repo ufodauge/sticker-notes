@@ -1,4 +1,5 @@
 import { assignMinCost } from "./assign.ts";
+import { blurredError, boxBlur3 } from "./blur.ts";
 import { prefersSecond } from "./dither.ts";
 import { PALETTES, oklabDistanceSq, rgbToOklab, type Oklab, type Palette } from "./palette.ts";
 import { PIXEL_COUNT, STICKER_SIZE } from "./payload.ts";
@@ -126,6 +127,7 @@ export type PaletteCandidate = {
   readonly paletteId: number;
   readonly transparentIndex: number | null;
   readonly result: QuantizeResult;
+  readonly rankError: number;
 };
 
 function opaqueColors(img: Rgba, limit: number): ReadonlyMap<number, number> | undefined {
@@ -203,18 +205,33 @@ function nearestSlot(palette: Palette, target: Oklab, exclude: number | null): n
   );
 }
 
-export function rankPalettes(img: Rgba): readonly PaletteCandidate[] {
+export function scorePalettes(img: Rgba): readonly PaletteCandidate[] {
   const lab = toOklab(img);
   const alpha = hasTransparency(img);
+  const opaque = Array.from(
+    { length: PIXEL_COUNT },
+    (_, p) => (img.data[p * 4 + 3] ?? 255) >= ALPHA_THRESHOLD,
+  );
+  const blurredSource = boxBlur3(lab, opaque);
   return PALETTES.map((p): PaletteCandidate => {
     const distinct = quantizeDistinct(img, p, "auto");
     if (distinct) {
       const { transparentIndex, ...result } = distinct;
-      return { paletteId: p.id, transparentIndex, result };
+      return { paletteId: p.id, transparentIndex, result, rankError: result.error };
     }
     const transparentIndex = alpha ? p.transparentDefault : null;
-    return { paletteId: p.id, transparentIndex, result: quantize(img, p, transparentIndex, lab) };
-  }).toSorted((a, b) => a.result.error - b.result.error || a.paletteId - b.paletteId);
+    const result = quantize(img, p, transparentIndex, lab);
+    const resultLab = Array.from(result.indices, (k): Oklab => p.oklab[k] ?? [0, 0, 0]);
+    const rankError = blurredError(blurredSource, resultLab, opaque);
+    return { paletteId: p.id, transparentIndex, result, rankError };
+  }).toSorted((a, b) => a.rankError - b.rankError || a.paletteId - b.paletteId);
+}
+
+const isFilter = (c: PaletteCandidate): boolean => PALETTES[c.paletteId]?.kind === "filter";
+
+export function rankPalettes(img: Rgba): readonly PaletteCandidate[] {
+  const scored = scorePalettes(img);
+  return [...scored.filter((c) => !isFilter(c)), ...scored.filter(isFilter)];
 }
 
 export function exactPaletteMatch(img: Rgba): PaletteCandidate | undefined {
@@ -247,7 +264,7 @@ export function exactPaletteMatch(img: Rgba): PaletteCandidate | undefined {
         if ((img.data[i * 4 + 3] ?? 255) < ALPHA_THRESHOLD) indices[i] = transparentIndex;
       }
     }
-    return { paletteId: p.id, transparentIndex, result: { indices, error: 0 } };
+    return { paletteId: p.id, transparentIndex, result: { indices, error: 0 }, rankError: 0 };
   }
   return undefined;
 }

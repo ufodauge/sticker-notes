@@ -46,6 +46,7 @@ WebKit の読み込みの遅さは Windows 版 WebKit 固有の可能性があ�
 
 ## パレット評価
 
-- `node scripts/palette-eval.ts <写真フォルダ> <出力フォルダ>` で、写真ごとに自動選択の基準(baseline / blur3 / center)を比べる
-- 出力: summary.csv、choice-histogram.md、palette-similarity.md、contact-sheet-*.png(出力フォルダは `.palette-eval/` など git 管理外に置く)
-- 写真と出力は個人のものなのでコミットしない。JPEG の読み込みは devDependency の sharp(EXIF の向きを反映)
+- 自動選択の基準は、3x3 のボックスぼかし(OKLab、端はクランプ、透明画素は平均にも誤差にも入れない)をかけた元画像と量子化結果の二乗誤差の和。1 対 1 対応の少色画像は従来どおり
+- 単色系(Grayscale / Sepia / Matcha / Indigo / Crimson)は `kind: "filter"` で、自動選択の対象外。作成ダイアログでは自然なパレットの下に区切って並べ、手動で選べる(ドット絵が完全一致するときは従来どおり選ばれる)
+- 個人写真 77 枚: 単色系の自動選択は 66% から 0%、自然なパレット 27 種のうち一度も選ばれないものは 11 種
+- `node scripts/palette-eval.ts <写真フォルダ> <出力フォルダ>` で plain / blur3-all / app(アプリと同じ `rankPalettes`)を比べる。写真と出力はコミットしない

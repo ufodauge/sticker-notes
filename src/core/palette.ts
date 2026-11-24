@@ -3,7 +3,10 @@ import { PALETTE_DEFS, type PaletteDef } from "./palette-data.ts";
 export type Rgb = readonly [r: number, g: number, b: number];
 export type Oklab = readonly [L: number, a: number, b: number];
 
+export type PaletteKind = "natural" | "filter";
+
 export type Palette = PaletteDef & {
+  readonly kind: PaletteKind;
   readonly rgb: readonly Rgb[];
   readonly oklab: readonly Oklab[];
 };
@@ -44,9 +47,18 @@ export function oklabDistanceSq(x: Oklab, y: Oklab): number {
   return dL * dL + da * da + db * db;
 }
 
+const FILTER_NAMES: ReadonlySet<string> = new Set([
+  "Grayscale",
+  "Sepia",
+  "Matcha",
+  "Indigo",
+  "Crimson",
+]);
+
 export const PALETTES: readonly Palette[] = PALETTE_DEFS.map((def) => {
   const rgb = def.colors.map(hexToRgb);
-  return { ...def, rgb, oklab: rgb.map(rgbToOklab) };
+  const kind: PaletteKind = FILTER_NAMES.has(def.name) ? "filter" : "natural";
+  return { ...def, kind, rgb, oklab: rgb.map(rgbToOklab) };
 });
 
 export function getPalette(id: number): Palette | undefined {

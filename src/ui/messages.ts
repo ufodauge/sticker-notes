@@ -58,6 +58,8 @@ export const t = {
     saveFailed: "保存できなかった",
     submit: "貼る",
     palette: "パレット",
+    paletteNatural: "自然な色",
+    paletteFilter: "フィルター",
     transparent: "透明にする色",
     transparentNone: "透明なし",
     transparentColor: (hex: string) => `#${hex} を透明に`,

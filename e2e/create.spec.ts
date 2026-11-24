@@ -90,6 +90,36 @@ test("sample.png keeps its dots and its distinct colours", async ({ page }) => {
   expect(used.size).toBe(5);
 });
 
+test("filter palettes sit in their own group and can be chosen and saved", async ({ page }) => {
+  await openMaker(page, "photo.png", photoPng());
+  const filters = page.getByRole("group", { name: "フィルター" });
+  const natural = page.getByRole("group", { name: "自然な色" });
+  await expect(filters.getByRole("button")).toHaveCount(5);
+  await expect(natural.getByRole("button")).toHaveCount(27);
+  await expect(natural.getByRole("button", { name: "Sepia", exact: true })).toHaveCount(0);
+  await expect(filters.locator('[aria-pressed="true"]')).toHaveCount(0);
+  await filters.getByRole("button", { name: "Sepia", exact: true }).click();
+  await expect(filters.getByRole("button", { name: "Sepia", exact: true })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  const sepia = PALETTES.find((p) => p.name === "Sepia");
+  const allowed = new Set(sepia?.rgb.map(([r, g, b]) => `${r},${g},${b}`));
+  await expect
+    .poll(async () => {
+      const shown = await previewPixels(page);
+      const foreign = new Set<string>();
+      for (let i = 0; i < shown.length; i += 4) {
+        const key = `${shown[i]},${shown[i + 1]},${shown[i + 2]}`;
+        if (shown[i + 3] && !allowed.has(key)) foreign.add(key);
+      }
+      return foreign.size;
+    })
+    .toBeLessThanOrEqual(1);
+  await save(page, "filter_fan2026");
+  await expect(page.getByRole("button", { name: "X @filter_fan2026", exact: true })).toBeVisible();
+});
+
 test("the dither toggle changes the preview and the saved sticker round-trips", async ({
   page,
 }) => {

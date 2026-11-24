@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vite-plus/test";
 import { PALETTES, oklabDistanceSq, rgbToOklab, type Palette } from "./palette.ts";
+import { blurredError, boxBlur3 } from "./blur.ts";
 import { PIXEL_COUNT, type Sticker } from "./payload.ts";
 import {
   exactPaletteMatch,
@@ -8,6 +9,7 @@ import {
   quantize,
   rankPalettes,
   resizeTo32,
+  scorePalettes,
   type Rgba,
 } from "./quantize.ts";
 import { FIXTURES, rng } from "./testing/fixtures.ts";
@@ -99,7 +101,7 @@ describe("quantize", () => {
 describe("palette selection", () => {
   test("rankPalettes picks the palette an image was painted with", () => {
     const r = rng(9);
-    for (const id of [0, 2, 9, 20, 31]) {
+    for (const id of [0, 2, 10, 20, 31]) {
       const indices = Uint8Array.from({ length: PIXEL_COUNT }, () => Math.floor(r() * 16));
       const ranked = rankPalettes(paint(id, indices, null));
       expect(ranked[0]?.paletteId).toBe(id);
@@ -338,7 +340,8 @@ describe("rankPalettes details", () => {
     expect(ranked).toHaveLength(32);
     expect(ranked.every((c) => c.transparentIndex === null)).toBe(true);
     expect(ranked.every((c) => c.result.error > 0)).toBe(true);
-    const errors = ranked.map((c) => c.result.error);
+    const natural = ranked.filter((c) => PALETTES[c.paletteId]?.kind === "natural");
+    const errors = natural.map((c) => c.rankError);
     expect(errors).toEqual(errors.toSorted((a, b) => a - b));
   });
 
@@ -352,9 +355,14 @@ describe("rankPalettes details", () => {
     }
   });
 
-  test("equal errors are ordered by palette id", () => {
+  test("equal errors are ordered by palette id, natural palettes first", () => {
     const ranked = rankPalettes(image32(() => [0, 0, 0, 0]));
-    expect(ranked.map((c) => c.paletteId)).toEqual(Array.from({ length: 32 }, (_, i) => i));
+    const ids = Array.from({ length: 32 }, (_, i) => i);
+    const isFilter = (id: number) => PALETTES[id]?.kind === "filter";
+    expect(ranked.map((c) => c.paletteId)).toEqual([
+      ...ids.filter((id) => !isFilter(id)),
+      ...ids.filter(isFilter),
+    ]);
   });
 });
 
@@ -496,5 +504,128 @@ describe("ordered dither", () => {
       });
       expect(got).toEqual(reference);
     }
+  });
+});
+
+describe("blurred ranking criterion", () => {
+  const photoOf = (alpha: (p: number) => number, transparentColor = 0): Rgba => {
+    const r = rng(5);
+    const data = new Uint8ClampedArray(PIXEL_COUNT * 4);
+    for (let p = 0; p < PIXEL_COUNT; p++) {
+      const a = alpha(p);
+      const rgb =
+        a < 128
+          ? [transparentColor, 255 - transparentColor, transparentColor]
+          : [r() * 256, r() * 256, r() * 256];
+      data.set([...rgb, a], p * 4);
+    }
+    return { width: 32, height: 32, data };
+  };
+  const labs = (img: Rgba) =>
+    Array.from({ length: PIXEL_COUNT }, (_, p) =>
+      rgbToOklab([img.data[p * 4] ?? 0, img.data[p * 4 + 1] ?? 0, img.data[p * 4 + 2] ?? 0]),
+    );
+  const everyOpaque = Array.from({ length: PIXEL_COUNT }, () => true);
+
+  test("a flat image has no blurred error against itself", () => {
+    const flat = Array.from({ length: PIXEL_COUNT }, () => rgbToOklab([90, 140, 200]));
+    expect(blurredError(boxBlur3(flat, everyOpaque), flat, everyOpaque)).toBe(0);
+  });
+
+  test("the blur is an edge-clamped 3x3 mean", () => {
+    const lab = Array.from({ length: PIXEL_COUNT }, (_, p): [number, number, number] => [
+      p === 0 ? 9 : 0,
+      0,
+      0,
+    ]);
+    const blurred = boxBlur3(lab, everyOpaque);
+    expect(blurred[0]?.[0]).toBeCloseTo(4, 12);
+    expect(blurred[1]?.[0]).toBeCloseTo((9 * 2) / 9, 12);
+    expect(blurred[33]?.[0]).toBeCloseTo(1, 12);
+    expect(blurred[34]?.[0]).toBe(0);
+  });
+
+  test("matches a brute-force reference for every palette", () => {
+    const img = photoOf(() => 255);
+    const source = labs(img);
+    const at = (lab: readonly (readonly number[])[], x: number, y: number) =>
+      lab[Math.min(31, Math.max(0, y)) * 32 + Math.min(31, Math.max(0, x))] ?? [0, 0, 0];
+    const blur = (lab: readonly (readonly number[])[], x: number, y: number) =>
+      [0, 1, 2].map((c) => {
+        let sum = 0;
+        for (let dy = -1; dy <= 1; dy++)
+          for (let dx = -1; dx <= 1; dx++) sum += at(lab, x + dx, y + dy)[c] ?? 0;
+        return sum / 9;
+      });
+    for (const c of scorePalettes(img)) {
+      const p = PALETTES[c.paletteId] as Palette;
+      const result = Array.from(c.result.indices, (k) => p.oklab[k] ?? [0, 0, 0]);
+      let expected = 0;
+      for (let y = 0; y < 32; y++)
+        for (let x = 0; x < 32; x++) {
+          const a = blur(source, x, y);
+          const b = blur(result, x, y);
+          expected += a.reduce((sum, v, i) => sum + (v - (b[i] ?? 0)) ** 2, 0);
+        }
+      expect(c.rankError).toBeCloseTo(expected, 9);
+    }
+  });
+
+  test("transparent pixels contribute no error and do not bleed into neighbours", () => {
+    const alpha = (p: number) => (((p % 32) + Math.floor(p / 32)) % 3 === 0 ? 0 : 255);
+    const a = scorePalettes(photoOf(alpha, 0));
+    const b = scorePalettes(photoOf(alpha, 200));
+    expect(b.map((c) => c.rankError)).toEqual(a.map((c) => c.rankError));
+    const opaque = Array.from({ length: PIXEL_COUNT }, (_, p) => alpha(p) === 255);
+    const lab = labs(photoOf(alpha));
+    expect(blurredError(boxBlur3(lab, opaque), lab, opaque)).toBe(0);
+  });
+
+  test("ranking is deterministic and equals the score order on every fixture", () => {
+    for (const sticker of Object.values(FIXTURES)) {
+      const img = paint(sticker.paletteId, sticker.pixels, sticker.transparentIndex);
+      const first = rankPalettes(img);
+      expect(rankPalettes(img).map((c) => c.paletteId)).toEqual(first.map((c) => c.paletteId));
+      const natural = scorePalettes(img).filter((c) => PALETTES[c.paletteId]?.kind === "natural");
+      expect(first.slice(0, natural.length).map((c) => c.paletteId)).toEqual(
+        natural.map((c) => c.paletteId),
+      );
+    }
+  });
+});
+
+describe("filter palettes", () => {
+  test("exactly the five monochrome palettes are filters", () => {
+    expect(PALETTES.filter((p) => p.kind === "filter").map((p) => p.name)).toEqual([
+      "Grayscale",
+      "Sepia",
+      "Matcha",
+      "Indigo",
+      "Crimson",
+    ]);
+  });
+
+  test("auto-selection never lands on a filter for photos, and filters are listed last", () => {
+    const r = rng(21);
+    for (let trial = 0; trial < 6; trial++) {
+      const data = new Uint8ClampedArray(PIXEL_COUNT * 4);
+      for (let p = 0; p < PIXEL_COUNT; p++) {
+        const g = (p * 8 + trial * 40) % 256;
+        data.set(trial % 2 ? [g, g, g, 255] : [r() * 256, r() * 256, r() * 256, 255], p * 4);
+      }
+      const ranked = rankPalettes({ width: 32, height: 32, data });
+      expect(PALETTES[ranked[0]?.paletteId ?? 0]?.kind).toBe("natural");
+      const kinds = ranked.map((c) => PALETTES[c.paletteId]?.kind);
+      expect(kinds.lastIndexOf("natural")).toBeLessThan(kinds.indexOf("filter"));
+      expect(ranked).toHaveLength(32);
+    }
+  });
+
+  test("pixel art painted in a filter palette is still matched exactly", () => {
+    const grayscale = PALETTES.find((p) => p.name === "Grayscale") as Palette;
+    const indices = Uint8Array.from({ length: PIXEL_COUNT }, (_, i) => i % 16);
+    const img = paint(grayscale.id, indices, null);
+    expect(exactPaletteMatch(img)?.paletteId).toBe(grayscale.id);
+    expect(PALETTES[rankPalettes(img)[0]?.paletteId ?? 0]?.kind).toBe("natural");
   });
 });
