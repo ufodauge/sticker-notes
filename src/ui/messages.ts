@@ -93,7 +93,7 @@ export const t = {
     installStepsOther: "ブラウザのメニュー →「アプリをインストール」または「ホーム画面に追加」",
     palettes: "パレット",
     paletteSave: { label: (name: string) => `${name} を保存`, tooltip: "保存" },
-    paletteFormat: { png: "PNG(16×1)", gpl: "GIMP パレット(.gpl)" },
+    paletteFormat: { png: "PNG(16x1)", gpl: "GIMP パレット(.gpl)" },
   },
 
   print: {
