@@ -162,13 +162,22 @@ test("jar: reduced motion renders a static pile", async ({ page }) => {
   await expect(page.getByRole("button", { name: "選ぶ" })).toBeVisible();
 });
 
+const jarWidth = (page: Page) =>
+  page.evaluate(() => (window as unknown as Win).__jarProbe?.size().width ?? 0);
+
+async function resizeAndSettle(page: Page, width: number, height: number): Promise<void> {
+  const before = await jarWidth(page);
+  await page.setViewportSize({ width, height });
+  await expect.poll(() => jarWidth(page)).not.toBe(before);
+  await expect(canvasOf(page)).toHaveAttribute("data-state", "settled", { timeout: 30_000 });
+}
+
 test("jar: a resize keeps the pile inside the jar", async ({ page }) => {
   await openJar(page, 30);
   const before = await shownIds(page);
   expect(before).toHaveLength(30);
 
-  await page.setViewportSize({ width: 330, height: 560 });
-  await expect(canvasOf(page)).toHaveAttribute("data-state", "settled", { timeout: 30_000 });
+  await resizeAndSettle(page, 330, 560);
   const inside = async () => {
     const size = await page.evaluate(() => (window as unknown as Win).__jarProbe?.size());
     const blocks = await probeBlocks(page);
@@ -183,8 +192,7 @@ test("jar: a resize keeps the pile inside the jar", async ({ page }) => {
   await inside();
   expect(await shownIds(page)).toEqual(before);
 
-  await page.setViewportSize({ width: 500, height: 900 });
-  await expect(canvasOf(page)).toHaveAttribute("data-state", "settled", { timeout: 30_000 });
+  await resizeAndSettle(page, 500, 900);
   await inside();
   expect(await shownIds(page)).toEqual(before);
 });

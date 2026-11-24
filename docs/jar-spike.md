@@ -1,6 +1,6 @@
 # 瓶とアクリルブロック スパイク
 
-使い捨てのプロトタイプ(コードはブランチ `spike/jar`、`main` には入れていない)。ツールバーの「瓶で見る / シール帳で見る」で切り替える。実装は `src/ui/jar/`(`engine.ts` 物理と描画、`sprite.ts` ブロックの絵、`Jar.tsx`)、配置は `src/core/jar-layout.ts`(純粋、テスト付き)。
+**本実装あり**(このレポートはスパイク時点の記録。下の数値は 300 枚を全部入れた旧版のもので、現行の瓶は 40 枚が既定・最大 120 枚。現行の数値と仕様は `docs/progress.md` と README の「瓶モード」)。ツールバーの「瓶で見る / シール帳で見る」で切り替える。実装は `src/ui/jar/`(`engine.ts` 物理と描画、`sprite.ts` ブロックの絵、`Jar.tsx`)、配置は `src/core/jar-layout.ts`(純粋、テスト付き)。
 
 ![30枚(手作りのスライム)](images/spike-jar-sample.png) ![100枚](images/spike-jar-100.png) ![300枚](images/spike-jar-300.png)
 
