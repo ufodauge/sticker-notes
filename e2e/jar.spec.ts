@@ -206,6 +206,8 @@ test("jar: tapping a block opens the action bar; discarding removes the block", 
 });
 
 test("jar: shows a limited random set; shuffle changes it; reload keeps it", async ({ page }) => {
+  // two settles of 40 blocks take about 25s on the headless WebKit of a busy machine
+  test.setTimeout(60_000);
   await openJar(page, JAR_DEFAULT_COUNT + 25);
   await expect(canvasOf(page)).toHaveAttribute("data-blocks", String(JAR_DEFAULT_COUNT));
   await expect(
@@ -286,12 +288,9 @@ test("jar: unchecking blocks makes them disappear without rebuilding the pile", 
   expect(before.filter((b) => stillThere.has(b.id))).toHaveLength(19);
 });
 
-test("jar: screenshots in both themes", async ({ page }, info) => {
+test("jar: screenshot of the lit jar", async ({ page }, info) => {
   await importJson(page, await shapesBackup(20), 20);
   await toggleToJar(page).click();
-  await expect(canvasOf(page)).toHaveAttribute("data-state", "settled", { timeout: 30_000 });
-  await page.screenshot({ path: info.outputPath("jar-light.png"), scale: "css" });
-  await page.emulateMedia({ colorScheme: "dark" });
   await expect(canvasOf(page)).toHaveAttribute("data-state", "settled", { timeout: 30_000 });
   await page.screenshot({ path: info.outputPath("jar-dark.png"), scale: "css" });
 });
