@@ -212,38 +212,40 @@ function GridOptions({
                 <SnsIcon kind={s.sticker.snsKind} size={16} />{" "}
                 {s.sticker.snsKind === 3 ? s.sticker.snsId : `@${s.sticker.snsId}`}
               </span>
-              <button
-                type="button"
-                className={common.icon}
-                aria-label={t.print.fewer(name)}
-                disabled={n === 0}
-                onClick={() => dispatch({ type: "copies", id: s.id, copies: n - 1 })}
-              >
-                <Minus aria-hidden="true" size={18} strokeWidth={1.5} />
-              </button>
-              <input
-                className={`${common.input} ${styles.count}`}
-                type="number"
-                inputMode="numeric"
-                min={0}
-                max={MAX_COPIES}
-                step={1}
-                value={n}
-                aria-label={t.print.count(name)}
-                onChange={(e) =>
-                  dispatch({ type: "copies", id: s.id, copies: e.currentTarget.valueAsNumber })
-                }
-              />
-              <button
-                type="button"
-                className={common.icon}
-                aria-label={t.print.more(name)}
-                onClick={() =>
-                  dispatch({ type: "copies", id: s.id, copies: Math.min(MAX_COPIES, n + 1) })
-                }
-              >
-                <Plus aria-hidden="true" size={18} strokeWidth={1.5} />
-              </button>
+              <span className={styles.stepper}>
+                <button
+                  type="button"
+                  className={common.icon}
+                  aria-label={t.print.fewer(name)}
+                  disabled={n === 0}
+                  onClick={() => dispatch({ type: "copies", id: s.id, copies: n - 1 })}
+                >
+                  <Minus aria-hidden="true" size={18} strokeWidth={1.5} />
+                </button>
+                <input
+                  className={`${common.input} ${styles.count}`}
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  max={MAX_COPIES}
+                  step={1}
+                  value={n}
+                  aria-label={t.print.count(name)}
+                  onChange={(e) =>
+                    dispatch({ type: "copies", id: s.id, copies: e.currentTarget.valueAsNumber })
+                  }
+                />
+                <button
+                  type="button"
+                  className={common.icon}
+                  aria-label={t.print.more(name)}
+                  onClick={() =>
+                    dispatch({ type: "copies", id: s.id, copies: Math.min(MAX_COPIES, n + 1) })
+                  }
+                >
+                  <Plus aria-hidden="true" size={18} strokeWidth={1.5} />
+                </button>
+              </span>
             </li>
           );
         })}
