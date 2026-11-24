@@ -1,15 +1,7 @@
 import { PIXEL_COUNT, STICKER_SIZE, type Sticker } from "../payload.ts";
+import { mulberry32 } from "../prng.ts";
 
-export function rng(seed: number): () => number {
-  const state = new Uint32Array([seed]);
-  return () => {
-    state[0] = (state[0] ?? 0) + 0x6d2b79f5;
-    const s = state[0] ?? 0;
-    const t1 = Math.imul(s ^ (s >>> 15), s | 1);
-    const t2 = (t1 + Math.imul(t1 ^ (t1 >>> 7), t1 | 61)) ^ t1;
-    return ((t2 ^ (t2 >>> 14)) >>> 0) / 4294967296;
-  };
-}
+export const rng = mulberry32;
 
 const fromRows = (rows: readonly string[], map: Readonly<Record<string, number>>): Uint8Array =>
   Uint8Array.from({ length: PIXEL_COUNT }, (_, i) => {
