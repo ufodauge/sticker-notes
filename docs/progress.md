@@ -37,3 +37,9 @@ WebKit の読み込みの遅さは Windows 版 WebKit 固有の可能性があ�
 
 - 保存中に次のステッカーのリンクを開くと、前の保存が新しいリンクの `#` を消していた(回帰テストあり)
 - Playwright の WebKit で `createImageBitmap` が画像を読めなかった。`<img>` での読み込みにフォールバックする
+
+## パレット評価
+
+- `node scripts/palette-eval.ts <写真フォルダ> <出力フォルダ>` で、写真ごとに自動選択の基準(baseline / blur3 / center)を比べる
+- 出力: summary.csv、choice-histogram.md、palette-similarity.md、contact-sheet-*.png(出力フォルダは `.palette-eval/` など git 管理外に置く)
+- 写真と出力は個人のものなのでコミットしない。JPEG の読み込みは devDependency の sharp(EXIF の向きを反映)

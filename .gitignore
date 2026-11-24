@@ -35,3 +35,6 @@ playwright-report
 
 # Claude agent worktrees
 .claude/worktrees
+
+# Palette evaluation output (derived from personal photos)
+.palette-eval
