@@ -1,11 +1,12 @@
 # Git config-based hooks (Git 2.54+). Enable once per clone:
 #   git config set --local include.path ../.githooks/hooks.gitconfig
+# Git appends the hook's own arguments (for pre-push: remote name and URL); "&& :" swallows them.
 [hook "check"]
-	command = vp check
+	command = vp check && :
 	event = pre-commit
 [hook "verify"]
-	command = vp run verify
+	command = vp run verify && :
 	event = pre-push
 [hook "e2e"]
-	command = vp exec playwright test --workers=4
+	command = vp exec playwright test --workers=4 && :
 	event = pre-push
