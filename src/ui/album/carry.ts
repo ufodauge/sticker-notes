@@ -18,6 +18,8 @@ type Listener = () => void;
 
 const EDGE_PX = 32;
 const EDGE_HOLD_MS = 480;
+// held on, it keeps turning, once each page has finished going over
+const EDGE_REPEAT_MS = 1400;
 
 const state: {
   held: Held | null;
@@ -51,7 +53,7 @@ function watchEdge(x: number): void {
   if (side === 0) return;
   const turn = () => {
     state.turnPage?.(side);
-    state.edge.timer = setTimeout(turn, EDGE_HOLD_MS * 2);
+    state.edge.timer = setTimeout(turn, EDGE_REPEAT_MS);
   };
   state.edge.timer = setTimeout(turn, EDGE_HOLD_MS);
 }

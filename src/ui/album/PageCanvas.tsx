@@ -7,7 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import { applyChange, type Placement } from "../../core/album.ts";
-import { outlinePath } from "../../core/render.ts";
+import { edgeDepth, outlinePath } from "../../core/render.ts";
 import { snsDisplay } from "../../core/sns.ts";
 import { stickerStore, type StoredSticker } from "../../data/sticker-store.ts";
 import { feedback, type Highlight } from "../feedback.ts";
@@ -72,6 +72,33 @@ const NUDGE = 0.01;
 const TAP_SLOP = 6;
 // how far (in sticker sizes) the finger pulls before the sticker comes off the paper
 const PEEL_DISTANCE = 0.6;
+// only this close to its outline (in dots of the 36-dot sticker) can a sticker be lifted
+const EDGE_DOTS = 6;
+
+const depths = new Map<string, ReturnType<typeof edgeDepth>>();
+const depthOf = (s: StoredSticker) => {
+  const known = depths.get(s.id);
+  if (known) return known;
+  const d = edgeDepth(s.sticker);
+  depths.set(s.id, d);
+  return d;
+};
+
+// Whether a point on screen lies on the sticker's edge, where a fingernail can get under it.
+function onEdge(s: StoredSticker, p: Placement, box: Box, at: Pt): boolean {
+  const size = (box.width / 300) * 36 * p.scale;
+  const dx = at.x - (box.left + p.x * box.width);
+  const dy = at.y - (box.top + p.y * box.height);
+  const r = (-p.rotation * Math.PI) / 180;
+  const u = (dx * Math.cos(r) - dy * Math.sin(r)) / size + 0.5;
+  const v = (dx * Math.sin(r) + dy * Math.cos(r)) / size + 0.5;
+  const { size: cells, depth } = depthOf(s);
+  const cx = Math.floor(u * cells);
+  const cy = Math.floor(v * cells);
+  if (cx < 0 || cy < 0 || cx >= cells || cy >= cells) return false;
+  const d = depth[cy * cells + cx] ?? 0;
+  return d > 0 && d <= EDGE_DOTS;
+}
 
 const KEY_CHANGES: Readonly<
   Record<string, (p: Placement) => Parameters<typeof stickerStore.update>[1]>
@@ -113,6 +140,17 @@ type Peel = {
   readonly off: boolean;
 };
 
+// Pressed in the middle, a sticker stays stuck: a tap selects it, a pull only makes it give.
+type Hold = {
+  readonly mode: "hold";
+  readonly placement: Placement;
+  readonly sticker: StoredSticker;
+  readonly pointer: number;
+  readonly from: Pt;
+  readonly grab: HTMLElement;
+  readonly resisted: boolean;
+};
+
 // Two fingers turn and size it where it lies.
 type Pinch = {
   readonly mode: "pinch";
@@ -140,7 +178,7 @@ export function PageCanvas(props: Props) {
   const { dark, placements, stickers, selected, highlight, leaving, onLeft, onSelect, children } =
     props;
   const pageRef = useRef<HTMLDivElement>(null);
-  const hold = useRef<Peel | Pinch | null>(null);
+  const hold = useRef<Peel | Hold | Pinch | null>(null);
   const spin = useRef<Spin | null>(null);
   const frame = useRef(0);
 
@@ -178,13 +216,15 @@ export function PageCanvas(props: Props) {
     if (!box) return;
     const at = { x: e.clientX, y: e.clientY };
     const cur = hold.current;
-    if (cur?.mode === "peel" && cur.placement.id === p.id && !cur.off) {
+    if ((cur?.mode === "peel" || cur?.mode === "hold") && cur.placement.id === p.id) {
+      if (cur.mode === "peel" && cur.off) return;
       clearPeel(cur.grab);
+      cur.grab.removeAttribute("data-stuck");
       const g = begin(p.id, box, p, cur.pointer, cur.from);
       hold.current = {
         mode: "pinch",
         g: addPointer(g, e.pointerId, at, box),
-        els: cur.els,
+        els: movers(p.id),
         scale: p.scale,
       };
       return;
@@ -195,6 +235,18 @@ export function PageCanvas(props: Props) {
     }
     if (cur) return;
     paperSound.wake();
+    if (!onEdge(s, p, box, at)) {
+      hold.current = {
+        mode: "hold",
+        placement: p,
+        sticker: s,
+        pointer: e.pointerId,
+        from: at,
+        grab: e.currentTarget,
+        resisted: false,
+      };
+      return;
+    }
     hold.current = {
       mode: "peel",
       placement: p,
@@ -208,6 +260,14 @@ export function PageCanvas(props: Props) {
     };
   };
 
+  // a mouse over the edge shows the hand that can lift it
+  const onHover = (p: Placement, s: StoredSticker) => (e: PointerEvent<HTMLElement>) => {
+    if (hold.current || e.pointerType !== "mouse" || e.buttons !== 0) return;
+    const box = pageBox();
+    const edge = box !== undefined && onEdge(s, p, box, { x: e.clientX, y: e.clientY });
+    e.currentTarget.toggleAttribute("data-edge", edge);
+  };
+
   const onPointerMove = (e: PointerEvent<HTMLElement>) => {
     const cur = hold.current;
     if (!cur) return;
@@ -218,6 +278,14 @@ export function PageCanvas(props: Props) {
       return;
     }
     if (cur.pointer !== e.pointerId) return;
+    if (cur.mode === "hold") {
+      const far = Math.hypot(e.clientX - cur.from.x, e.clientY - cur.from.y) >= TAP_SLOP;
+      if (far && !cur.resisted) {
+        cur.grab.setAttribute("data-stuck", "");
+        hold.current = { ...cur, resisted: true };
+      }
+      return;
+    }
     if (cur.off) {
       carry.move(e.clientX, e.clientY);
       return;
@@ -305,6 +373,14 @@ export function PageCanvas(props: Props) {
     }
     if (cur.pointer !== e.pointerId) return;
     hold.current = null;
+    if (cur.mode === "hold") {
+      cur.grab.removeAttribute("data-stuck");
+      if (cancelled || cur.resisted) return;
+      pressSticker(cur.sticker.id);
+      onSelect(selected === cur.placement.id ? null : cur.placement.id);
+      void stickerStore.update(cur.placement.id, { front: true });
+      return;
+    }
     if (cur.off) {
       putDown(cur, e.clientX, e.clientY, cancelled);
       return;
@@ -403,7 +479,11 @@ export function PageCanvas(props: Props) {
                 aria-label={snsDisplay(s.sticker.snsKind, s.sticker.snsId)}
                 aria-pressed={selected === p.id}
                 onPointerDown={onPointerDown(p, s)}
-                onPointerMove={onPointerMove}
+                onPointerMove={(e) => {
+                  onHover(p, s)(e);
+                  onPointerMove(e);
+                }}
+                onPointerLeave={(e) => e.currentTarget.removeAttribute("data-edge")}
                 onPointerUp={(e) => finish(e, false)}
                 onPointerCancel={(e) => finish(e, true)}
                 onKeyDown={onKeyDown(p)}

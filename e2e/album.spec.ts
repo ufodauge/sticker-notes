@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { expect, test } from "@playwright/test";
 import { bigBackup } from "./backup-fixture.ts";
-import { receive, savedPositions, settledBox, turnPage } from "./helpers.ts";
+import { edgeOf, receive, savedPositions, settledBox, turnPage } from "./helpers.ts";
 
 const SLIME = "X @sticker_fan2026";
 
@@ -10,11 +10,10 @@ test("drag persists; discard peels off and undo puts it back", async ({ page }) 
   const placed = page.getByRole("button", { name: SLIME, exact: true });
   const before = await settledBox(placed);
   const [saved] = await savedPositions(page);
-  const cx = before.x + before.width / 2;
-  const cy = before.y + before.height / 2;
-  await page.mouse.move(cx, cy);
+  const edge = await edgeOf(placed);
+  await page.mouse.move(edge.x, edge.y);
   await page.mouse.down();
-  await page.mouse.move(cx + 40, cy + 60, { steps: 8 });
+  await page.mouse.move(edge.x + 40, edge.y + 60, { steps: 8 });
   await page.mouse.up();
   // the move is saved in the background; a reload right away would abort that write
   await expect.poll(async () => (await savedPositions(page))[0]?.x).not.toBe(saved?.x);

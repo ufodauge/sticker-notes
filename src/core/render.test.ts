@@ -4,6 +4,7 @@ import {
   CELL_BASE,
   CELL_EMPTY,
   dilate,
+  edgeDepth,
   fillHoles,
   layoutSticker,
   materialMask,
@@ -403,5 +404,26 @@ describe("outlinePath", () => {
       pixels: new Uint8Array(PIXEL_COUNT).fill(slime.transparentIndex ?? 0),
     };
     expect(outlinePath(empty)).toBe("");
+  });
+});
+
+describe("edgeDepth", () => {
+  test("1 on the outline, deeper inside, 0 outside", () => {
+    const slime = FIXTURES.slime as Sticker;
+    const { size, depth } = edgeDepth(slime);
+    const { cells } = layoutSticker(slime);
+    cells.forEach((c, i) => expect(depth[i] === 0).toBe(c === CELL_EMPTY));
+    expect(Math.max(...depth)).toBeGreaterThan(4);
+    expect(depth[0]).toBe(0);
+    expect(size).toBe(36);
+  });
+
+  test("a full square is deepest in its middle", () => {
+    const slime = FIXTURES.slime as Sticker;
+    const full = { ...slime, transparentIndex: null };
+    const { size, depth } = edgeDepth(full);
+    const mid = Math.floor(size / 2);
+    expect(depth[mid * size + mid]).toBe(size / 2);
+    expect(depth[mid * size]).toBe(1);
   });
 });

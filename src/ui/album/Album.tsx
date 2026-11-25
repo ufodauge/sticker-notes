@@ -1,5 +1,6 @@
 import { ImagePlus, Plus, Trash2 } from "lucide-react";
 import {
+  type RefObject,
   useCallback,
   useRef,
   useSyncExternalStore,
@@ -12,6 +13,8 @@ import type { Highlight } from "../feedback.ts";
 import { t } from "../messages.ts";
 import styles from "./Album.module.css";
 import { carry } from "./carry.ts";
+import { startCurl, type Curl } from "./curl.ts";
+import { paintFace, type FaceArt } from "./page-paint.ts";
 import { pagePosition, showPage } from "./page-position.ts";
 import { PageCanvas } from "./PageCanvas.tsx";
 import { paperSound } from "./paper-sound.ts";
@@ -34,15 +37,16 @@ type Face =
 
 const WHEEL_PAGE_MS = 420;
 const DECIDE_PX = 10;
-const COMMIT_SHARE = 0.38;
+// a turn goes through once the corner has been brought this far toward the spine (page widths)
+const COMMIT_SHARE = 0.5;
 const FLICK_PX_PER_MS = 0.6;
-const BEND_PER_SPEED = 9;
-const MAX_BEND_DEG = 10;
+// room above and below the page for a corner lifted past its edge
+const CURL_MARGIN = 0.18;
 
 // A page turn or a slide that follows the finger.
 type Turn =
   | { readonly kind: "undecided" }
-  | { readonly kind: "flip"; readonly leaf: HTMLElement; readonly direction: -1 | 1 }
+  | { readonly kind: "flip"; readonly turning: Turning; readonly direction: -1 | 1 }
   | { readonly kind: "slide"; readonly direction: -1 | 1 }
   | { readonly kind: "none" };
 
@@ -55,6 +59,33 @@ type Track = {
   readonly turn: Turn;
 };
 
+// A leaf on its way over: hidden while its picture curls on the canvas above the book.
+type Turning = {
+  readonly leaf: HTMLElement;
+  readonly curl: Curl;
+  readonly origin: { readonly x: number; readonly y: number };
+};
+
+function facesOf(pages: readonly Page[]): Face[] {
+  return pages.length === 0
+    ? [{ kind: "empty", index: 0 }]
+    : [
+        ...pages.map((page, index) => ({ kind: "page" as const, page, index })),
+        { kind: "new", index: pages.length },
+      ];
+}
+
+function artOf(face: Face | undefined, snap: Ready): FaceArt {
+  if (!face || face.kind === "empty") return { kind: "blank" };
+  if (face.kind === "new") return { kind: "new" };
+  const id = face.page.id;
+  return {
+    kind: "page",
+    placements: snap.placements.filter((p) => p.pageId === id),
+    stickers: new Map(snap.stickers.map((s) => [s.id, s.sticker])),
+  };
+}
+
 function pairs<T>(items: readonly T[]): (readonly [T, T | undefined])[] {
   return Array.from({ length: Math.ceil(items.length / 2) }, (_, k) => [
     items[k * 2] as T,
@@ -64,24 +95,103 @@ function pairs<T>(items: readonly T[]): (readonly [T, T | undefined])[] {
 
 const isWide = (el: HTMLElement) => getComputedStyle(el).getPropertyValue("--wide").trim() === "1";
 
+type CurlRefs = {
+  readonly book: RefObject<HTMLDivElement | null>;
+  readonly canvas: RefObject<HTMLCanvasElement | null>;
+  readonly busy: RefObject<boolean>;
+};
+
+// Lays the leaf's two sides on the canvas and hides the leaf itself; the corner nearest the
+// finger (top or bottom) is the one that lifts.
+function beginCurl(
+  refs: CurlRefs,
+  direction: -1 | 1,
+  atY: number | undefined,
+): Turning | undefined {
+  const el = refs.book.current;
+  const canvas = refs.canvas.current;
+  const current = stickerStore.getSnapshot();
+  if (!el || !canvas || current.status !== "ready") return undefined;
+  const k = direction > 0 ? pagePosition.get().flipped : pagePosition.get().flipped - 1;
+  const leaf = el.querySelector<HTMLElement>(`[data-leaf="${k}"]`);
+  const pair = pairs(facesOf(sortedPages(current.pages)))[k];
+  if (!leaf || !pair) return undefined;
+  const r = el.getBoundingClientRect();
+  const w = r.width / 2;
+  const h = r.height;
+  const margin = h * CURL_MARGIN;
+  const dpr = Math.min(2, devicePixelRatio || 1);
+  canvas.width = Math.round(r.width * dpr);
+  canvas.height = Math.round((h + margin * 2) * dpr);
+  canvas.style.top = `${-margin}px`;
+  canvas.style.height = `${h + margin * 2}px`;
+  const [front, back] = pair;
+  const shown = direction > 0 ? front : back;
+  const hidden = direction > 0 ? back : front;
+  const y = atY === undefined ? h : atY - r.top;
+  const curl = startCurl({
+    canvas,
+    spineX: w,
+    top: margin,
+    w,
+    h,
+    outward: direction,
+    front: paintFace(artOf(shown, current), w, h, dpr, direction > 0 ? "left" : "right"),
+    back: paintFace(artOf(hidden, current), w, h, dpr, direction > 0 ? "right" : "left"),
+    corner: { x: w, y: y < h / 2 ? 0 : h },
+    dpr,
+  });
+  el.setAttribute("data-flipping", "");
+  leaf.setAttribute("data-curling", "");
+  canvas.setAttribute("data-on", "");
+  refs.busy.current = true;
+  return { leaf, curl, origin: { x: r.left, y: r.top - margin } };
+}
+
+// once the book has taken its new place, the real leaf comes back and the picture goes
+function endCurl(refs: CurlRefs, t: Turning): void {
+  requestAnimationFrame(() =>
+    requestAnimationFrame(() => {
+      t.leaf.removeAttribute("data-curling");
+      refs.book.current?.removeAttribute("data-flipping");
+      refs.canvas.current?.removeAttribute("data-on");
+      refs.busy.current = false;
+    }),
+  );
+}
+
+// a turn asked for without a finger (wheel, page track, a sticker held at the edge)
+function turnShown(refs: CurlRefs, direction: -1 | 1, apply: () => void): boolean {
+  if (refs.busy.current) return false;
+  const t = beginCurl(refs, direction, undefined);
+  if (!t) return false;
+  paperSound.flip();
+  t.curl.release(true, () => {
+    apply();
+    endCurl(refs, t);
+  });
+  return true;
+}
+
 export function Album(props: Props) {
   const { dark, snap, selected, highlight, leaving, onSelect, onLeft, onCreate } = props;
   const viewport = useRef<HTMLDivElement | null>(null);
   const book = useRef<HTMLDivElement | null>(null);
   const track = useRef<Track | null>(null);
   const lastWheel = useRef(0);
+  const curlCanvas = useRef<HTMLCanvasElement | null>(null);
+  const busy = useRef(false);
   const pos = useSyncExternalStore(pagePosition.subscribe, pagePosition.get);
   const byId = new Map(snap.stickers.map((s) => [s.id, s]));
   const pages = sortedPages(snap.pages);
-  const faces: Face[] =
-    pages.length === 0
-      ? [{ kind: "empty", index: 0 }]
-      : [
-          ...pages.map((page, index) => ({ kind: "page" as const, page, index })),
-          { kind: "new", index: pages.length },
-        ];
+  const faces = facesOf(pages);
   const leaves = pairs(faces);
-  const count = faces.length;
+  const count = pages.length === 0 ? 1 : pages.length + 1;
+
+  const addPage = async () => {
+    await stickerStore.addPage();
+    showPage(pages.length);
+  };
 
   // the page count and the screen's width decide where steps go; the identity must follow count
   const attach = useCallback(
@@ -93,34 +203,31 @@ export function Album(props: Props) {
       observer.observe(el);
       measure();
       const release = carry.onEdge((d) => pagePosition.step(d));
+      const stopTurning = pagePosition.onTurn((d, apply) =>
+        turnShown({ book, canvas: curlCanvas, busy }, d, apply),
+      );
       return () => {
         observer.disconnect();
         release();
+        stopTurning();
       };
     },
     [count],
   );
 
-  const addPage = async () => {
-    await stickerStore.addPage();
-    showPage(pages.length);
-  };
-
-  const pageWidth = () => (book.current?.getBoundingClientRect().width ?? 600) / 2;
-
-  const decide = (dx: number, wide: boolean): Turn => {
+  const decide = (dx: number, wide: boolean, y: number): Turn => {
     const { flipped, side } = pos;
+    if (busy.current) return { kind: "none" };
     if (dx < 0) {
       if (!wide && side === "left") return { kind: "slide", direction: 1 };
-      const leaf = book.current?.querySelector<HTMLElement>(`[data-leaf="${flipped}"]`);
-      return leaf && flipped < leaves.length
-        ? { kind: "flip", leaf, direction: 1 }
-        : { kind: "none" };
+      if (flipped >= leaves.length) return { kind: "none" };
+      const turning = beginCurl({ book, canvas: curlCanvas, busy }, 1, y);
+      return turning ? { kind: "flip", turning, direction: 1 } : { kind: "none" };
     }
     if (flipped === 0) return { kind: "none" };
     if (!wide && side === "right") return { kind: "slide", direction: -1 };
-    const leaf = book.current?.querySelector<HTMLElement>(`[data-leaf="${flipped - 1}"]`);
-    return leaf ? { kind: "flip", leaf, direction: -1 } : { kind: "none" };
+    const turning = beginCurl({ book, canvas: curlCanvas, busy }, -1, y);
+    return turning ? { kind: "flip", turning, direction: -1 } : { kind: "none" };
   };
 
   const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
@@ -148,25 +255,17 @@ export function Album(props: Props) {
       if (Math.abs(dx) < DECIDE_PX && Math.abs(dy) < DECIDE_PX) return;
       const el = viewport.current;
       const turn: Turn =
-        Math.abs(dy) > Math.abs(dx) || !el ? { kind: "none" } : decide(dx, isWide(el));
+        Math.abs(dy) > Math.abs(dx) || !el ? { kind: "none" } : decide(dx, isWide(el), cur.y0);
       if (turn.kind !== "none") e.currentTarget.setPointerCapture(e.pointerId);
-      if (turn.kind === "flip") {
-        turn.leaf.setAttribute("data-live", "");
-        book.current?.setAttribute("data-flipping", "");
-        paperSound.wake();
-      }
+      if (turn.kind === "flip") paperSound.wake();
       if (turn.kind === "slide") book.current?.setAttribute("data-live", "");
       track.current = { ...cur, turn, last, speed };
       return;
     }
     track.current = { ...cur, last, speed };
     if (cur.turn.kind === "flip") {
-      const { leaf, direction } = cur.turn;
-      const share = Math.min(1, Math.max(0, (-dx * direction) / (pageWidth() * 1.6)));
-      const turned = direction > 0 ? share : 1 - share;
-      const bend = Math.max(-MAX_BEND_DEG, Math.min(MAX_BEND_DEG, speed * BEND_PER_SPEED));
-      leaf.style.setProperty("--live", turned.toFixed(4));
-      leaf.style.setProperty("--bend", `${bend.toFixed(2)}deg`);
+      const { curl, origin } = cur.turn.turning;
+      curl.follow(e.clientX - origin.x, e.clientY - origin.y);
     }
     if (cur.turn.kind === "slide") book.current?.style.setProperty("--drag", `${dx}px`);
   };
@@ -178,21 +277,22 @@ export function Album(props: Props) {
     const turn = cur.turn;
     if (turn.kind !== "flip" && turn.kind !== "slide") return;
     const dx = e.clientX - cur.x0;
-    const far = (-dx * turn.direction) / (pageWidth() * 1.6) > COMMIT_SHARE;
+    const width = (book.current?.getBoundingClientRect().width ?? 600) / 2;
+    const far = (-dx * turn.direction) / width > COMMIT_SHARE;
     const flick = -cur.speed * turn.direction > FLICK_PX_PER_MS;
-    if (turn.kind === "flip") {
-      book.current?.removeAttribute("data-flipping");
-      turn.leaf.removeAttribute("data-live");
-      turn.leaf.style.removeProperty("--live");
-      turn.leaf.style.removeProperty("--bend");
-    } else {
+    const through = far || flick;
+    if (turn.kind === "slide") {
       book.current?.removeAttribute("data-live");
       book.current?.style.removeProperty("--drag");
+      if (through) pagePosition.step(turn.direction);
+      return;
     }
-    if (far || flick) {
-      if (turn.kind === "flip") paperSound.flip();
-      pagePosition.step(turn.direction);
-    }
+    if (through) paperSound.flip();
+    const t = turn.turning;
+    t.curl.release(through, () => {
+      if (through) pagePosition.step(turn.direction, true);
+      endCurl({ book, canvas: curlCanvas, busy }, t);
+    });
   };
 
   const onWheel = (e: WheelEvent<HTMLDivElement>) => {
@@ -329,6 +429,7 @@ export function Album(props: Props) {
             </div>
           );
         })}
+        <canvas ref={curlCanvas} className={styles.curl} aria-hidden="true" />
       </div>
     </div>
   );

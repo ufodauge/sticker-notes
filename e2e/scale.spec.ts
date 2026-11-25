@@ -1,6 +1,7 @@
 /// <reference lib="dom" />
 import { expect, test } from "@playwright/test";
 import { bigBackup } from "./backup-fixture.ts";
+import { edgeOf } from "./helpers.ts";
 
 test("300 stickers: import, 26 pages, drag stays smooth", async ({ page }) => {
   test.setTimeout(60_000);
@@ -32,7 +33,8 @@ test("300 stickers: import, 26 pages, drag stays smooth", async ({ page }) => {
     };
     requestAnimationFrame(tick);
   });
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  const edge = await edgeOf(target);
+  await page.mouse.move(edge.x, edge.y);
   await page.mouse.down();
   await page.mouse.move(box.x + 120, box.y + 160, { steps: 30 });
   await page.mouse.up();

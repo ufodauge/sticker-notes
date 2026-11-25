@@ -82,11 +82,31 @@
   position: absolute;
   inset: 0;
   pointer-events: auto;
+  cursor: pointer;
+}
+
+.grab[data-edge] .touch {
   cursor: grab;
 }
 
-.touch:active {
+.grab[data-edge] .touch:active {
   cursor: grabbing;
+}
+
+/* pulled from the middle, it only gives a little: there is no edge to lift there */
+@media (prefers-reduced-motion: no-preference) {
+  .grab[data-stuck] .art {
+    animation: hold-fast 360ms ease-out;
+  }
+}
+
+@keyframes hold-fast {
+  30% {
+    transform: scale(1.03, 0.97);
+  }
+  60% {
+    transform: scale(0.99, 1.01);
+  }
 }
 
 .defs {

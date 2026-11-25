@@ -12,14 +12,19 @@ const state: {
   moved: boolean;
   faces: number;
   wide: boolean;
+  turner: Turner | null;
   listeners: Set<Listener>;
 } = {
   pos: { flipped: 0, side: "right" },
   moved: false,
   faces: 1,
   wide: false,
+  turner: null,
   listeners: new Set(),
 };
+
+// Turns a leaf on screen, then calls `apply`; false when it cannot (the step applies at once).
+type Turner = (direction: -1 | 1, apply: () => void) => boolean;
 
 const leaves = () => Math.ceil(state.faces / 2);
 
@@ -56,16 +61,30 @@ export const pagePosition = {
     set(state.pos);
   },
 
-  // one step forward or back: turn a leaf, or on a narrow screen slide to the other side
-  step: (direction: -1 | 1): void => {
+  // one step forward or back: turn a leaf (shown turning, unless `shown` says it already was),
+  // or on a narrow screen slide to the other side
+  step: (direction: -1 | 1, shown = false): void => {
     const { flipped, side } = state.pos;
-    if (state.wide) {
-      set({ flipped: flipped + direction, side: direction > 0 ? "left" : "right" });
-    } else if (direction > 0) {
-      set(side === "left" ? { flipped, side: "right" } : { flipped: flipped + 1, side: "left" });
-    } else {
-      set(side === "right" ? { flipped, side: "left" } : { flipped: flipped - 1, side: "right" });
-    }
+    const next: BookPos = state.wide
+      ? { flipped: flipped + direction, side: direction > 0 ? "left" : "right" }
+      : direction > 0
+        ? side === "left"
+          ? { flipped, side: "right" }
+          : { flipped: flipped + 1, side: "left" }
+        : side === "right"
+          ? { flipped, side: "left" }
+          : { flipped: flipped - 1, side: "right" };
+    const turns = next.flipped !== flipped && next.flipped >= 0 && next.flipped <= leaves();
+    if (turns && !shown && state.turner?.(direction, () => set(next))) return;
+    set(next);
+  },
+
+  // the album shows leaves turning; one at a time
+  onTurn: (turner: Turner): (() => void) => {
+    state.turner = turner;
+    return () => {
+      if (state.turner === turner) state.turner = null;
+    };
   },
 
   show: (face: number): void => set(posOf(Math.max(0, Math.min(state.faces - 1, face)))),

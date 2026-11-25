@@ -194,3 +194,44 @@ export function outlinePath(s: Sticker, outline = DEFAULT_OUTLINE): string {
     .map((loop) => `M${loop.map(([x, y]) => `${f(x)} ${f(y)}`).join("L")}Z`)
     .join("");
 }
+
+// How deep each cell of the rendered sticker lies inside its shape, in cells: 1 on the outline,
+// growing toward the middle, 0 outside. A sticker can only be lifted near its edge.
+export function edgeDepth(
+  s: Sticker,
+  outline = DEFAULT_OUTLINE,
+): { size: number; depth: Uint8Array } {
+  const { size, cells } = layoutSticker(s, outline);
+  const depth = new Uint8Array(size * size);
+  const queue: number[] = [];
+  const inside = (i: number) => cells[i] !== CELL_EMPTY;
+  for (let i = 0; i < size * size; i++) {
+    if (!inside(i)) continue;
+    const x = i % size;
+    const y = Math.floor(i / size);
+    const touchesOutside =
+      x === 0 ||
+      y === 0 ||
+      x === size - 1 ||
+      y === size - 1 ||
+      !inside(i - 1) ||
+      !inside(i + 1) ||
+      !inside(i - size) ||
+      !inside(i + size);
+    if (touchesOutside) {
+      depth[i] = 1;
+      queue.push(i);
+    }
+  }
+  for (let head = 0; head < queue.length; head++) {
+    const i = queue[head] ?? 0;
+    const x = i % size;
+    const next = [x > 0 ? i - 1 : -1, x < size - 1 ? i + 1 : -1, i - size, i + size];
+    for (const n of next) {
+      if (n < 0 || n >= size * size || !inside(n) || depth[n] !== 0) continue;
+      depth[n] = (depth[i] ?? 0) + 1;
+      queue.push(n);
+    }
+  }
+  return { size, depth };
+}

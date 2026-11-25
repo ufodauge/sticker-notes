@@ -24,7 +24,7 @@ test("a sticker held at the edge goes over to the next page", async ({ page }) =
     page,
     sticker,
     { x: vw - 8, y: vh / 2 },
-    { holdMs: 1100, drop: { x: vw / 2, y: vh / 2 } },
+    { turnsPage: true, drop: { x: vw / 2, y: vh / 2 } },
   );
 
   await expect(pages.nth(1).getByRole("button", { name: "X @user_0", exact: true })).toBeVisible();

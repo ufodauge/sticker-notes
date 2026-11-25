@@ -59,10 +59,6 @@
   transform-origin: 0 50%;
   transform-style: preserve-3d;
   transform: rotateY(calc(var(--turn) * -180deg));
-  /* a leaf going over keeps its place on top until it has crossed the spine */
-  transition:
-    transform 680ms cubic-bezier(0.3, 0.75, 0.25, 1),
-    z-index 0s linear 300ms;
 }
 
 .leaf[data-turned] {
@@ -70,73 +66,37 @@
 }
 
 /* At rest only the two open pages are there to touch (hit testing between 3D-transformed leaves
-   does not follow z-index); the leaves beside them stay drawn while a turn reveals them. */
+   does not follow z-index); while a page turns, the ones it uncovers are drawn too. */
 .leaf:not([data-near]) {
   visibility: hidden;
-  transition:
-    transform 680ms cubic-bezier(0.3, 0.75, 0.25, 1),
-    z-index 0s linear 300ms,
-    visibility 0s linear 700ms;
-}
-
-.leaf:not([data-shown]) {
-  visibility: hidden;
-  transition: none;
 }
 
 .book[data-flipping] .leaf[data-shown] {
   visibility: visible;
 }
 
-.leaf[data-live] {
-  z-index: 10000 !important;
-  transform: rotateY(calc(var(--live) * -180deg));
-  transition: none;
+/* the leaf being turned is drawn on the canvas, bending, instead */
+.book .leaf[data-curling] {
+  visibility: hidden;
 }
 
-/* the paper gives a little as it goes over: the free edge lags behind the spine */
 .sheet {
   position: absolute;
   inset: 0;
   transform-style: preserve-3d;
-  transform-origin: 0 50%;
 }
 
-.leaf[data-live] .sheet {
-  transform: skewY(var(--bend, 0deg));
-  transition: transform 90ms linear;
+.curl {
+  position: absolute;
+  inset-inline-start: 0;
+  z-index: 20000;
+  inline-size: 100%;
+  pointer-events: none;
+  visibility: hidden;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .book[data-moved] .leaf[data-shown][data-turned] .sheet {
-    animation: give-forward 680ms ease-out;
-  }
-
-  .book[data-moved] .leaf[data-shown]:not([data-turned]) .sheet {
-    animation: give-back 680ms ease-out;
-  }
-
-  .leaf[data-live] .sheet {
-    animation: none !important;
-  }
-}
-
-@keyframes give-forward {
-  30% {
-    transform: skewY(6deg);
-  }
-  65% {
-    transform: skewY(-2deg);
-  }
-}
-
-@keyframes give-back {
-  30% {
-    transform: skewY(-6deg);
-  }
-  65% {
-    transform: skewY(2deg);
-  }
+.curl[data-on] {
+  visibility: visible;
 }
 
 .face {
@@ -150,20 +110,10 @@
   transform: rotateY(180deg);
 }
 
-/* a side lying face down is gone, not just turned away (hit testing ignores backface-visibility);
-   it switches halfway through a turn, when the leaf stands on its edge */
-.face {
-  transition: visibility 0s linear 330ms;
-}
-
+/* a side lying face down is gone, not just turned away (hit testing ignores backface-visibility) */
 .leaf[data-turned] .front,
 .leaf:not([data-turned]) .back {
   visibility: hidden;
-}
-
-.leaf[data-live] .face {
-  visibility: visible;
-  transition: none;
 }
 
 /* the shade of the spine: each page darkens a little toward the fold */
@@ -184,21 +134,6 @@
 .back::after {
   inset-inline-end: 0;
   background: linear-gradient(270deg, rgb(0 0 0 / 0.13), transparent);
-}
-
-/* while a leaf is turning, light runs over it */
-.leaf[data-live] .face::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 99999;
-  pointer-events: none;
-  background: linear-gradient(
-    90deg,
-    rgb(0 0 0 / calc(var(--live) * 0.22)),
-    rgb(255 255 255 / 0.14) 60%,
-    rgb(0 0 0 / calc(var(--live) * 0.18))
-  );
 }
 
 .blank {
@@ -291,7 +226,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .leaf,
   .book {
     transition: none;
   }

@@ -137,17 +137,39 @@ export async function turnPage(page: Page, direction: 1 | -1): Promise<void> {
 
 // Peels a sticker off and carries it to a point, holding it there for `holdMs` (an edge hold
 // turns the page), then lets go at `drop` (or where it is).
+// A point just inside the sticker's outline, where it can be lifted: the first point along its
+// middle row (from the left) that touches the sticker, a few pixels in.
+export async function edgeOf(sticker: Locator): Promise<{ x: number; y: number }> {
+  const b = await settledBox(sticker);
+  const y = b.y + b.height / 2;
+  const x = await sticker.evaluate(
+    (el, [left, right, row]) => {
+      for (let px = left; px < right; px += 1) {
+        const hit = document.elementFromPoint(px, row);
+        if (hit && el.contains(hit)) return px + 3;
+      }
+      return (left + right) / 2;
+    },
+    [b.x, b.x + b.width, y],
+  );
+  return { x, y };
+}
+
 export async function carrySticker(
   page: Page,
   sticker: Locator,
   to: { readonly x: number; readonly y: number },
-  options: { readonly holdMs?: number; readonly drop?: { x: number; y: number } } = {},
+  options: { readonly turnsPage?: boolean; readonly drop?: { x: number; y: number } } = {},
 ): Promise<void> {
-  const b = await settledBox(sticker);
-  await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
+  const from = await edgeOf(sticker);
+  await page.mouse.move(from.x, from.y);
   await page.mouse.down();
   await page.mouse.move(to.x, to.y, { steps: 12 });
-  if (options.holdMs) await page.waitForTimeout(options.holdMs);
+  if (options.turnsPage) {
+    // held at the edge: wait until the first leaf has gone over and the curl is put away
+    await expect(page.locator('[data-leaf="0"][data-turned]')).toHaveCount(1, { timeout: 5000 });
+    await expect(page.locator("[data-curling]")).toHaveCount(0);
+  }
   if (options.drop) await page.mouse.move(options.drop.x, options.drop.y, { steps: 8 });
   await page.mouse.up();
 }

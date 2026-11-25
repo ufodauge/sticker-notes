@@ -1,6 +1,6 @@
 /// <reference lib="dom" />
 import { expect, test, type Page } from "@playwright/test";
-import { carrySticker, receive, savedPositions, settledBox, turnPage } from "./helpers.ts";
+import { carrySticker, edgeOf, receive, savedPositions, settledBox, turnPage } from "./helpers.ts";
 
 const SLIME = "X @sticker_fan2026";
 
@@ -41,7 +41,7 @@ test("a sticker held at the edge turns the page and can be dropped on the +", as
     page,
     sticker,
     { x: vw - 8, y: vh / 2 },
-    { holdMs: 1100, drop: { x: vw / 2, y: vh / 2 } },
+    { turnsPage: true, drop: { x: vw / 2, y: vh / 2 } },
   );
   await expect(page.locator("[data-page]")).toHaveCount(2);
   await expect(
@@ -59,14 +59,31 @@ test("a sticker let go off the paper goes back where it was", async ({ page }) =
   expect((await savedPositions(page))[0]).toEqual(before);
 });
 
+test("a sticker pulled from its middle stays stuck: only its edge lifts", async ({ page }) => {
+  await receive(page, "slime", SLIME);
+  const sticker = page.getByRole("button", { name: SLIME, exact: true });
+  const before = (await savedPositions(page))[0];
+  const b = await settledBox(sticker);
+  await page.mouse.move(b.x + b.width / 2, b.y + b.height * 0.55);
+  await page.mouse.down();
+  await page.mouse.move(b.x + b.width * 2, b.y + b.height * 2, { steps: 10 });
+  await page.mouse.up();
+  await page.waitForTimeout(300);
+  expect((await savedPositions(page))[0]).toEqual(before);
+  await expect(sticker).toBeVisible();
+});
+
 test("a sticker peeled and put down elsewhere on the page stays there", async ({ page }) => {
   await receive(page, "slime", SLIME);
   const sticker = page.getByRole("button", { name: SLIME, exact: true });
   const paper = await page.locator("[data-facing] [data-paper]").first().boundingBox();
   if (!paper) throw new Error("no paper");
+  // it stays where it was gripped: the finger goes to the spot less the grip's offset
+  const b = await settledBox(sticker);
+  const grip = await edgeOf(sticker);
   await carrySticker(page, sticker, {
-    x: paper.x + paper.width * 0.7,
-    y: paper.y + paper.height * 0.8,
+    x: paper.x + paper.width * 0.7 - (b.x + b.width / 2 - grip.x),
+    y: paper.y + paper.height * 0.8 - (b.y + b.height / 2 - grip.y),
   });
   await expect.poll(async () => (await savedPositions(page))[0]?.y ?? 0).toBeCloseTo(0.8, 1);
   expect((await savedPositions(page))[0]?.x).toBeCloseTo(0.7, 1);
