@@ -8,5 +8,5 @@
 	command = vp run verify && :
 	event = pre-push
 [hook "e2e"]
-	command = vp exec playwright test --workers=4 && :
+	command = vp exec playwright test --workers=2 && :
 	event = pre-push
