@@ -73,17 +73,17 @@ export function impactVoice({ surface, speed, side, jitter }: Impact): Voice | n
   const parts = (ratios: readonly number[], base: number, many: number) =>
     ratios.slice(0, many).map((r, i) => base * r * (1 + 0.012 * jitter * (i + 1)));
   if (surface === "block") {
-    const base = lerp(1150, 620, size) * detune * (1 + 0.06 * power);
+    const base = lerp(1500, 850, size) * detune;
     return {
       cls: "clack",
-      gain: 0.14 + 0.5 * loud,
-      freqs: parts([1, 2.42, 4.1], base, power < 0.3 ? 1 : power < 0.65 ? 2 : 3),
+      gain: 0.16 + 0.5 * loud,
+      freqs: parts([1, 1.83], base, power < 0.5 ? 1 : 2),
       wave: "sine",
-      duration: 0.045 + 0.04 * power + 0.015 * size,
-      drop: 0.97,
-      noise: 0.25 + 0.25 * power,
-      noiseSec: 0.002 + 0.002 * power,
-      noiseHz: 1800 + 900 * power,
+      duration: 0.018 + 0.014 * power,
+      drop: 0.9,
+      noise: 0.75 + 0.2 * power,
+      noiseSec: 0.006 + 0.006 * power,
+      noiseHz: 1300 + 700 * power,
     };
   }
   if (surface === "glass") {

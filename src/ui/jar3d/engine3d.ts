@@ -11,6 +11,7 @@ import {
 import {
   JAR3D,
   cameraPosition,
+  gravityFromOrientation,
   jarCollisionPieces,
   outerRadiusAt,
   spawnPose,
@@ -57,6 +58,7 @@ type Kind =
   | { readonly kind: "desk" };
 
 const STEP = 1 / 60;
+const AMBIENT_FRAME_MS = 1000 / 30;
 const SUBSTEPS = 2;
 const CONTACT_SKIN = 0.012;
 const SOFT_CCD = 0.12;
@@ -75,7 +77,6 @@ const TAP_SLOP_PX = 8;
 const TAP_MAX_MS = 600;
 const DRAG_GAIN = 16;
 const DRAG_MAX_SPEED = 16;
-const TILT_RANGE = 0.55;
 const PILE_WINDOW_STEPS = 45;
 const PILE_STILL_MOVE = 0.03;
 const PILE_STILL_TURN = 0.06;
@@ -122,6 +123,7 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
     spawned: 0,
     quality: INITIAL_QUALITY as QualityState,
     loop: { raf: 0, last: 0, acc: 0, calm: 0 },
+    ambient: { raf: 0, last: 0 },
     drag: null as null | {
       id: string | null;
       anchor: THREE.Vector3 | null;
@@ -131,7 +133,7 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
       moved: boolean;
     },
     shakes: [] as { at: number; amp: number }[],
-    tilt: { on: false, gamma: 0, beta: 0 },
+    tilt: { on: false, down: [0, -1, 0] as readonly [number, number, number] },
     yaw: 0,
   };
   canvas.dataset.renderer = "webgl";
@@ -151,6 +153,7 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
     sc.camera.position.set(x, y, z);
     sc.camera.lookAt(...JAR3D.target);
     sc.camera.updateProjectionMatrix();
+    sc.atmosphere.time.value = performance.now() / 1000;
     sc.renderer.render(sc.scene, sc.camera);
   };
 
@@ -160,8 +163,18 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
     const tier = qualityOf(st.quality);
     const cap = import.meta.env.VITE_JAR_PROBE ? 1 : tier.pixelRatioCap;
     sc.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, cap));
+    sc.atmosphere.setPixelRatio(sc.renderer.getPixelRatio());
+    sc.atmosphere.group.visible = st.quality.tier < 2;
     sc.renderer.setSize(st.size.width, st.size.height, false);
-    sc.renderer.shadowMap.enabled = st.quality.tier < 3;
+    const shadows = st.quality.tier < 3;
+    if (sc.spot.castShadow === shadows) return;
+    sc.spot.castShadow = shadows;
+    sc.scene.traverse((o) => {
+      const material = (o as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined;
+      [material].flat().forEach((m) => {
+        if (m) m.needsUpdate = true;
+      });
+    });
   };
 
   const registerCollider = (collider: RAPIER.Collider, kind: Kind) => {
@@ -358,6 +371,9 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
       const r = jar.rotation();
       st.scene.jarGroup.position.set(t.x, t.y, t.z);
       st.scene.jarGroup.quaternion.set(r.x, r.y, r.z, r.w);
+      const upright = new THREE.Vector3(0, 1, 0).applyQuaternion(st.scene.jarGroup.quaternion).y;
+      st.scene.contact.position.set(t.x, st.scene.contact.position.y, t.z);
+      (st.scene.contact.material as THREE.MeshBasicMaterial).opacity = Math.max(0, upright) ** 2;
     }
     st.entries.forEach((e) => {
       const body = e.body;
@@ -380,13 +396,8 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
     const world = st.world;
     if (!world) return;
     const g = JAR3D.gravity;
-    const tx = st.tilt.on ? Math.max(-TILT_RANGE, Math.min(TILT_RANGE, st.tilt.gamma / 70)) : 0;
-    const tz = st.tilt.on ? Math.max(-TILT_RANGE, Math.min(TILT_RANGE, st.tilt.beta / 70)) : 0;
-    world.gravity = {
-      x: g * tx,
-      y: -g * Math.sqrt(Math.max(0.2, 1 - tx * tx - tz * tz)),
-      z: g * tz,
-    };
+    const [x, y, z] = st.tilt.on ? st.tilt.down : [0, -1, 0];
+    world.gravity = { x: g * x, y: g * y, z: g * z };
   };
 
   const wakeAll = () => st.entries.forEach((e) => e.body?.wakeUp());
@@ -605,6 +616,7 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
   const frame = (now: number) => {
     st.loop.raf = 0;
     if (st.disposed) return;
+    if (st.scene) st.scene.renderer.shadowMap.autoUpdate = true;
     const t0 = performance.now();
     runShakes(now);
     spawnNext();
@@ -642,6 +654,7 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
         }).length,
       );
       canvas.dataset.steps = String(st.steps);
+      canvas.dataset.tier = String(st.quality.tier);
       canvas.dataset.queue = String(st.spawnQueue.length);
       canvas.dataset.calm = String(st.pileCalm);
       const jar = st.jar;
@@ -659,11 +672,13 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
     }
     const work = performance.now() - t0;
     const before = st.quality.tier;
-    st.quality = nextQuality(st.quality, {
-      workMs: work,
-      visible: document.visibilityState === "visible",
-      reducedMotion: false,
-    });
+    const pinned = import.meta.env.VITE_JAR_PROBE && location.search.includes("tier=0");
+    if (!pinned)
+      st.quality = nextQuality(st.quality, {
+        workMs: work,
+        visible: document.visibilityState === "visible",
+        reducedMotion: false,
+      });
     if (st.quality.tier !== before) applySize();
     const active =
       anyAwake() ||
@@ -676,7 +691,25 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
     } else {
       st.loop.last = 0;
       canvas.dataset.state = "settled";
+      startAmbient();
     }
+  };
+
+  const ambientFrame = (now: number) => {
+    st.ambient.raf = 0;
+    const sc = st.scene;
+    if (!sc || st.disposed || still || st.loop.raf !== 0 || !sc.atmosphere.group.visible) return;
+    if (document.visibilityState !== "visible") return;
+    if (now - st.ambient.last >= AMBIENT_FRAME_MS) {
+      st.ambient.last = now;
+      sc.renderer.shadowMap.autoUpdate = false;
+      render();
+    }
+    st.ambient.raf = requestAnimationFrame(ambientFrame);
+  };
+
+  const startAmbient = () => {
+    if (st.ambient.raf === 0 && !still) st.ambient.raf = requestAnimationFrame(ambientFrame);
   };
 
   const kick = () => {
@@ -808,8 +841,11 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
   };
 
   const onOrientation = (e: DeviceOrientationEvent) => {
-    st.tilt.gamma = e.gamma ?? 0;
-    st.tilt.beta = Math.max(-40, Math.min(40, (e.beta ?? 0) - 50));
+    st.tilt.down = gravityFromOrientation(
+      e.beta ?? 90,
+      e.gamma ?? 0,
+      screen.orientation?.angle ?? 0,
+    );
     applyGravity();
     wakeAll();
     kick();
@@ -819,7 +855,14 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
   canvas.addEventListener("pointermove", onMove, { signal: abort.signal });
   canvas.addEventListener("pointerup", onUp, { signal: abort.signal });
   canvas.addEventListener("pointercancel", onUp, { signal: abort.signal });
-  document.addEventListener("visibilitychange", () => kick(), { signal: abort.signal });
+  document.addEventListener(
+    "visibilitychange",
+    () => {
+      kick();
+      startAmbient();
+    },
+    { signal: abort.signal },
+  );
 
   const boot = async () => {
     await RAPIER.init();
@@ -882,6 +925,7 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
       st.disposed = true;
       abort.abort();
       cancelAnimationFrame(st.loop.raf);
+      cancelAnimationFrame(st.ambient.raf);
       st.entries.forEach((e) => e.visual.dispose());
       st.entries.clear();
       st.scene?.dispose();

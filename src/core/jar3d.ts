@@ -156,3 +156,19 @@ export function jarCollisionPieces(): readonly Float32Array[] {
   });
   return [Float32Array.from(base), ...walls];
 }
+
+const RAD = Math.PI / 180;
+
+export function gravityFromOrientation(
+  betaDeg: number,
+  gammaDeg: number,
+  screenAngleDeg: number,
+): readonly [number, number, number] {
+  const b = betaDeg * RAD;
+  const g = gammaDeg * RAD;
+  const a = screenAngleDeg * RAD;
+  const dx = Math.sin(g) * Math.cos(b);
+  const dy = -Math.sin(b);
+  const dz = -Math.cos(g) * Math.cos(b);
+  return [dx * Math.cos(a) - dy * Math.sin(a), dx * Math.sin(a) + dy * Math.cos(a), dz];
+}

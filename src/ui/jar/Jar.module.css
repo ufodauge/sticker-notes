@@ -188,3 +188,16 @@
   inline-size: calc(100% + 2 * var(--space-4));
   max-inline-size: none;
 }
+
+/* phones: the jar's tools sit at the bottom, right above the dock, within thumb reach */
+@container (max-width: 640px) {
+  .stage {
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+
+  .tools {
+    order: 2;
+    justify-self: center;
+    margin-block: var(--space-1) 0;
+  }
+}

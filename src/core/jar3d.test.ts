@@ -2,6 +2,7 @@ import { describe, expect, test } from "vite-plus/test";
 import {
   JAR3D,
   cameraPosition,
+  gravityFromOrientation,
   innerProfile,
   jarCollisionPieces,
   outerProfile,
@@ -63,5 +64,34 @@ describe("collision pieces", () => {
     expect(outerRadiusAt(2)).toBeCloseTo(JAR3D.outerRadius);
     expect(outerRadiusAt(JAR3D.height)).toBeCloseTo(JAR3D.neckRadius);
     expect(outerRadiusAt(4.2)).toBeLessThan(JAR3D.outerRadius);
+  });
+});
+
+describe("gravity from the phone", () => {
+  const near = (v: readonly number[], w: readonly number[]) =>
+    v.forEach((x, i) => expect(x).toBeCloseTo(w[i] ?? 0, 5));
+
+  test("held upright, things fall to the bottom of the screen", () => {
+    near(gravityFromOrientation(90, 0, 0), [0, -1, 0]);
+  });
+
+  test("upside down, they fall to the top", () => {
+    near(gravityFromOrientation(-90, 0, 0), [0, 1, 0]);
+  });
+
+  test("lying face up, they fall away from the viewer", () => {
+    near(gravityFromOrientation(0, 0, 0), [0, 0, -1]);
+  });
+
+  test("tipped to the right, they slide right", () => {
+    const [x, y] = gravityFromOrientation(90, 30, 0);
+    expect(y).toBeLessThan(0);
+    expect(x).toBeCloseTo(0, 5);
+    const [sx] = gravityFromOrientation(60, 30, 0);
+    expect(sx).toBeGreaterThan(0);
+  });
+
+  test("a landscape screen turns the direction with it", () => {
+    near(gravityFromOrientation(0, -90, 90), [0, -1, 0]);
   });
 });

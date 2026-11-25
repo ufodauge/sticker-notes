@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { JAR3D, innerProfile, outerProfile, type Profile } from "../../core/jar3d.ts";
 import type { BlockShape } from "../../core/jar-shape.ts";
+import { buildAtmosphere, type Atmosphere } from "./atmosphere.ts";
 import type { Sticker } from "../../core/payload.ts";
 import { renderRgba } from "../../core/render.ts";
 
@@ -102,6 +103,7 @@ export type Scene3d = {
   readonly jarGeometries: readonly THREE.BufferGeometry[];
   readonly jarFront: THREE.Mesh;
   readonly contact: THREE.Mesh;
+  readonly atmosphere: Atmosphere;
   readonly dispose: () => void;
 };
 
@@ -137,6 +139,8 @@ export function buildScene(canvas: HTMLCanvasElement): Scene3d {
   spot.shadow.radius = 9;
   spot.shadow.intensity = 0.6;
   scene.add(spot, spot.target);
+  const atmosphere = buildAtmosphere(spot.position);
+  scene.add(atmosphere.group);
   scene.add(new THREE.HemisphereLight(0x3a4a66, 0x120c08, 0.35));
   const rim = new THREE.DirectionalLight(0x9bbcff, 0.7);
   rim.position.set(-6, 5, -4);
@@ -224,6 +228,7 @@ export function buildScene(canvas: HTMLCanvasElement): Scene3d {
     jarGeometries: [outer, inner],
     jarFront,
     contact,
+    atmosphere,
     dispose,
   };
 }
@@ -295,6 +300,7 @@ export function buildBlock(sticker: Sticker, shape: BlockShape): BlockVisual {
   tint.onBeforeCompile = glassRim(0.9);
   const slab = new THREE.Mesh(geometry, tint);
   slab.renderOrder = 2;
+  slab.castShadow = true;
 
   const artMaterial = new THREE.MeshStandardMaterial({
     map: texture,

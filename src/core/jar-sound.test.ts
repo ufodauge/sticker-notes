@@ -33,7 +33,7 @@ test("harder impacts are louder and richer, up to a ceiling", () => {
     const lens = voices.map((v) => v?.freqs.length ?? 0);
     expect(lens).toEqual(lens.toSorted((a, b) => a - b));
   }
-  expect(hit("block", 0.14)?.freqs).toHaveLength(3);
+  expect(hit("block", 0.14)?.freqs).toHaveLength(2);
   expect(hit("block", 0.031)?.freqs).toHaveLength(1);
 });
 
@@ -44,8 +44,9 @@ test("each surface has its own voice class and register", () => {
   expect([clack?.cls, tonk?.cls, thud?.cls]).toEqual(["clack", "tonk", "thud"]);
   expect(SURFACE_CLASS).toEqual({ block: "clack", glass: "tonk", base: "thud" });
   const lowest = (v: typeof clack) => Math.min(...(v?.freqs ?? [0]));
-  expect(lowest(clack)).toBeGreaterThan(500);
-  expect(lowest(clack)).toBeLessThan(1300);
+  expect(lowest(clack)).toBeGreaterThan(700);
+  expect(lowest(clack)).toBeLessThan(1700);
+  expect(clack?.noise).toBeGreaterThan(0.7);
   expect(lowest(tonk)).toBeGreaterThan(150);
   expect(lowest(tonk)).toBeLessThan(400);
   expect(lowest(tonk)).toBeLessThan(lowest(clack));
