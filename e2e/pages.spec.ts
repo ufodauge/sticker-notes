@@ -99,7 +99,7 @@ for (const width of [320, 1200]) {
     await receive(page, "slime", SLIME);
     await settledBox(page.getByRole("button", { name: SLIME, exact: true }));
     const pos = await onScreen(page, SLIME);
-    expect(pos.size).toBeCloseTo((36 * 2) / 300, 3);
+    expect(pos.size).toBeCloseTo((36 * 2) / 600, 3);
   });
 }
 
@@ -123,8 +123,9 @@ test("the album print matches the screen: same size and place on the page", asyn
     const y = Number(m?.[2]);
     return { size: size / fw, cx: (x + size / 2 - fx) / fw, cy: (y + size / 2 - fy) / fh };
   });
-  expect(printed.size).toBeCloseTo(screen.size, 3);
-  expect(printed.cx).toBeCloseTo(screen.cx, 2);
+  // the first sheet is the left half of the spread
+  expect(printed.size / 2).toBeCloseTo(screen.size, 3);
+  expect(printed.cx / 2).toBeCloseTo(screen.cx, 2);
   expect(printed.cy).toBeCloseTo(screen.cy, 2);
 });
 

@@ -1,5 +1,5 @@
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
-import { nextPageOrder, type Page, type Placement } from "../core/album.ts";
+import { nextPageOrder, spreadsFromPages, type Page, type Placement } from "../core/album.ts";
 import type { BackupSticker, MergePlan, StickerOrigin } from "../core/backup.ts";
 
 export type { StickerOrigin };
@@ -24,12 +24,17 @@ interface StickerDb extends DBSchema {
 export type Db = IDBPDatabase<StickerDb>;
 
 const DB_NAME = "sticker-notes";
-const DB_VERSION = 1;
+// 2: pages became spreads (every two old pages are merged into one)
+const DB_VERSION = 2;
 const ALBUM = ["stickers", "pages", "placements"] as const;
 
 export function openStickerDb(): Promise<Db> {
   return openDB<StickerDb>(DB_NAME, DB_VERSION, {
-    upgrade(db) {
+    async upgrade(db, oldVersion, _newVersion, tx) {
+      if (oldVersion >= 1) {
+        await mergeIntoSpreads(tx);
+        return;
+      }
       const stickers = db.createObjectStore("stickers", { keyPath: "id" });
       stickers.createIndex("byAdded", "addedSeq");
       const pages = db.createObjectStore("pages", { keyPath: "id" });
@@ -40,6 +45,22 @@ export function openStickerDb(): Promise<Db> {
       db.createObjectStore("settings", { keyPath: "key" });
     },
   });
+}
+
+type UpgradeTx = Parameters<
+  NonNullable<NonNullable<Parameters<typeof openDB<StickerDb>>[2]>["upgrade"]>
+>[3];
+
+async function mergeIntoSpreads(tx: UpgradeTx): Promise<void> {
+  const pagesStore = tx.objectStore("pages");
+  const placementsStore = tx.objectStore("placements");
+  const [pages, placements] = await Promise.all([pagesStore.getAll(), placementsStore.getAll()]);
+  const merged = spreadsFromPages(pages, placements);
+  await Promise.all([pagesStore.clear(), placementsStore.clear()]);
+  await Promise.all([
+    ...merged.pages.map((p) => pagesStore.put(p)),
+    ...merged.placements.map((p) => placementsStore.put(p)),
+  ]);
 }
 
 const newId = () => crypto.randomUUID();

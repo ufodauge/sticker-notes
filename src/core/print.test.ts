@@ -118,26 +118,31 @@ describe("layoutAlbum", () => {
     ...over,
   });
 
-  test("one sheet per non-empty page, stickers where they are on screen", () => {
+  test("each spread prints as its two halves; a sticker over the spine is on both", () => {
     const pages = [
       { id: "b", order: 1 },
       { id: "a", order: 0 },
       { id: "empty", order: 2 },
     ];
     const sheets = layoutAlbum(pages, [
-      p("1", "a", { z: 2, rotation: 30 }),
+      p("1", "a", { x: 0.25, z: 2, rotation: 30 }),
       p("2", "a", { x: 0, y: 0, z: 1, scale: 1 }),
-      p("3", "b", {}),
+      p("3", "b", { x: 0.5 }),
     ]);
-    expect(sheets).toHaveLength(2);
+    // a: left half only; b: its sticker straddles the spine, so both halves
+    expect(sheets).toHaveLength(3);
+    expect(sheets.every((s) => s.page)).toBe(true);
     const box = albumPageBox();
     expect(box.w).toBe(200);
     const [low, high] = sheets[0]?.items ?? [];
-    expect(low?.key).toBe("2");
-    expect(high).toMatchObject({ key: "1", rotation: 30 });
+    expect(low?.key).toBe("2-0");
+    expect(high).toMatchObject({ key: "1-0", rotation: 30 });
     expect(high?.size).toBeCloseTo(48);
     expect((high?.x ?? 0) + (high?.size ?? 0) / 2).toBeCloseTo(box.x + box.w / 2);
     expect(low?.x).toBeCloseTo(box.x - (low?.size ?? 0) / 2);
+    const [left, right] = [sheets[1]?.items[0], sheets[2]?.items[0]];
+    expect((left?.x ?? 0) + (left?.size ?? 0) / 2).toBeCloseTo(box.x + box.w);
+    expect((right?.x ?? 0) + (right?.size ?? 0) / 2).toBeCloseTo(box.x);
   });
 });
 
@@ -310,8 +315,8 @@ describe("album page box and layout details", () => {
     };
     const [sheet] = layoutAlbum([{ id: "a", order: 0 }], [placement]);
     const item = sheet?.items[0];
-    expect(item).toMatchObject({ key: "p", size: 72, dotMm: 2, rotation: -10 });
-    expect(item?.x).toBeCloseTo(5 + 0.25 * 200 - 36, 3);
+    expect(item).toMatchObject({ key: "p-0", size: 72, dotMm: 2, rotation: -10 });
+    expect(item?.x).toBeCloseTo(5 + 0.5 * 200 - 36, 3);
     expect(item?.y).toBeCloseTo(15.167 + 0.75 * 266.667 - 36, 2);
   });
 
@@ -320,7 +325,7 @@ describe("album page box and layout details", () => {
       id,
       pageId,
       stickerId: "0".repeat(32),
-      x: 0.5,
+      x: 0.25,
       y: 0.5,
       scale: 1,
       rotation: 0,
@@ -334,7 +339,7 @@ describe("album page box and layout details", () => {
       ],
       [mk("1", "z"), mk("2", "a")],
     );
-    expect(sheets.map((s) => s.items[0]?.key)).toEqual(["2", "1"]);
+    expect(sheets.map((s) => s.items[0]?.key)).toEqual(["2-0", "1-0"]);
   });
 });
 

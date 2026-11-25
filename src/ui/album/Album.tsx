@@ -30,10 +30,17 @@ type Props = {
   readonly onCreate: () => void;
 };
 
-type Face =
+// A page of the album is a spread; a side of a leaf carries one half of a spread.
+type Spread =
   | { readonly kind: "page"; readonly page: Page; readonly index: number }
   | { readonly kind: "new"; readonly index: number }
   | { readonly kind: "empty"; readonly index: number };
+
+type Side = { readonly spread: Spread; readonly half: 0 | 1 };
+
+// Leaf k carries the right half of spread k on its front and the left half of the next spread
+// on its back; the left half of the first spread lies on the inside of the cover.
+type Leaf = { readonly front: Side; readonly back: Side | undefined };
 
 const WHEEL_PAGE_MS = 420;
 const DECIDE_PX = 10;
@@ -71,7 +78,7 @@ type Turning = {
   readonly width: number;
 };
 
-function facesOf(pages: readonly Page[]): Face[] {
+function spreadsOf(pages: readonly Page[]): Spread[] {
   return pages.length === 0
     ? [{ kind: "empty", index: 0 }]
     : [
@@ -80,22 +87,23 @@ function facesOf(pages: readonly Page[]): Face[] {
       ];
 }
 
-function artOf(face: Face | undefined, snap: Ready): FaceArt {
-  if (!face || face.kind === "empty") return { kind: "blank" };
-  if (face.kind === "new") return { kind: "new" };
-  const id = face.page.id;
-  return {
-    kind: "page",
-    placements: snap.placements.filter((p) => p.pageId === id),
-    stickers: new Map(snap.stickers.map((s) => [s.id, s.sticker])),
-  };
+function leavesOf(spreads: readonly Spread[]): Leaf[] {
+  return spreads.map((spread, k) => {
+    const next = spreads[k + 1];
+    return { front: { spread, half: 1 }, back: next ? { spread: next, half: 0 } : undefined };
+  });
 }
 
-function pairs<T>(items: readonly T[]): (readonly [T, T | undefined])[] {
-  return Array.from({ length: Math.ceil(items.length / 2) }, (_, k) => [
-    items[k * 2] as T,
-    items[k * 2 + 1],
-  ]);
+function artOf(side: Side | undefined, snap: Ready): FaceArt {
+  if (!side || side.spread.kind === "empty") return { kind: "blank" };
+  if (side.spread.kind === "new") return { kind: "new" };
+  const id = side.spread.page.id;
+  return {
+    kind: "page",
+    half: side.half,
+    placements: snap.placements.filter((p) => p.pageId === id),
+    stickers: new Map(snap.stickers.map((st) => [st.id, st.sticker])),
+  };
 }
 
 const isWide = (el: HTMLElement) => getComputedStyle(el).getPropertyValue("--wide").trim() === "1";
@@ -122,7 +130,7 @@ function beginCurl(
   if (!el || !canvas || current.status !== "ready") return undefined;
   const k = direction > 0 ? pagePosition.get().flipped : pagePosition.get().flipped - 1;
   const leaf = el.querySelector<HTMLElement>(`[data-leaf="${k}"]`);
-  const pair = pairs(facesOf(sortedPages(current.pages)))[k];
+  const pair = leavesOf(spreadsOf(sortedPages(current.pages)))[k];
   if (!leaf || !pair) return undefined;
   const r = el.getBoundingClientRect();
   const w = r.width / 2;
@@ -138,9 +146,8 @@ function beginCurl(
   canvas.height = Math.round((h + margin * 2) * dpr);
   canvas.style.top = `${-margin}px`;
   canvas.style.height = `${h + margin * 2}px`;
-  const [front, back] = pair;
-  const shown = direction > 0 ? front : back;
-  const hidden = direction > 0 ? back : front;
+  const shown = direction > 0 ? pair.front : pair.back;
+  const hidden = direction > 0 ? pair.back : pair.front;
   const curl = startCurl({
     canvas,
     spineX: w,
@@ -206,13 +213,14 @@ export function Album(props: Props) {
   const pos = useSyncExternalStore(pagePosition.subscribe, pagePosition.get);
   const byId = new Map(snap.stickers.map((s) => [s.id, s]));
   const pages = sortedPages(snap.pages);
-  const faces = facesOf(pages);
-  const leaves = pairs(faces);
-  const count = pages.length === 0 ? 1 : pages.length + 1;
+  const spreads = spreadsOf(pages);
+  const leaves = leavesOf(spreads);
+  // the halves there are, two to a spread (the "+" spread at the end included)
+  const count = (pages.length === 0 ? 1 : pages.length + 1) * 2;
 
   const addPage = async () => {
     await stickerStore.addPage();
-    showPage(pages.length);
+    showPage(pages.length * 2);
   };
 
   // the page count and the screen's width decide where steps go; the identity must follow count
@@ -242,7 +250,7 @@ export function Album(props: Props) {
     if (busy.current) return { kind: "none" };
     if (dx < 0) {
       if (!wide && side === "left") return { kind: "slide", direction: 1 };
-      if (flipped >= leaves.length) return { kind: "none" };
+      if (flipped >= leaves.length - 1) return { kind: "none" };
       const turning = beginCurl({ book, canvas: curlCanvas, busy }, dark, 1, at);
       return turning ? { kind: "flip", turning, direction: 1 } : { kind: "none" };
     }
@@ -341,16 +349,20 @@ export function Album(props: Props) {
     pagePosition.step(delta > 0 ? 1 : -1);
   };
 
-  // `facing`: this side of the leaf looks up at the reader (the other one lies face down)
-  const face = (f: Face | undefined, back: boolean, facing: boolean) => {
+  // One half of a spread, on one side of a leaf. The spread is drawn whole, and the side shows
+  // its half of it, so a sticker over the spine is on both. `facing`: this side looks up at the
+  // reader (the other lies face down).
+  const side = (sd: Side | undefined, back: boolean, facing: boolean) => {
     const cls = `${styles.face} ${back ? styles.back : styles.front}`;
-    if (!f) return <div className={`${cls} ${styles.blank}`} />;
-    if (f.kind === "new") {
+    if (!sd) return <div className={`${cls} ${styles.blank}`} />;
+    const { spread, half } = sd;
+    const face = spread.index * 2 + half;
+    if (spread.kind === "new") {
       return (
         <section
           className={cls}
           data-new-page=""
-          data-face={f.index}
+          data-face={face}
           data-facing={facing || undefined}
         >
           <button
@@ -358,6 +370,8 @@ export function Album(props: Props) {
             className={styles.newPage}
             aria-label={t.album.addPage}
             title={t.album.addPage}
+            aria-hidden={half === 1 || undefined}
+            tabIndex={half === 1 ? -1 : undefined}
             onClick={() => void addPage()}
           >
             <Plus aria-hidden="true" size={32} strokeWidth={1.25} />
@@ -365,67 +379,83 @@ export function Album(props: Props) {
         </section>
       );
     }
-    if (f.kind === "empty") {
+    if (spread.kind === "empty") {
       const first = slotCenter(0);
       return (
-        <section className={cls} data-page="" data-face={0} data-facing={facing || undefined}>
-          <PageCanvas
-            dark={dark}
-            pageId=""
-            placements={[]}
-            stickers={byId}
-            selected={null}
-            highlight={null}
-            leaving={null}
-            onLeft={onLeft}
-            onSelect={onSelect}
-          >
-            <button
-              type="button"
-              className={styles.slot}
-              style={{ left: `${first.x * 100}%`, top: `${first.y * 100}%` }}
-              aria-label={t.album.createFirst}
-              onClick={onCreate}
+        <section
+          className={cls}
+          data-page={half === 0 ? "" : undefined}
+          data-spread=""
+          data-face={face}
+          data-facing={facing || undefined}
+        >
+          <div className={styles.half} data-half={half}>
+            <PageCanvas
+              dark={dark}
+              half={half}
+              pageId=""
+              placements={[]}
+              stickers={byId}
+              selected={null}
+              highlight={null}
+              leaving={null}
+              onLeft={onLeft}
+              onSelect={onSelect}
             >
-              <ImagePlus aria-hidden="true" size={28} strokeWidth={1.25} />
-            </button>
-          </PageCanvas>
+              {half === 0 && (
+                <button
+                  type="button"
+                  className={styles.slot}
+                  style={{ left: `${first.x * 100}%`, top: `${first.y * 100}%` }}
+                  aria-label={t.album.createFirst}
+                  onClick={onCreate}
+                >
+                  <ImagePlus aria-hidden="true" size={28} strokeWidth={1.25} />
+                </button>
+              )}
+            </PageCanvas>
+          </div>
         </section>
       );
     }
-    const onPage = snap.placements.filter((p) => p.pageId === f.page.id);
+    const id = spread.page.id;
+    const onPage = snap.placements.filter((p) => p.pageId === id);
     return (
       <section
-        key={f.page.id}
+        key={`${id}-${half}`}
         className={cls}
-        data-page={f.page.id}
-        data-face={f.index}
+        data-page={half === 0 ? id : undefined}
+        data-spread={id}
+        data-face={face}
         data-facing={facing || undefined}
-        aria-label={t.album.pageLabel(f.index + 1)}
+        aria-label={half === 0 ? t.album.pageLabel(spread.index + 1) : undefined}
       >
-        <PageCanvas
-          dark={dark}
-          pageId={f.page.id}
-          placements={onPage}
-          stickers={byId}
-          selected={selected}
-          highlight={highlight}
-          leaving={leaving}
-          onLeft={onLeft}
-          onSelect={onSelect}
-        >
-          {onPage.length === 0 && pages.length > 1 && (
-            <button
-              type="button"
-              className={styles.removePage}
-              aria-label={t.album.removePage.label(f.index + 1)}
-              title={t.album.removePage.tooltip}
-              onClick={() => void stickerStore.deletePage(f.page.id)}
-            >
-              <Trash2 aria-hidden="true" size={18} strokeWidth={1.5} />
-            </button>
-          )}
-        </PageCanvas>
+        <div className={styles.half} data-half={half}>
+          <PageCanvas
+            dark={dark}
+            half={half}
+            pageId={id}
+            placements={onPage}
+            stickers={byId}
+            selected={selected}
+            highlight={highlight}
+            leaving={leaving}
+            onLeft={onLeft}
+            onSelect={onSelect}
+          >
+            {half === 0 && onPage.length === 0 && pages.length > 1 && (
+              <button
+                type="button"
+                className={styles.removePage}
+                aria-label={t.album.removePage.label(spread.index + 1)}
+                title={t.album.removePage.tooltip}
+                onClick={() => void stickerStore.deletePage(id)}
+              >
+                <Trash2 aria-hidden="true" size={18} strokeWidth={1.5} />
+              </button>
+            )}
+          </PageCanvas>
+        </div>
       </section>
     );
   };
@@ -445,9 +475,22 @@ export function Album(props: Props) {
         ref={book}
         className={styles.book}
         data-side={pos.side}
+        data-open={pos.flipped}
         data-moved={pagePosition.moved() || undefined}
       >
-        {leaves.map(([front, back], k) => {
+        <div
+          className={styles.leaf}
+          style={{ zIndex: 0 }}
+          data-leaf="cover"
+          data-turned=""
+          data-shown={pos.flipped <= 1 || undefined}
+          data-near={pos.flipped === 0 || undefined}
+        >
+          <div className={styles.sheet}>
+            {side(spreads[0] && { spread: spreads[0], half: 0 }, true, true)}
+          </div>
+        </div>
+        {leaves.map(({ front, back }, k) => {
           const turned = k < pos.flipped;
           const shown = k >= pos.flipped - 2 && k <= pos.flipped + 1;
           const near = k === pos.flipped - 1 || k === pos.flipped;
@@ -462,8 +505,8 @@ export function Album(props: Props) {
               style={{ zIndex: turned ? k + 1 : leaves.length * 2 - k }}
             >
               <div className={styles.sheet}>
-                {face(front, false, !turned)}
-                {face(back, true, turned)}
+                {side(front, false, !turned)}
+                {side(back, true, turned)}
               </div>
             </div>
           );

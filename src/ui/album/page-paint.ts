@@ -8,6 +8,8 @@ import { renderRgba } from "../../core/render.ts";
 export type FaceArt =
   | {
       readonly kind: "page";
+      // which half of the spread this side shows
+      readonly half: 0 | 1;
       readonly placements: readonly Placement[];
       readonly stickers: ReadonlyMap<string, Sticker>;
     }
@@ -112,7 +114,7 @@ export function paintFace(
       if (!s) return;
       const size = (w / 300) * 36 * p.scale;
       ctx.save();
-      ctx.translate(p.x * w, p.y * h);
+      ctx.translate((p.x * 2 - face.half) * w, p.y * h);
       ctx.rotate((p.rotation * Math.PI) / 180);
       ctx.shadowColor = "rgb(0 0 0 / 0.25)";
       ctx.shadowBlur = 1.5;

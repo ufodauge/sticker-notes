@@ -121,34 +121,41 @@ export function SheetSvg({
           strokeWidth={0.4}
         />
       )}
-      {sheet.items.map((item) =>
-        item.kind === "qr" ? (
-          <use
-            key={item.key}
-            href={`#${prefix}q-${item.stickerId}`}
-            x={item.x}
-            y={item.y}
-            width={item.size}
-            height={item.size}
-          />
-        ) : (
-          <g
-            key={item.key}
-            transform={`translate(${item.x} ${item.y}) rotate(${item.rotation} ${item.size / 2} ${item.size / 2})`}
-          >
-            <use href={`#${prefix}a-${item.stickerId}`} width={item.size} height={item.size} />
-            {cutLine && (
-              <use
-                href={`#${prefix}c-${item.stickerId}`}
-                width={item.size}
-                height={item.size}
-                // stroke width is in the symbol's dot units: keep it CUT_STROKE_MM on paper
-                strokeWidth={CUT_STROKE_MM / item.dotMm}
-              />
-            )}
-          </g>
-        ),
+      {sheet.page && (
+        <clipPath id={`${prefix}page`}>
+          <rect x={page.x} y={page.y} width={page.w} height={page.h} />
+        </clipPath>
       )}
+      <g clipPath={sheet.page ? `url(#${prefix}page)` : undefined}>
+        {sheet.items.map((item) =>
+          item.kind === "qr" ? (
+            <use
+              key={item.key}
+              href={`#${prefix}q-${item.stickerId}`}
+              x={item.x}
+              y={item.y}
+              width={item.size}
+              height={item.size}
+            />
+          ) : (
+            <g
+              key={item.key}
+              transform={`translate(${item.x} ${item.y}) rotate(${item.rotation} ${item.size / 2} ${item.size / 2})`}
+            >
+              <use href={`#${prefix}a-${item.stickerId}`} width={item.size} height={item.size} />
+              {cutLine && (
+                <use
+                  href={`#${prefix}c-${item.stickerId}`}
+                  width={item.size}
+                  height={item.size}
+                  // stroke width is in the symbol's dot units: keep it CUT_STROKE_MM on paper
+                  strokeWidth={CUT_STROKE_MM / item.dotMm}
+                />
+              )}
+            </g>
+          ),
+        )}
+      </g>
     </svg>
   );
 }

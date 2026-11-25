@@ -1,9 +1,16 @@
 import * as v from "valibot";
-import { PageSchema, PlacementSchema, type Page, type Placement } from "./album.ts";
+import {
+  PageSchema,
+  PlacementSchema,
+  spreadsFromPages,
+  type Page,
+  type Placement,
+} from "./album.ts";
 import { decodeBody, stickerIdOf } from "./payload.ts";
 
 const BACKUP_FORMAT = "sticker-notes-backup";
-const BACKUP_VERSION = 1;
+// 2: a page is a spread (version 1 files had single pages, read as pairs)
+const BACKUP_VERSION = 2;
 const MAX_BACKUP_BYTES = 20 * 1024 * 1024;
 
 const StickerOriginSchema = v.picklist(["mine", "received"]);
@@ -130,7 +137,9 @@ export async function parseBackup(text: string): Promise<ParseResult> {
     stickers.length +
     (file.pages.length - pages.length) +
     (file.placements.length - placements.length);
-  return { ok: true, data: { stickers, pages, placements }, skipped };
+  const album =
+    header.output.version < 2 ? spreadsFromPages(pages, placements) : { pages, placements };
+  return { ok: true, data: { stickers, ...album }, skipped };
 }
 
 export type MergePlan = {

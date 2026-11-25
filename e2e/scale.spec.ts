@@ -20,7 +20,7 @@ test("300 stickers: import, 26 pages, drag stays smooth", async ({ page }) => {
   const target = page.getByRole("button", { name: "X @user_0", exact: true });
   await expect(target).toBeVisible();
   const pageMs = Date.now() - t0;
-  await expect(page.locator("[data-page]")).toHaveCount(1 + 240 / 12);
+  await expect(page.locator("[data-page]")).toHaveCount(1 + 240 / 24);
 
   const box = await target.boundingBox();
   if (!box) throw new Error("no box");

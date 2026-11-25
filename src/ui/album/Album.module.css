@@ -76,7 +76,7 @@
 }
 
 /* the leaf being turned is drawn on the canvas, bending, instead */
-.book .leaf[data-curling] {
+.book[data-flipping] .leaf[data-curling] {
   visibility: hidden;
 }
 
@@ -102,12 +102,28 @@
 .face {
   position: absolute;
   inset: 0;
+  overflow: hidden;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
 }
 
 .back {
   transform: rotateY(180deg);
+}
+
+/* the whole spread, twice the side's width, shifted so the side shows its own half */
+.half {
+  position: absolute;
+  inset-block: 0;
+  inline-size: 200%;
+}
+
+.half[data-half="0"] {
+  inset-inline-start: 0;
+}
+
+.half[data-half="1"] {
+  inset-inline-start: -100%;
 }
 
 /* a side lying face down is gone, not just turned away (hit testing ignores backface-visibility) */
@@ -208,7 +224,7 @@
 .removePage {
   position: absolute;
   inset-block-start: var(--space-2);
-  inset-inline-end: var(--space-2);
+  inset-inline-start: var(--space-2);
   z-index: 1;
   display: grid;
   place-items: center;

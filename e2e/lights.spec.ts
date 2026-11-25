@@ -55,8 +55,9 @@ test("lights out: the page goes dark and only the glow sticker rises above it", 
   await expect(swtch).toHaveAttribute("aria-pressed", "false");
   await swtch.click();
   await expect(swtch).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator("[data-paper][data-dark]")).toHaveCount(1);
-  await expect(page.locator("[data-glow]")).toHaveCount(1);
+  // the spread is drawn on both of its halves
+  await expect(page.locator("[data-paper][data-dark]")).toHaveCount(2);
+  await expect(page.locator("[data-glow]")).toHaveCount(2);
   await expect(
     page.locator("[data-glow]").getByRole("button", { name: "X @glow_one", exact: true }),
   ).toBeVisible();

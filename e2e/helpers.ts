@@ -122,17 +122,24 @@ export function savedPositions(page: Page): Promise<{ x: number; y: number }[]> 
   });
 }
 
-// Turns the notebook one step by dragging across the strip above the pages.
+const openSpread = (page: Page) => page.locator("[data-open]").getAttribute("data-open");
+
+// Opens the next (or previous) spread by dragging across the strip above the pages: on a narrow
+// screen the first drag may only slide to the other half of the spread, so it drags again.
 export async function turnPage(page: Page, direction: 1 | -1): Promise<void> {
   const v = await page.locator("[data-album]").boundingBox();
   if (!v) throw new Error("no album");
+  const before = await openSpread(page);
   const y = v.y + 6;
   const [from, to] = direction > 0 ? [0.85, 0.1] : [0.1, 0.85];
-  await page.mouse.move(v.x + v.width * from, y);
-  await page.mouse.down();
-  await page.mouse.move(v.x + v.width * to, y, { steps: 10 });
-  await page.mouse.up();
-  await page.waitForTimeout(800);
+  for (let tries = 0; tries < 2 && (await openSpread(page)) === before; tries++) {
+    await page.mouse.move(v.x + v.width * from, y);
+    await page.mouse.down();
+    await page.mouse.move(v.x + v.width * to, y, { steps: 10 });
+    await page.mouse.up();
+    await page.waitForTimeout(800);
+  }
+  await expect(page.locator("[data-curling]")).toHaveCount(0);
 }
 
 // Peels a sticker off and carries it to a point, holding it there for `holdMs` (an edge hold

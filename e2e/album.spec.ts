@@ -34,15 +34,15 @@ test("drag persists; discard peels off and undo puts it back", async ({ page }) 
   await expect(page.getByRole("button", { name: SLIME, exact: true })).toBeVisible();
 });
 
-test("a full page adds the next page of the notebook", async ({ page }) => {
+test("a full spread adds the next spread of the notebook", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "メニュー" }).click();
   await page.getByLabel("読み込む").setInputFiles({
     name: "b.json",
     mimeType: "application/json",
-    buffer: Buffer.from(await bigBackup(13, 0)),
+    buffer: Buffer.from(await bigBackup(25, 0)),
   });
-  await expect(page.getByRole("status")).toContainText("13枚を読み込んだ");
+  await expect(page.getByRole("status")).toContainText("25枚を読み込んだ");
   await page.keyboard.press("Escape");
   await expect(page.locator("[data-page]")).toHaveCount(2);
   await expect(page.getByText("1 / 2")).toBeVisible();
@@ -59,7 +59,7 @@ test("backup export → import into a fresh browser", async ({ page, browser }) 
   const download = page.waitForEvent("download");
   await page.getByRole("button", { name: "バックアップ" }).click();
   const json = await readFile(await (await download).path(), "utf8");
-  expect(JSON.parse(json)).toMatchObject({ format: "sticker-notes-backup", version: 1 });
+  expect(JSON.parse(json)).toMatchObject({ format: "sticker-notes-backup", version: 2 });
 
   const fresh = await browser.newContext();
   const p2 = await fresh.newPage();

@@ -10,9 +10,9 @@ test("a sticker held at the edge goes over to the next page", async ({ page }) =
   await page.getByLabel("読み込む").setInputFiles({
     name: "b.json",
     mimeType: "application/json",
-    buffer: Buffer.from(await bigBackup(13, 0)),
+    buffer: Buffer.from(await bigBackup(25, 0)),
   });
-  await expect(page.getByRole("status")).toContainText("13枚を読み込んだ");
+  await expect(page.getByRole("status")).toContainText("25枚を読み込んだ");
   await page.keyboard.press("Escape");
   const pages = page.locator("[data-page]");
   await expect(pages).toHaveCount(2);
@@ -30,7 +30,7 @@ test("a sticker held at the edge goes over to the next page", async ({ page }) =
   await expect(pages.nth(1).getByRole("button", { name: "X @user_0", exact: true })).toBeVisible();
   // saved to IndexedDB in the background (WebKit can take a moment): wait for the write
   // before reloading, as a reload would abort an uncommitted transaction
-  await expect.poll(() => placementsPerPage(page), { timeout: 10_000 }).toEqual([11, 2]);
+  await expect.poll(() => placementsPerPage(page), { timeout: 10_000 }).toEqual([23, 2]);
   await page.reload();
   await turnPage(page, 1);
   await expect(

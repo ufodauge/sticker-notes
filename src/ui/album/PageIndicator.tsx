@@ -4,13 +4,13 @@ import styles from "./PageIndicator.module.css";
 import { pagePosition, showPage } from "./page-position.ts";
 
 export function PageIndicator({ count }: { readonly count: number }) {
-  const index = useSyncExternalStore(pagePosition.subscribe, pagePosition.face);
+  const index = useSyncExternalStore(pagePosition.subscribe, pagePosition.spread);
   if (count < 1) return null;
   const current = Math.min(index, count - 1);
   const jump = (e: PointerEvent<HTMLButtonElement>) => {
     const r = e.currentTarget.getBoundingClientRect();
     const at = Math.floor(((e.clientX - r.left) / r.width) * count);
-    showPage(Math.min(count - 1, Math.max(0, at)));
+    showPage(Math.min(count - 1, Math.max(0, at)) * 2);
   };
   return (
     <div className={styles.indicator}>

@@ -1,6 +1,7 @@
 import * as v from "valibot";
 import { describe, expect, test } from "vite-plus/test";
 import {
+  spreadsFromPages,
   PAGE_ASPECT,
   PAGE_CAPACITY,
   PlacementSchema,
@@ -49,7 +50,7 @@ describe("auto placement", () => {
     const cells = new Set(
       placements
         .slice(0, PAGE_CAPACITY)
-        .map((p) => `${Math.floor(p.x * 3)},${Math.floor(p.y * 4)}`),
+        .map((p) => `${Math.floor(p.x * 6)},${Math.floor(p.y * 4)}`),
     );
     expect(cells.size).toBe(PAGE_CAPACITY);
   });
@@ -59,7 +60,7 @@ describe("auto placement", () => {
     const without = placements.filter((p) => p.id !== "x1");
     const r = autoPlace(pages, without, sid(99), { page: "n", placement: "y" });
     expect(r.newPage).toBeNull();
-    expect(Math.floor(r.placement.x * 3)).toBe(1);
+    expect(Math.floor(r.placement.x * 6)).toBe(1);
   });
 
   test("a preferred page with room is used before the last page", () => {
@@ -122,8 +123,8 @@ const placement = (over: Partial<Placement>): Placement => ({
 });
 
 describe("album details", () => {
-  test("pages are 3:4", () => {
-    expect(PAGE_ASPECT).toBe(0.75);
+  test("a page is a spread of two 3:4 halves", () => {
+    expect(PAGE_ASPECT).toBe(1.5);
   });
 
   test("sticker ids must be exactly 32 lowercase hex digits", () => {
@@ -166,7 +167,7 @@ describe("album details", () => {
     const r = autoPlace(pages, placements, sid(99), { page: "n", placement: "y" });
     expect(r.newPage).toBeNull();
     expect(r.placement.pageId).toBe(pages[1]?.id);
-    expect(Math.floor(r.placement.x * 3)).toBe(1);
+    expect(Math.floor(r.placement.x * 6)).toBe(1);
     expect(Math.floor(r.placement.y * 4)).toBe(0);
   });
 
@@ -185,8 +186,8 @@ describe("album details", () => {
     const full = Array.from({ length: PAGE_CAPACITY - 1 }, (_, i) =>
       placement({
         id: `s${i}`,
-        x: ((i % 3) + 0.5) / 3,
-        y: (Math.floor(i / 3) + 0.5) / 4,
+        x: ((i % 6) + 0.5) / 6,
+        y: (Math.floor(i / 6) + 0.5) / 4,
       }),
     );
     const edge = placement({ id: "edge", x: 1, y: 1 });
@@ -197,11 +198,11 @@ describe("album details", () => {
   test("jitter is deterministic from the sticker id and moves the slot centre", () => {
     const place = (id: string) => autoPlace([], [], id, { page: "p", placement: "x" }).placement;
     const hi = place(`ff${"00".repeat(15)}`.padEnd(32, "0"));
-    expect(hi.x).toBeCloseTo(1 / 6 + 0.03, 6);
+    expect(hi.x).toBeCloseTo(1 / 12 + 0.015, 6);
     expect(hi.y).toBeCloseTo(1 / 8 - 0.025, 6);
     expect(hi.rotation).toBe(-8);
     const mixed = place(`00ff40${"0".repeat(26)}`);
-    expect(mixed.x).toBeCloseTo(1 / 6 - 0.03, 6);
+    expect(mixed.x).toBeCloseTo(1 / 12 - 0.015, 6);
     expect(mixed.y).toBeCloseTo(1 / 8 + 0.025, 6);
     expect(mixed.rotation).toBe(-4);
     expect(place(sid(5))).toEqual(place(sid(5)));
@@ -239,5 +240,29 @@ describe("album details", () => {
     expect(normalizeRotation(0)).toBe(0);
     expect(normalizeRotation(12.34)).toBe(12.3);
     expect(normalizeRotation(-725)).toBe(-5);
+  });
+});
+
+describe("spreads from pages", () => {
+  test("every two pages become a spread, left then right; stickers move into their half", () => {
+    const pages: Page[] = [
+      { id: "c", order: 2 },
+      { id: "a", order: 0 },
+      { id: "b", order: 1 },
+    ];
+    const r = spreadsFromPages(pages, [
+      placement({ id: "1", pageId: "a", x: 0.5 }),
+      placement({ id: "2", pageId: "b", x: 0.5 }),
+      placement({ id: "3", pageId: "c", x: 1 }),
+    ]);
+    expect(r.pages).toEqual([
+      { id: "a", order: 0 },
+      { id: "c", order: 1 },
+    ]);
+    expect(r.placements.map((p) => [p.id, p.pageId, p.x])).toEqual([
+      ["1", "a", 0.25],
+      ["2", "a", 0.75],
+      ["3", "c", 0.5],
+    ]);
   });
 });

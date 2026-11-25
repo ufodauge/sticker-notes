@@ -32,6 +32,9 @@ import styles from "./PageCanvas.module.css";
 import { paperSound } from "./paper-sound.ts";
 
 type Props = {
+  // the half of the spread this side of the leaf shows (the whole spread is drawn, the side shows
+  // its half; a sticker over the spine is drawn on both and belongs to the half its centre is on)
+  readonly half: 0 | 1;
   // lights out: the page is dim but for a torch under the finger and glow-in-the-dark stickers
   readonly dark: boolean;
   readonly pageId: string;
@@ -87,7 +90,7 @@ const depthOf = (s: StoredSticker) => {
 
 // Whether a point on screen lies on the sticker's edge, where a fingernail can get under it.
 function onEdge(s: StoredSticker, p: Placement, box: Box, at: Pt): boolean {
-  const size = (box.width / 300) * 36 * p.scale;
+  const size = (box.width / 600) * 36 * p.scale;
   const dx = at.x - (box.left + p.x * box.width);
   const dy = at.y - (box.top + p.y * box.height);
   const r = (-p.rotation * Math.PI) / 180;
@@ -173,17 +176,27 @@ type Spin = {
 const clipIdOf = (placementId: string) => `touch-${placementId}`;
 
 export function PageCanvas(props: Props) {
-  const { dark, placements, stickers, selected, highlight, leaving, onLeft, onSelect, children } =
-    props;
+  const {
+    half,
+    dark,
+    placements,
+    stickers,
+    selected,
+    highlight,
+    leaving,
+    onLeft,
+    onSelect,
+    children,
+  } = props;
+  const owns = (p: Placement) => (p.x < 0.5 ? 0 : 1) === half;
   const pageRef = useRef<HTMLDivElement>(null);
   const hold = useRef<Peel | Hold | Pinch | null>(null);
   const spin = useRef<Spin | null>(null);
   const frame = useRef(0);
 
+  // on both sides of the spine, where a sticker lies over it
   const movers = (placementId: string): readonly HTMLElement[] => [
-    ...(pageRef.current?.querySelectorAll<HTMLElement>(
-      `[data-move="${CSS.escape(placementId)}"]`,
-    ) ?? []),
+    ...document.querySelectorAll<HTMLElement>(`[data-move="${CSS.escape(placementId)}"]`),
   ];
 
   const pageBox = (): Box | undefined => {
@@ -254,7 +267,7 @@ export function PageCanvas(props: Props) {
       sticker: s,
       pointer: e.pointerId,
       from: at,
-      size: (box.width / 300) * 36 * p.scale,
+      size: (box.width / 600) * 36 * p.scale,
       grab: e.currentTarget,
       els: movers(p.id),
       view: null,
@@ -478,6 +491,8 @@ export function PageCanvas(props: Props) {
                 data-empty={shape === "" || undefined}
                 aria-label={snsDisplay(s.sticker.snsKind, s.sticker.snsId)}
                 aria-pressed={selected === p.id}
+                aria-hidden={!owns(p) || undefined}
+                tabIndex={owns(p) ? undefined : -1}
                 onPointerDown={onPointerDown(p, s)}
                 onPointerMove={(e) => {
                   onHover(p, s)(e);
@@ -490,7 +505,7 @@ export function PageCanvas(props: Props) {
               >
                 <span
                   key={hl?.nonce ?? 0}
-                  ref={hl ? revealPage : undefined}
+                  ref={hl && owns(p) ? revealPage : undefined}
                   className={styles.art}
                   data-effect={leaving === p.id ? "leave" : hl?.effect}
                   onAnimationEnd={(e) => {
@@ -517,7 +532,7 @@ export function PageCanvas(props: Props) {
         {dark && <span className={styles.dark} aria-hidden="true" />}
       </div>
       {placements
-        .filter((p) => p.id === selected && leaving !== p.id)
+        .filter((p) => p.id === selected && leaving !== p.id && owns(p))
         .map((p) => (
           <div
             key={p.id}

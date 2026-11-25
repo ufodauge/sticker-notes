@@ -1,4 +1,4 @@
-import { PAGE_ASPECT, type Page, type Placement } from "./album.ts";
+import { HALF_ASPECT, type Page, type Placement } from "./album.ts";
 import { getPalette } from "./palette.ts";
 import { QUIET_ZONE } from "./qr.ts";
 import type { Sticker } from "./payload.ts";
@@ -121,7 +121,8 @@ type QrItem = {
   readonly moduleMm: number;
 };
 type SheetItem = StickerItem | QrItem;
-export type Sheet = { readonly items: readonly SheetItem[] };
+// `page`: a half of an album spread, its stickers cut at the page's edge
+export type Sheet = { readonly items: readonly SheetItem[]; readonly page?: boolean };
 
 export const QR_SIZES_MM = [30, 40, 50] as const;
 export const DEFAULT_QR_MM: QrSizeMm = 40;
@@ -216,8 +217,8 @@ export function albumPageBox(): {
 } {
   const maxW = A4.width - SHEET_MARGIN * 2;
   const maxH = A4.height - SHEET_MARGIN * 2;
-  const w = Math.min(maxW, maxH * PAGE_ASPECT);
-  const h = w / PAGE_ASPECT;
+  const w = Math.min(maxW, maxH * HALF_ASPECT);
+  const h = w / HALF_ASPECT;
   return {
     x: round3((A4.width - w) / 2),
     y: round3((A4.height - h) / 2),
@@ -226,31 +227,40 @@ export function albumPageBox(): {
   };
 }
 
+// Each spread prints as two A4 sheets, its left half and its right half, each at the album's own
+// scale; a sticker across the spine is on both, cut at the edge of each (as on the paper).
 export function layoutAlbum(
   pages: readonly Page[],
   placements: readonly Placement[],
 ): readonly Sheet[] {
   const box = albumPageBox();
+  const dotMm = box.w / PAGE_DOTS;
   return pages
     .toSorted((a, b) => a.order - b.order)
-    .map((page) => ({
-      items: placements
-        .filter((p) => p.pageId === page.id)
-        .toSorted((a, b) => a.z - b.z)
-        .map((p) => {
-          const dotMm = (box.w / PAGE_DOTS) * p.scale;
-          const size = SIDE_DOTS * dotMm;
-          return {
-            kind: "sticker" as const,
-            key: p.id,
-            stickerId: p.stickerId,
-            x: round3(box.x + p.x * box.w - size / 2),
-            y: round3(box.y + p.y * box.h - size / 2),
-            size: round3(size),
-            dotMm,
-            rotation: p.rotation,
-          };
-        }),
-    }))
+    .flatMap((page) =>
+      [0, 1].map((half) => ({
+        page: true,
+        items: placements
+          .filter((p) => p.pageId === page.id)
+          .toSorted((a, b) => a.z - b.z)
+          .flatMap((p) => {
+            const size = SIDE_DOTS * dotMm * p.scale;
+            const cx = (p.x * 2 - half) * box.w;
+            if (cx + size < 0 || cx - size > box.w) return [];
+            return [
+              {
+                kind: "sticker" as const,
+                key: `${p.id}-${half}`,
+                stickerId: p.stickerId,
+                x: round3(box.x + cx - size / 2),
+                y: round3(box.y + p.y * box.h - size / 2),
+                size: round3(size),
+                dotMm: dotMm * p.scale,
+                rotation: p.rotation,
+              },
+            ];
+          }),
+      })),
+    )
     .filter((s) => s.items.length > 0);
 }

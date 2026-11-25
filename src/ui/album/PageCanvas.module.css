@@ -2,14 +2,14 @@
   position: relative;
   container-type: size;
   inline-size: 100%;
-  aspect-ratio: 3 / 4;
+  aspect-ratio: 3 / 2;
   /* an inset outline, not a border: 100cqw must be the whole page, exactly as printed */
   outline: 1px solid var(--sheet-edge);
   outline-offset: -1px;
   border-radius: 4px;
   background:
-    linear-gradient(var(--sheet-line) 1px, transparent 1px) 0 0 / 5% 3.75%,
-    linear-gradient(90deg, var(--sheet-line) 1px, transparent 1px) 0 0 / 5% 3.75%,
+    linear-gradient(var(--sheet-line) 1px, transparent 1px) 0 0 / 2.5% 3.75%,
+    linear-gradient(90deg, var(--sheet-line) 1px, transparent 1px) 0 0 / 2.5% 3.75%,
     var(--sheet);
   color-scheme: light;
   touch-action: none;
@@ -31,7 +31,7 @@
  * The wrapper carries the transform.
  */
 .placed {
-  --dot: calc(100cqw / 300);
+  --dot: calc(100cqw / 600);
   pointer-events: none;
   position: absolute;
   inset-block-start: 0;
@@ -136,8 +136,8 @@
   inset-block-start: 0;
   inset-inline-start: 0;
   z-index: 100000;
-  inline-size: calc(100cqw / 300 * 36 * var(--s));
-  block-size: calc(100cqw / 300 * 36 * var(--s));
+  inline-size: calc(100cqw / 600 * 36 * var(--s));
+  block-size: calc(100cqw / 600 * 36 * var(--s));
   transform: translate(calc(var(--x) * 100cqw), calc(var(--y) * 100cqh)) translate(-50%, -50%)
     rotate(var(--r)) scale(var(--pinch));
   pointer-events: none;

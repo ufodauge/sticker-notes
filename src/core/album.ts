@@ -1,7 +1,10 @@
 import * as v from "valibot";
 
-export const PAGE_ASPECT = 3 / 4;
-const SLOT_COLUMNS = 3;
+// A page of the album is an open spread: two 3:4 halves side by side, one on each side of the
+// spine. Positions are fractions of the whole spread; a sticker is 36 dots of 1/600 its width.
+export const PAGE_ASPECT = 3 / 2;
+export const HALF_ASPECT = 3 / 4;
+const SLOT_COLUMNS = 6;
 const SLOT_ROWS = 4;
 export const PAGE_CAPACITY = SLOT_COLUMNS * SLOT_ROWS;
 const DEFAULT_SCALE = 2;
@@ -66,7 +69,7 @@ function slotOf(x: number, y: number): number {
 
 function jitter(id: string): { readonly dx: number; readonly dy: number; readonly rot: number } {
   const n = (k: number) => (Number.parseInt(id.slice(k, k + 2), 16) || 0) / 255 - 0.5;
-  return { dx: n(0) * 0.06, dy: n(2) * 0.05, rot: n(4) * 16 };
+  return { dx: n(0) * 0.03, dy: n(2) * 0.05, rot: n(4) * 16 };
 }
 
 export type AutoPlace = {
@@ -131,4 +134,24 @@ export function bringToFront(placements: readonly Placement[], p: Placement): Pl
   const top = topZ(placements, p.pageId);
   const alone = placements.filter((q) => q.pageId === p.pageId && q.z === top).length === 1;
   return p.z === top && alone ? p : { ...p, z: top + 1 };
+}
+
+// Albums made before pages were spreads: every two pages, in order, become one spread, the first
+// on its left half and the second on its right. Stickers keep their size (a dot was 1/300 of a
+// page and is 1/600 of a spread).
+export function spreadsFromPages(
+  pages: readonly Page[],
+  placements: readonly Placement[],
+): { readonly pages: readonly Page[]; readonly placements: readonly Placement[] } {
+  const sorted = sortedPages(pages);
+  const where = new Map(
+    sorted.map((p, i) => [p.id, { spread: sorted[i - (i % 2)]?.id ?? p.id, half: i % 2 }]),
+  );
+  return {
+    pages: sorted.filter((_, i) => i % 2 === 0).map((p, i) => ({ id: p.id, order: i })),
+    placements: placements.flatMap((p) => {
+      const at = where.get(p.pageId);
+      return at ? [{ ...p, pageId: at.spread, x: p.x / 2 + at.half / 2 }] : [];
+    }),
+  };
 }

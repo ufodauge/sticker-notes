@@ -1,7 +1,7 @@
-// Where the notebook is open. The album is a stack of leaves: leaf k carries page 2k on its front
-// and page 2k + 1 on its back. With `flipped` leaves turned over to the left, the open spread
-// shows page 2·flipped − 1 on the left and page 2·flipped on the right. A wide screen shows the
-// whole spread; a narrow one shows one side of it at a time (`side`), sliding between them.
+// Where the notebook is open: `flipped` leaves have been turned, so spread number `flipped` lies
+// open (its left half on the back of the last leaf turned, or the inside of the cover; its right
+// half on the next leaf). A wide screen shows the whole spread; a narrow one shows one half of it
+// at a time (`side`), sliding between them. A "face" counts halves: spread·2 + (right ? 1 : 0).
 
 export type BookPos = { readonly flipped: number; readonly side: "left" | "right" };
 
@@ -15,7 +15,7 @@ const state: {
   turner: Turner | null;
   listeners: Set<Listener>;
 } = {
-  pos: { flipped: 0, side: "right" },
+  pos: { flipped: 0, side: "left" },
   moved: false,
   faces: 1,
   wide: false,
@@ -26,17 +26,19 @@ const state: {
 // Turns a leaf on screen, then calls `apply`; false when it cannot (the step applies at once).
 type Turner = (direction: -1 | 1, apply: () => void) => boolean;
 
-const leaves = () => Math.ceil(state.faces / 2);
+// the last spread is the "+" one; no leaf is turned past it
+const lastSpread = () => Math.max(0, Math.ceil(state.faces / 2) - 1);
 
-const faceOf = (pos: BookPos): number =>
-  pos.side === "right" ? pos.flipped * 2 : pos.flipped * 2 - 1;
+const faceOf = (pos: BookPos): number => pos.flipped * 2 + (pos.side === "right" ? 1 : 0);
 
-const posOf = (face: number): BookPos =>
-  face % 2 === 0 ? { flipped: face / 2, side: "right" } : { flipped: (face + 1) / 2, side: "left" };
+const posOf = (face: number): BookPos => ({
+  flipped: Math.floor(face / 2),
+  side: face % 2 === 0 ? "left" : "right",
+});
 
 function set(pos: BookPos): void {
-  const flipped = Math.max(0, Math.min(leaves(), pos.flipped));
-  const side = flipped === 0 ? "right" : flipped === leaves() ? "left" : pos.side;
+  const flipped = Math.max(0, Math.min(lastSpread(), pos.flipped));
+  const side = pos.side;
   if (flipped === state.pos.flipped && side === state.pos.side) return;
   state.pos = { flipped, side };
   state.moved = true;
@@ -51,8 +53,10 @@ export const pagePosition = {
   get: (): BookPos => state.pos,
   // whether the book has been turned at all since it opened (no page animates on first sight)
   moved: (): boolean => state.moved,
-  // the page shown (on a wide screen, the right page of the spread, or the left one at the end)
+  // the half shown (on a wide screen, either half of the open spread)
   face: (): number => faceOf(state.pos),
+  // the spread lying open
+  spread: (): number => state.pos.flipped,
 
   // the album tells how many pages (with the "+" at the end) there are and how wide it is
   configure: (faces: number, wide: boolean): void => {
@@ -66,7 +70,7 @@ export const pagePosition = {
   step: (direction: -1 | 1, shown = false): void => {
     const { flipped, side } = state.pos;
     const next: BookPos = state.wide
-      ? { flipped: flipped + direction, side: direction > 0 ? "left" : "right" }
+      ? { flipped: flipped + direction, side }
       : direction > 0
         ? side === "left"
           ? { flipped, side: "right" }
@@ -74,7 +78,8 @@ export const pagePosition = {
         : side === "right"
           ? { flipped, side: "left" }
           : { flipped: flipped - 1, side: "right" };
-    const turns = next.flipped !== flipped && next.flipped >= 0 && next.flipped <= leaves();
+    if (next.flipped < 0 || next.flipped > lastSpread()) return;
+    const turns = next.flipped !== flipped;
     if (turns && !shown && state.turner?.(direction, () => set(next))) return;
     set(next);
   },
@@ -90,4 +95,5 @@ export const pagePosition = {
   show: (face: number): void => set(posOf(Math.max(0, Math.min(state.faces - 1, face)))),
 };
 
-export const showPage = (index: number): void => pagePosition.show(index);
+// opens the notebook at a half (spread·2 for its left half)
+export const showPage = (face: number): void => pagePosition.show(face);

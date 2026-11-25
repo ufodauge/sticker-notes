@@ -22,7 +22,7 @@ type Listener = () => void;
 const EDGE_PX = 32;
 const EDGE_HOLD_MS = 480;
 // held on, it keeps turning, once each page has finished going over
-const EDGE_REPEAT_MS = 1400;
+const EDGE_REPEAT_MS = 1600;
 
 const state: {
   held: Held | null;
@@ -140,8 +140,12 @@ export function dropTarget(x: number, y: number): DropTarget | undefined {
   if (!found) return undefined;
   const r = found.getBoundingClientRect();
   const at = { x: (x - r.left) / r.width, y: (y - r.top) / r.height };
-  if (found.hasAttribute("data-new-page")) return { kind: "page", pageId: null, ...at };
-  const pageId = found.closest<HTMLElement>("[data-page]")?.dataset.page || null;
+  if (found.hasAttribute("data-new-page")) {
+    // the "+" is drawn on each half; the new spread's position counts across both
+    const half = Number(found.dataset.face ?? 0) % 2;
+    return { kind: "page", pageId: null, x: (half + at.x) / 2, y: at.y };
+  }
+  const pageId = found.closest<HTMLElement>("[data-spread]")?.dataset.spread || null;
   return { kind: "page", pageId, ...at };
 }
 
@@ -150,5 +154,5 @@ export function pageStickerSize(scale: number): number {
   const paper =
     document.querySelector<HTMLElement>("[data-shown] [data-facing] [data-paper]") ??
     document.querySelector<HTMLElement>("[data-paper]");
-  return paper ? (paper.getBoundingClientRect().width / 300) * 36 * scale : 72;
+  return paper ? (paper.getBoundingClientRect().width / 600) * 36 * scale : 72;
 }

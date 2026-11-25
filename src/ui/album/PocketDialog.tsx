@@ -92,7 +92,7 @@ function Hand({
   const stickNear = async () => {
     paperSound.wake();
     paperSound.peel();
-    await stickerStore.place(sticker.id, { near: pageIds[pagePosition.face()] });
+    await stickerStore.place(sticker.id, { near: pageIds[pagePosition.spread()] });
     feedback.landed(sticker.id, "lifted", null);
     close();
   };
