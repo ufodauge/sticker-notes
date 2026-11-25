@@ -13,7 +13,7 @@ export default defineConfig({
     include: ["src/**/*.test.ts", "tools/**/*.test.ts"],
   },
   fmt: {
-    ignorePatterns: ["docs/**", "AGENTS.md", "test/vectors/**"],
+    ignorePatterns: ["docs/**", "AGENTS.md", "test/vectors/**", "src/ui/jar3d/models/**"],
   },
   lint: {
     plugins: ["react", "typescript", "oxc"],

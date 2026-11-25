@@ -1,20 +1,17 @@
 import * as THREE from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
-import { JAR3D, innerProfile, outerProfile, type Profile } from "../../core/jar3d.ts";
+import { JAR3D } from "../../core/jar3d.ts";
 import type { BlockShape } from "../../core/jar-shape.ts";
 import { buildAtmosphere, type Atmosphere } from "./atmosphere.ts";
+import type { JarModel, TriangleMesh } from "./model.ts";
 import type { Sticker } from "../../core/payload.ts";
 import { renderRgba } from "../../core/render.ts";
 
-const LATHE_SEGMENTS = 64;
 const TINT_TOWARD_WHITE = 0.35;
 const ART_SHARE = 0.9;
 
-const lathe = (profile: Profile) =>
-  new THREE.LatheGeometry(
-    profile.map(([r, y]) => new THREE.Vector2(r, y)),
-    LATHE_SEGMENTS,
-  );
+const materialName = (mesh: THREE.Mesh): string =>
+  [mesh.material].flat()[0]?.name.toLowerCase() ?? "";
 
 const glassRim = (strength: number) => (shader: THREE.WebGLProgramParametersWithUniforms) => {
   shader.fragmentShader = shader.fragmentShader.replace(
@@ -100,14 +97,15 @@ export type Scene3d = {
   readonly camera: THREE.PerspectiveCamera;
   readonly spot: THREE.SpotLight;
   readonly jarGroup: THREE.Group;
-  readonly jarGeometries: readonly THREE.BufferGeometry[];
-  readonly jarFront: THREE.Mesh;
+  readonly collision: readonly TriangleMesh[];
+  readonly pieces: readonly Float32Array[];
+  readonly spawn: THREE.Vector3;
   readonly contact: THREE.Mesh;
   readonly atmosphere: Atmosphere;
   readonly dispose: () => void;
 };
 
-export function buildScene(canvas: HTMLCanvasElement): Scene3d {
+export function buildScene(canvas: HTMLCanvasElement, model: JarModel): Scene3d {
   const renderer = new THREE.WebGLRenderer({
     canvas,
     antialias: true,
@@ -148,19 +146,22 @@ export function buildScene(canvas: HTMLCanvasElement): Scene3d {
 
   const woodMap = woodTexture();
   const fade = fadeMap();
-  const desk = new THREE.Mesh(
-    new THREE.CircleGeometry(10, 96),
-    new THREE.MeshStandardMaterial({
-      map: woodMap,
-      alphaMap: fade,
-      transparent: true,
-      roughness: 0.52,
-      metalness: 0.02,
-    }),
-  );
-  desk.rotation.x = -Math.PI / 2;
-  desk.receiveShadow = true;
-  scene.add(desk);
+  const woodMaterial = new THREE.MeshStandardMaterial({
+    map: woodMap,
+    alphaMap: fade,
+    transparent: true,
+    roughness: 0.52,
+    metalness: 0.02,
+  });
+  if (model.desk) {
+    model.desk.traverse((o) => {
+      const mesh = o as THREE.Mesh;
+      if (!mesh.isMesh) return;
+      if (materialName(mesh) === "wood") mesh.material = woodMaterial;
+      mesh.receiveShadow = true;
+    });
+    scene.add(model.desk);
+  }
 
   const shadowMap = radialDecal("rgba(0,0,0,0.55)", "rgba(0,0,0,0)");
   const contact = new THREE.Mesh(
@@ -171,8 +172,6 @@ export function buildScene(canvas: HTMLCanvasElement): Scene3d {
   contact.position.y = 0.012;
   scene.add(contact);
 
-  const outer = lathe(outerProfile());
-  const inner = lathe(innerProfile());
   const backMaterial = new THREE.MeshPhysicalMaterial({
     color: 0xd9eef2,
     transparent: true,
@@ -195,14 +194,24 @@ export function buildScene(canvas: HTMLCanvasElement): Scene3d {
     depthWrite: false,
   });
   frontMaterial.onBeforeCompile = glassRim(1.1);
-  const jarBack = new THREE.Mesh(outer, backMaterial);
-  jarBack.renderOrder = -1;
-  const jarFront = new THREE.Mesh(outer, frontMaterial);
-  jarFront.renderOrder = 10;
-  const innerWall = new THREE.Mesh(inner, frontMaterial);
-  innerWall.renderOrder = 9;
   const jarGroup = new THREE.Group();
-  jarGroup.add(jarBack, jarFront, innerWall);
+  const glassMeshes: THREE.Mesh[] = [];
+  model.jar.traverse((o) => {
+    const mesh = o as THREE.Mesh;
+    if (mesh.isMesh && materialName(mesh) === "glass") glassMeshes.push(mesh);
+    else if (mesh.isMesh) mesh.castShadow = true;
+  });
+  glassMeshes.forEach((mesh) => {
+    const back = new THREE.Mesh(mesh.geometry, backMaterial);
+    back.position.copy(mesh.position);
+    back.quaternion.copy(mesh.quaternion);
+    back.scale.copy(mesh.scale);
+    back.renderOrder = -1;
+    mesh.material = frontMaterial;
+    mesh.renderOrder = 10;
+    mesh.parent?.add(back);
+  });
+  jarGroup.add(model.jar);
   scene.add(jarGroup);
 
   const dispose = () => {
@@ -225,8 +234,9 @@ export function buildScene(canvas: HTMLCanvasElement): Scene3d {
     camera,
     spot,
     jarGroup,
-    jarGeometries: [outer, inner],
-    jarFront,
+    collision: model.collision,
+    pieces: model.pieces,
+    spawn: model.spawn,
     contact,
     atmosphere,
     dispose,

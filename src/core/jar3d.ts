@@ -91,11 +91,12 @@ export const cameraPosition = (aspect: number, yaw: number): readonly [number, n
 export const spawnPose = (
   index: number,
   r: readonly [number, number, number, number],
+  dropY: number = JAR3D.height + 1.4,
 ): { x: number; y: number; z: number; rx: number; ry: number; rz: number } => {
   const spread = JAR3D.neckRadius * 0.45;
   return {
     x: (r[0] - 0.5) * 2 * spread,
-    y: JAR3D.height + 1.4 + (index % 3) * 0.2,
+    y: dropY + (index % 3) * 0.2,
     z: (r[1] - 0.5) * 2 * spread,
     rx: (r[2] - 0.5) * 2.4,
     ry: r[3] * Math.PI * 2,

@@ -12,12 +12,12 @@ import {
   JAR3D,
   cameraPosition,
   gravityFromOrientation,
-  jarCollisionPieces,
   outerRadiusAt,
   spawnPose,
 } from "../../core/jar3d.ts";
 import type { Sticker } from "../../core/payload.ts";
 import { jarSound } from "../jar/sound.ts";
+import { loadJarModel } from "./model.ts";
 import { buildBlock, buildScene, type BlockVisual, type Scene3d } from "./scene3d.ts";
 
 type JarBlock = { readonly id: string; readonly sticker: Sticker };
@@ -203,13 +203,8 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
     });
     const descs =
       kind === "smooth" && !(import.meta.env.VITE_JAR_PROBE && location.search.includes("pieces=1"))
-        ? sc.jarGeometries.flatMap((g) => {
-            const index = g.getIndex()?.array;
-            if (!index) return [];
-            const position = new Float32Array(g.getAttribute("position").array as Float32Array);
-            return [RAPIER.ColliderDesc.trimesh(position, Uint32Array.from(index))];
-          })
-        : jarCollisionPieces().flatMap((points) => {
+        ? sc.collision.map((m) => RAPIER.ColliderDesc.trimesh(m.positions, m.indices))
+        : sc.pieces.flatMap((points) => {
             const desc = RAPIER.ColliderDesc.convexHull(points);
             return desc ? [desc.setDensity(4)] : [];
           });
@@ -323,7 +318,7 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
   };
 
   const trySpawn = (entry: Entry): boolean => {
-    const pose = spawnPose(st.spawned, rand4());
+    const pose = spawnPose(st.spawned, rand4(), st.scene?.spawn.y ?? JAR3D.height + 1.4);
     if (!spawnClear(pose)) return false;
     st.spawned++;
     entry.body = makeBody(entry, pose);
@@ -794,7 +789,7 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
       -((clientY - rect.top) / rect.height) * 2 + 1,
     );
     raycaster.setFromCamera(pointer, sc.camera);
-    return raycaster.intersectObject(sc.jarFront, false)[0]?.point ?? null;
+    return raycaster.intersectObject(sc.jarGroup, true)[0]?.point ?? null;
   };
 
   const onDown = (e: PointerEvent) => {
@@ -867,7 +862,11 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
   const boot = async () => {
     await RAPIER.init();
     if (st.disposed) return;
-    const sc = buildScene(canvas);
+    const sc = buildScene(canvas, await loadJarModel());
+    if (st.disposed) {
+      sc.dispose();
+      return;
+    }
     const world = new RAPIER.World({ x: 0, y: -JAR3D.gravity, z: 0 });
     world.timestep = STEP / SUBSTEPS;
     world.integrationParameters.numSolverIterations = SOLVER_ITERATIONS;
