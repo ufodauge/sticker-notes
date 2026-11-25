@@ -30,7 +30,7 @@ async function announceAdded(r: Exclude<Received, { kind: "invalid" }>): Promise
     ownCount,
     invitationShown: ownCount > 0 || (await invitationShown()),
   });
-  feedback.landed(r.stickerId, "received", {
+  feedback.landed(r.stickerId, "pocket", {
     text: t.feedback.receivedAdded(snsDisplay(r.sticker.snsKind, r.sticker.snsId)),
     undo: { kind: "unreceive", stickerId: r.stickerId },
     action: plan.invite ? { kind: "create" } : undefined,

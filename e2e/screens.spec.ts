@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
-import { fragmentOf } from "./helpers.ts";
+import { fragmentOf, stickAllFromPocket } from "./helpers.ts";
 
 test.skip(!process.env.SCREENS, "visual review only");
 
@@ -24,13 +24,14 @@ for (const scheme of ["light", "dark"] as const) {
     await page.getByLabel("ID", { exact: true }).fill("sample_user");
     await page.waitForTimeout(300);
     await shot("02-create-edit");
-    await page.getByRole("button", { name: "貼る" }).click();
+    await page.getByRole("button", { name: "ポケットに入れる" }).click();
     await expect(page.getByRole("dialog")).toHaveCount(0);
 
     for (const n of ["slime", "discord", "noise", "allTransparent", "longestId"]) {
       await page.goto(`/${fragmentOf(n)}`);
       await expect.poll(() => new URL(page.url()).hash).toBe("");
     }
+    await stickAllFromPocket(page);
     await page.waitForTimeout(300);
     await page.getByRole("button", { name: "X @sticker_fan2026", exact: true }).click();
     await shot("03-selected");

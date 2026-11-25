@@ -12,7 +12,7 @@ test("a sticker can be dragged onto the next page", async ({ page }) => {
     mimeType: "application/json",
     buffer: Buffer.from(await bigBackup(13, 0)),
   });
-  await expect(page.getByRole("status")).toContainText("13枚を貼った");
+  await expect(page.getByRole("status")).toContainText("13枚を読み込んだ");
   await page.keyboard.press("Escape");
   const pages = page.locator("[data-page]");
   await expect(pages).toHaveCount(2);

@@ -45,7 +45,9 @@ test("jar physics: settle, tremble, leak and cost with 40 blocks", async ({
     mimeType: "application/json",
     buffer: Buffer.from(await shapesBackup(COUNT)),
   });
-  await expect(page.getByRole("status")).toContainText(`${COUNT}枚を貼った`, { timeout: 30_000 });
+  await expect(page.getByRole("status")).toContainText(`${COUNT}枚を読み込んだ`, {
+    timeout: 30_000,
+  });
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "瓶で見る" }).click();
   await expect(canvasOf(page)).toHaveAttribute("data-renderer", "webgl");

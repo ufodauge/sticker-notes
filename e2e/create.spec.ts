@@ -6,7 +6,7 @@ import { rankPalettes } from "../src/core/quantize.ts";
 import { decodeFragment } from "../src/core/payload.ts";
 import { renderRgba } from "../src/core/render.ts";
 import { FIXTURES } from "../src/core/testing/fixtures.ts";
-import { readQr } from "./helpers.ts";
+import { readQr, stickFromPocket } from "./helpers.ts";
 import { decodeRgba, encodeRgba } from "../test/png.ts";
 
 function slimePng(scale: number): Buffer {
@@ -54,8 +54,9 @@ async function openOwnQr(page: Page, label: string) {
 
 async function save(page: Page, id: string) {
   await page.getByLabel("ID", { exact: true }).fill(id);
-  await page.getByRole("button", { name: "貼る" }).click();
+  await page.getByRole("button", { name: "ポケットに入れる" }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
+  await stickFromPocket(page, `X @${id}`);
 }
 
 test("palette art lands on the album and its QR round-trips", async ({ page }) => {
@@ -145,7 +146,7 @@ test("the dither toggle is absent for pixel art", async ({ page }) => {
 test("an invalid ID keeps the dialog open and marks the field", async ({ page }) => {
   await openMaker(page, "slime.png", slimePng(1));
   await page.getByLabel("ID", { exact: true }).fill("bad id!");
-  await page.getByRole("button", { name: "貼る" }).click();
+  await page.getByRole("button", { name: "ポケットに入れる" }).click();
   await expect(page.getByLabel("ID", { exact: true })).toHaveAttribute("aria-invalid", "true");
   await expect(page.getByRole("dialog")).toBeVisible();
 });

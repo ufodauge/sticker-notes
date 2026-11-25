@@ -4,6 +4,7 @@ type Overlay =
   | { readonly kind: "qr"; readonly stickerId: string }
   | { readonly kind: "print" }
   | { readonly kind: "menu" }
+  | { readonly kind: "pocket" }
   | { readonly kind: "jarPick" };
 
 export type View = "album" | "jar";
@@ -17,7 +18,9 @@ export type AppState = {
 
 export type AppAction =
   | { readonly type: "open"; readonly overlay: Overlay }
-  | { readonly type: "close" }
+  // names the overlay being closed: a dialog finishes closing after its animation, by which time
+  // another overlay may already be open, and that one must stay
+  | { readonly type: "close"; readonly overlay: Overlay["kind"] }
   | { readonly type: "view"; readonly view: View }
   | { readonly type: "select"; readonly placementId: string | null }
   | { readonly type: "leave"; readonly placementId: string; readonly stickerId: string }
@@ -35,7 +38,7 @@ export function reducer(s: AppState, a: AppAction): AppState {
     case "open":
       return { ...s, overlay: a.overlay, selected: null };
     case "close":
-      return { ...s, overlay: { kind: "none" } };
+      return s.overlay.kind === a.overlay ? { ...s, overlay: { kind: "none" } } : s;
     case "view":
       return { ...s, view: a.view, selected: null };
     case "select":

@@ -136,7 +136,7 @@ describe("backup parsing details", () => {
     expect(r.ok && r.skipped).toBe(1);
   });
 
-  test("receivedAt is kept only for received stickers with a valid date", async () => {
+  test("receivedAt is kept when it is a valid date", async () => {
     const data = await sample();
     const [mine, received] = data.stickers;
     if (!mine || !received) throw new Error();
@@ -155,7 +155,7 @@ describe("backup parsing details", () => {
     expect(await parse(entry(received, "received", "2026-11-23x"))).toBeNull();
     expect(await parse(entry(received, "received", "2026-1-23"))).toBeNull();
     expect(await parse(entry(received, "received", null))).toBeNull();
-    expect(await parse(entry(mine, "mine", "2026-11-23"))).toBeNull();
+    expect(await parse(entry(mine, "mine", "2026-11-23"))).toBe("2026-11-23");
   });
 });
 

@@ -11,7 +11,7 @@ test("300 stickers: import, 26 pages, drag stays smooth", async ({ page }) => {
   await page
     .getByLabel("読み込む")
     .setInputFiles({ name: "b.json", mimeType: "application/json", buffer: Buffer.from(json) });
-  await expect(page.getByRole("status")).toContainText("300枚を貼った", { timeout: 30_000 });
+  await expect(page.getByRole("status")).toContainText("300枚を読み込んだ", { timeout: 30_000 });
   const importMs = Date.now() - ti;
 
   const t0 = Date.now();

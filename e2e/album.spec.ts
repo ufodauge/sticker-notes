@@ -43,7 +43,7 @@ test("a full page grows the album sideways", async ({ page }) => {
     mimeType: "application/json",
     buffer: Buffer.from(await bigBackup(13, 0)),
   });
-  await expect(page.getByRole("status")).toContainText("13枚を貼った");
+  await expect(page.getByRole("status")).toContainText("13枚を読み込んだ");
   await page.keyboard.press("Escape");
   await expect(page.locator("[data-page]")).toHaveCount(2);
   const snapType = await page
@@ -68,8 +68,8 @@ test("backup export → import into a fresh browser", async ({ page, browser }) 
   await p2.getByRole("button", { name: "メニュー" }).click();
   const file = { name: "backup.json", mimeType: "application/json", buffer: Buffer.from(json) };
   await p2.getByLabel("読み込む").setInputFiles(file);
-  await expect(p2.getByRole("status")).toContainText("2枚を貼った");
+  await expect(p2.getByRole("status")).toContainText("2枚を読み込んだ");
   await p2.getByLabel("読み込む").setInputFiles(file);
-  await expect(p2.getByRole("status")).toContainText("0枚を貼った");
+  await expect(p2.getByRole("status")).toContainText("0枚を読み込んだ");
   await fresh.close();
 });

@@ -31,7 +31,9 @@ async function importJson(page: Page, json: string, count: number): Promise<void
   await page
     .getByLabel("読み込む")
     .setInputFiles({ name: "b.json", mimeType: "application/json", buffer: Buffer.from(json) });
-  await expect(page.getByRole("status")).toContainText(`${count}枚を貼った`, { timeout: 30_000 });
+  await expect(page.getByRole("status")).toContainText(`${count}枚を読み込んだ`, {
+    timeout: 30_000,
+  });
   await page.keyboard.press("Escape");
 }
 

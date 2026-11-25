@@ -11,9 +11,39 @@ export const fragmentOf = (name: string): string => {
   return new URL(v.url).hash;
 };
 
-export async function receive(page: Page, name: string, label: string): Promise<void> {
-  await page.goto(`/${fragmentOf(name)}`);
+export const pocketButton = (page: Page): Locator =>
+  page.getByRole("button", { name: /^ポケット\(\d+枚\)$/ });
+
+// Takes the sticker out of the pocket and sticks it on the current page (the keyboard way).
+export async function stickFromPocket(page: Page, label: string): Promise<void> {
+  await pocketButton(page).click();
+  await page.getByRole("button", { name: `${label} を手に取る`, exact: true }).click();
+  await page.getByRole("button", { name: "はがしてページに貼る" }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(page.getByRole("button", { name: label, exact: true })).toBeVisible();
+}
+
+export async function stickAllFromPocket(page: Page): Promise<void> {
+  while ((await pocketButton(page).count()) > 0) {
+    await pocketButton(page).click();
+    await page
+      .getByRole("button", { name: / を手に取る$/ })
+      .first()
+      .click();
+    await page.getByRole("button", { name: "はがしてページに貼る" }).click();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+  }
+}
+
+// Receives a link (the sticker lands in the pocket) and sticks it on the album.
+export async function receive(page: Page, name: string, label: string): Promise<void> {
+  await receiveToPocket(page, name);
+  await stickFromPocket(page, label);
+}
+
+export async function receiveToPocket(page: Page, name: string): Promise<void> {
+  await page.goto(`/${fragmentOf(name)}`);
+  await expect(pocketButton(page)).toBeVisible();
   await expect.poll(() => new URL(page.url()).hash).toBe("");
 }
 

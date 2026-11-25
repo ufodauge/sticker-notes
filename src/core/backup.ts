@@ -15,6 +15,7 @@ export type BackupSticker = {
   readonly id: string;
   readonly body: Uint8Array;
   readonly origin: StickerOrigin;
+  // the day it came into this album: received, or (for one's own) made
   readonly receivedAt: string | null;
 };
 
@@ -83,7 +84,7 @@ async function checkSticker(raw: unknown): Promise<BackupSticker | undefined> {
   const id = await stickerIdOf(body);
   if (s.id !== id) return undefined;
   const receivedAt = v.is(LocalDateSchema, s.receivedAt) ? s.receivedAt : null;
-  return { id, body, origin: s.origin, receivedAt: s.origin === "received" ? receivedAt : null };
+  return { id, body, origin: s.origin, receivedAt };
 }
 
 export async function parseBackup(text: string): Promise<ParseResult> {

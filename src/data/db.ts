@@ -1,5 +1,5 @@
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
-import { autoPlace, nextPageOrder, type Page, type Placement } from "../core/album.ts";
+import { nextPageOrder, type Page, type Placement } from "../core/album.ts";
 import type { BackupSticker, MergePlan, StickerOrigin } from "../core/backup.ts";
 
 export type { StickerOrigin };
@@ -45,31 +45,22 @@ export function openStickerDb(): Promise<Db> {
 const newId = () => crypto.randomUUID();
 
 export type AddResult =
-  | { readonly kind: "added"; readonly placement: Placement }
+  | { readonly kind: "added" }
   | { readonly kind: "duplicate"; readonly placement: Placement | undefined };
 
-export async function addAndPlace(db: Db, rec: BackupSticker): Promise<AddResult> {
+// A new sticker goes into the pocket: it has no placement until the person sticks it on a page.
+export async function addToPocket(db: Db, rec: BackupSticker): Promise<AddResult> {
   const tx = db.transaction(ALBUM, "readwrite");
   const stickers = tx.objectStore("stickers");
-  const placementsStore = tx.objectStore("placements");
   if (await stickers.get(rec.id)) {
-    const placement = await placementsStore.index("byStickerId").get(rec.id);
+    const placement = await tx.objectStore("placements").index("byStickerId").get(rec.id);
     await tx.done;
     return { kind: "duplicate", placement };
   }
-  const [last, pages, placements] = await Promise.all([
-    stickers.index("byAdded").openCursor(null, "prev"),
-    tx.objectStore("pages").getAll(),
-    placementsStore.getAll(),
-  ]);
-  const plan = autoPlace(pages, placements, rec.id, { page: newId(), placement: newId() });
-  await Promise.all([
-    stickers.add({ ...rec, addedSeq: (last?.value.addedSeq ?? 0) + 1 }),
-    plan.newPage ? tx.objectStore("pages").add(plan.newPage) : undefined,
-    placementsStore.add(plan.placement),
-  ]);
+  const last = await stickers.index("byAdded").openCursor(null, "prev");
+  await stickers.add({ ...rec, addedSeq: (last?.value.addedSeq ?? 0) + 1 });
   await tx.done;
-  return { kind: "added", placement: plan.placement };
+  return { kind: "added" };
 }
 
 export type Discarded = {
@@ -158,30 +149,6 @@ export async function applyMerge(db: Db, plan: MergePlan): Promise<void> {
     ...plan.pages.map((p) => tx.objectStore("pages").put(p)),
     ...plan.placements.map((p) => tx.objectStore("placements").put(p)),
   ]);
-  const [pages, placements] = await Promise.all([
-    tx.objectStore("pages").getAll(),
-    tx.objectStore("placements").getAll(),
-  ]);
-  const placed = new Set(placements.map((p) => p.stickerId));
-  const orphans = plan.stickers.filter((s) => !placed.has(s.id));
-  // place sequentially: each placement changes which slot is free next
-  const final = orphans.reduce(
-    (acc, s) => {
-      const r = autoPlace(acc.pages, acc.placements, s.id, { page: newId(), placement: newId() });
-      return {
-        pages: r.newPage ? [...acc.pages, r.newPage] : acc.pages,
-        placements: [...acc.placements, r.placement],
-        added: [...acc.added, r],
-      };
-    },
-    { pages, placements, added: [] as ReturnType<typeof autoPlace>[] },
-  );
-  await Promise.all(
-    final.added.flatMap((r) => [
-      r.newPage ? tx.objectStore("pages").add(r.newPage) : undefined,
-      tx.objectStore("placements").add(r.placement),
-    ]),
-  );
   await tx.done;
 }
 

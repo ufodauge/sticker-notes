@@ -1,0 +1,222 @@
+.dialog {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* While a peeled sticker is carried to the album, the dialog steps aside: only the sticker
+   stays visible, and it is positioned against the viewport (no translate on the dialog). */
+.dialog[data-carrying][open] {
+  translate: none;
+  overflow: visible;
+  border-color: transparent;
+  background: transparent;
+  visibility: hidden;
+}
+
+.dialog[data-carrying][open]::backdrop {
+  opacity: 0;
+}
+
+.pile {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  padding: var(--space-6) var(--space-2) var(--space-4);
+}
+
+.pick {
+  margin: -6px -4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  rotate: var(--r);
+  translate: 0 var(--dy);
+  transition: scale var(--t-fast) var(--ease-out);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.pick:hover {
+  position: relative;
+  z-index: 1;
+  scale: 1.06;
+}
+
+.pick:focus-visible {
+  position: relative;
+  z-index: 1;
+  outline: 1px dashed var(--ink);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .dialog[open] .pick {
+    animation: tumble 460ms var(--ease-out) both;
+    animation-delay: calc(min(var(--i), 12) * 22ms);
+  }
+
+  /* backwards, not both: a transform animation that stays in effect would make the hand the
+     containing block of the carried (fixed) sticker */
+  .hand {
+    animation: draw-out 320ms var(--ease-out) backwards;
+  }
+}
+
+@keyframes tumble {
+  from {
+    opacity: 0;
+    translate: 0 calc(var(--dy) + 40px);
+    rotate: calc(var(--r) * -2);
+  }
+}
+
+@keyframes draw-out {
+  from {
+    opacity: 0;
+    translate: 0 48px;
+    rotate: -6deg;
+  }
+}
+
+/* The backing paper: glossy, with the slits sticker sheets have on the back. */
+.backing {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-4) var(--space-3);
+  border-radius: 6px;
+  background:
+    repeating-linear-gradient(135deg, transparent 0 22px, var(--backing-slit) 22px 23px),
+    var(--backing);
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 0.18),
+    0 6px 14px rgb(0 0 0 / 0.1);
+  color: var(--sheet-ink);
+}
+
+.backing[data-small] {
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-2) var(--space-1);
+  border-radius: 4px;
+  font-size: 0.625rem;
+}
+
+.art > canvas,
+.peelable > canvas {
+  display: block;
+  image-rendering: pixelated;
+}
+
+.art > canvas {
+  inline-size: 72px;
+  block-size: 72px;
+}
+
+.note {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0 var(--space-2);
+  max-inline-size: 100%;
+  font-size: var(--text-small);
+  overflow-wrap: anywhere;
+}
+
+.backing[data-small] {
+  inline-size: 96px;
+}
+
+.backing[data-small] .note {
+  display: grid;
+  justify-items: center;
+  inline-size: 100%;
+  font-size: inherit;
+}
+
+.backing[data-small] .note > * {
+  max-inline-size: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.backing[data-small] .fromWord {
+  display: none;
+}
+
+.from {
+  min-inline-size: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.hand {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-6);
+  padding-block-start: var(--space-6);
+}
+
+.hand > .backing {
+  inline-size: min(100%, 300px);
+}
+
+.hollow {
+  display: grid;
+  place-items: center;
+  inline-size: 216px;
+  block-size: 216px;
+}
+
+.peelable {
+  --peel: 0;
+  --dx: 0px;
+  --dy: 0px;
+  touch-action: none;
+  cursor: grab;
+  rotate: var(--r);
+  translate: var(--dx) var(--dy);
+  transform: perspective(600px) rotateX(calc(var(--peel) * 18deg))
+    scale(calc(1 + var(--peel) * 0.06));
+  transform-origin: 50% 100%;
+  filter: drop-shadow(
+    0 calc(1px + var(--peel) * 8px) calc(1px + var(--peel) * 6px) rgb(0 0 0 / 0.28)
+  );
+}
+
+.peelable > canvas {
+  inline-size: 216px;
+  block-size: 216px;
+}
+
+.peelable[data-detached] {
+  position: fixed;
+  inset-block-start: var(--top);
+  inset-inline-start: var(--left);
+  z-index: 10;
+  visibility: visible;
+  cursor: grabbing;
+  transform: scale(var(--carry));
+  transform-origin: 50% 50%;
+  filter: drop-shadow(0 14px 10px rgb(0 0 0 / 0.3));
+  transition: transform var(--t-med) var(--ease-out);
+}
+
+.peelable[data-dropped] {
+  visibility: hidden;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
+.id {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

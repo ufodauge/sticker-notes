@@ -15,6 +15,11 @@
   --sheet-edge: #d6d6d6;
   --sheet-ink: #6b6b6b;
   --sheet-ink-strong: #161616;
+  /* the glossy backing paper a sticker comes on, and the clear film of the pocket */
+  --backing: #f4f1e8;
+  --backing-slit: #e3ddcc;
+  --pocket-film: rgb(214 228 236 / 0.55);
+  --pocket-edge: rgb(120 140 150 / 0.55);
 
   --space-1: 4px;
   --space-2: 8px;

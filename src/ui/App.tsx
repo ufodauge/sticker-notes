@@ -2,11 +2,14 @@ import { BookOpen, Ellipsis, FlaskRound, ImagePlus, Printer } from "lucide-react
 import { Suspense, use, useReducer, useSyncExternalStore } from "react";
 import { isIos, isStandalone } from "../data/platform.ts";
 import { writeViewHint } from "../data/view-hint.ts";
+import { sortedPages } from "../core/album.ts";
 import { layoutAlbum } from "../core/print.ts";
 import { settings, stickerStore, type AddResult } from "../data/sticker-store.ts";
 import { ActionBar } from "./ActionBar.tsx";
 import { Album } from "./album/Album.tsx";
 import { PageIndicator } from "./album/PageIndicator.tsx";
+import { Pocket } from "./album/Pocket.tsx";
+import { PocketDialog } from "./album/PocketDialog.tsx";
 import { initialState, reducer, type View } from "./app-state.ts";
 import styles from "./App.module.css";
 import common from "./common.module.css";
@@ -56,7 +59,7 @@ function Shell({ initialView }: { readonly initialView: View }) {
   const [dropping, setDropping] = useReducer((_: boolean, next: boolean) => next, false);
 
   const onSaved = (stickerId: string, result: AddResult) =>
-    feedback.landed(stickerId, result.kind === "added" ? "arrive" : "wiggle", null);
+    feedback.landed(stickerId, result.kind === "added" ? "pocket" : "wiggle", null);
 
   const onLeft = () => {
     const leaving = state.leaving;
@@ -70,13 +73,15 @@ function Shell({ initialView }: { readonly initialView: View }) {
   const ready = snap.status === "ready" ? snap : null;
   const stickers = ready?.stickers ?? [];
   const mine = stickers.filter((s) => s.origin === "mine");
+  const placed = new Set(ready?.placements.map((p) => p.stickerId));
+  const pocket = stickers.filter((s) => !placed.has(s.id)).toReversed();
   const selectedPlacement = ready?.placements.find((p) => p.id === state.selected);
   const selectedSticker = stickers.find((s) => s.id === selectedPlacement?.stickerId);
   const menuDot = (isIos() && !isStandalone()) || backupDue(stickers.length - mine.length, mark);
   const overlay = state.overlay;
   const qrSticker =
     overlay.kind === "qr" ? stickers.find((s) => s.id === overlay.stickerId) : undefined;
-  const close = () => dispatch({ type: "close" });
+  const close = () => dispatch({ type: "close", overlay: overlay.kind });
   const inJar = state.view === "jar" && stickers.length > 0;
   const jarSticker =
     inJar && overlay.kind === "none" ? stickers.find((s) => s.id === blockId) : undefined;
@@ -182,6 +187,13 @@ function Shell({ initialView }: { readonly initialView: View }) {
             onCreate={() => dispatch({ type: "open", overlay: { kind: "create" } })}
           />
         )}
+        {ready && !inJar && (
+          <Pocket
+            stickers={pocket}
+            highlight={highlight}
+            onOpen={() => dispatch({ type: "open", overlay: { kind: "pocket" } })}
+          />
+        )}
       </main>
 
       {selectedPlacement && selectedSticker && !state.leaving && (
@@ -235,6 +247,13 @@ function Shell({ initialView }: { readonly initialView: View }) {
       {ready && overlay.kind === "print" && <PrintDialog album={ready} onClose={close} />}
       {ready && overlay.kind === "jarPick" && <JarPickDialog stickers={stickers} onClose={close} />}
       {overlay.kind === "menu" && <MenuDialog onClose={close} />}
+      {ready && overlay.kind === "pocket" && (
+        <PocketDialog
+          stickers={pocket}
+          pageIds={sortedPages(ready.pages).map((p) => p.id)}
+          onClose={close}
+        />
+      )}
       {printing && ready && overlay.kind !== "print" && (
         <PrinterCopy
           sheets={layoutAlbum(ready.pages, ready.placements)}

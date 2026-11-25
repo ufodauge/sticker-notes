@@ -98,7 +98,9 @@ async function importStickers(page: Page, count: number): Promise<void> {
     mimeType: "application/json",
     buffer: Buffer.from(await bigBackup(count, 0)),
   });
-  await expect(page.getByRole("status")).toContainText(`${count}枚を貼った`, { timeout: 30_000 });
+  await expect(page.getByRole("status")).toContainText(`${count}枚を読み込んだ`, {
+    timeout: 30_000,
+  });
   await page.keyboard.press("Escape");
 }
 

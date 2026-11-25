@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { expect, test, type Locator } from "@playwright/test";
 import { decodeRgba } from "../test/png.ts";
-import { decodeQrText, readQrUrl, receive } from "./helpers.ts";
+import { decodeQrText, readQrUrl, receive, stickFromPocket } from "./helpers.ts";
 
 const RASTER_WIDTH_PX = 3000;
 
@@ -57,8 +57,9 @@ test("print: own QR block sits on the sheet and decodes to the QR dialog URL", a
     buffer: readFileSync("test/fixtures/sample.png"),
   });
   await page.getByLabel("ID", { exact: true }).fill("sticker_fan2026");
-  await page.getByRole("button", { name: "貼る" }).click();
+  await page.getByRole("button", { name: "ポケットに入れる" }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
+  await stickFromPocket(page, "X @sticker_fan2026");
 
   await page.getByRole("button", { name: "X @sticker_fan2026", exact: true }).click();
   await page.getByRole("button", { name: "QRを出す", exact: true }).click();

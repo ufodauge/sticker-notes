@@ -18,6 +18,7 @@
 }
 
 .main {
+  position: relative;
   min-block-size: 0;
   min-inline-size: 0;
   padding-block-end: max(var(--space-6), env(safe-area-inset-bottom));

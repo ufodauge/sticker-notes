@@ -2,7 +2,8 @@ import type { Discarded } from "../data/sticker-store.ts";
 
 export type Highlight = {
   readonly stickerId: string;
-  readonly effect: "arrive" | "received" | "wiggle";
+  // pocket: dropped into the pocket; lifted: just put on a page, not yet pressed down
+  readonly effect: "arrive" | "wiggle" | "pocket" | "lifted" | "pressed";
   readonly nonce: number;
 };
 

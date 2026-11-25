@@ -9,7 +9,8 @@ import {
 import { applyChange, type Placement } from "../../core/album.ts";
 import { snsDisplay } from "../../core/sns.ts";
 import { stickerStore, type StoredSticker } from "../../data/sticker-store.ts";
-import type { Highlight } from "../feedback.ts";
+import { feedback, type Highlight } from "../feedback.ts";
+import { paperSound } from "./paper-sound.ts";
 import { StickerView } from "../StickerView.tsx";
 import {
   addPointer,
@@ -220,6 +221,11 @@ export function PageCanvas(props: Props) {
     frame.current = 0;
     cur.scroller?.removeAttribute("data-dragging");
     cur.section?.removeAttribute("data-drag-origin");
+    const stickerId = placements.find((p) => p.id === settled.placementId)?.stickerId;
+    if (!cancelled && highlight?.effect === "lifted" && highlight.stickerId === stickerId) {
+      paperSound.stick();
+      feedback.landed(stickerId, "pressed", null);
+    }
     if (cancelled) {
       writeVars(cur.els, cur.g.start, cur.scale);
       return;

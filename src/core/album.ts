@@ -79,16 +79,21 @@ export function autoPlace(
   placements: readonly Placement[],
   sticker: string,
   ids: { readonly page: string; readonly placement: string },
+  preferred?: string,
 ): AutoPlace {
-  const last = sortedPages(pages).at(-1);
-  const taken = new Set(
-    last ? placements.filter((p) => p.pageId === last.id).map((p) => slotOf(p.x, p.y)) : [],
-  );
-  const free = Array.from({ length: PAGE_CAPACITY }, (_, i) => i).find((i) => !taken.has(i));
-  const newPage =
-    !last || free === undefined ? { id: ids.page, order: nextPageOrder(pages) } : null;
-  const pageId = newPage?.id ?? last?.id ?? ids.page;
-  const c = slotCenter(newPage ? 0 : (free ?? 0));
+  const freeSlot = (page: Page | undefined) => {
+    if (!page) return undefined;
+    const taken = new Set(
+      placements.filter((p) => p.pageId === page.id).map((p) => slotOf(p.x, p.y)),
+    );
+    const slot = Array.from({ length: PAGE_CAPACITY }, (_, i) => i).find((i) => !taken.has(i));
+    return slot === undefined ? undefined : { page, slot };
+  };
+  const found =
+    freeSlot(pages.find((p) => p.id === preferred)) ?? freeSlot(sortedPages(pages).at(-1));
+  const newPage = found ? null : { id: ids.page, order: nextPageOrder(pages) };
+  const pageId = found?.page.id ?? ids.page;
+  const c = slotCenter(found?.slot ?? 0);
   const j = jitter(sticker);
   return {
     newPage,

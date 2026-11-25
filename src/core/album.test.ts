@@ -62,6 +62,16 @@ describe("auto placement", () => {
     expect(Math.floor(r.placement.x * 3)).toBe(1);
   });
 
+  test("a preferred page with room is used before the last page", () => {
+    const { pages, placements } = fill(PAGE_CAPACITY + 1);
+    const first = pages[0]?.id ?? "";
+    const without = placements.filter((p) => p.id !== "x4");
+    const r = autoPlace(pages, without, sid(99), { page: "n", placement: "y" }, first);
+    expect(r.placement.pageId).toBe(first);
+    const full = autoPlace(pages, placements, sid(98), { page: "n", placement: "z" }, first);
+    expect(full.placement.pageId).toBe(pages[1]?.id);
+  });
+
   test("placements pass the schema", () => {
     fill(20).placements.forEach((p) => expect(v.is(PlacementSchema, p)).toBe(true));
   });

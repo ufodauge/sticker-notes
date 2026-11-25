@@ -20,7 +20,7 @@ test("jar: the 3D scene starts on the desk and takes a shake (WebGL where availa
     mimeType: "application/json",
     buffer: Buffer.from(await shapesBackup(12)),
   });
-  await expect(page.getByRole("status")).toContainText("12枚を貼った", { timeout: 30_000 });
+  await expect(page.getByRole("status")).toContainText("12枚を読み込んだ", { timeout: 30_000 });
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "瓶で見る" }).click();
   await expect(canvasOf(page)).toHaveAttribute("data-blocks", "12");
@@ -45,7 +45,7 @@ test("jar: blocks stay inside the glass however often the jar is shaken", async 
     mimeType: "application/json",
     buffer: Buffer.from(await shapesBackup(30)),
   });
-  await expect(page.getByRole("status")).toContainText("30枚を貼った", { timeout: 30_000 });
+  await expect(page.getByRole("status")).toContainText("30枚を読み込んだ", { timeout: 30_000 });
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "瓶で見る" }).click();
   await expect(canvasOf(page)).toHaveAttribute("data-queue", "0", { timeout: 120_000 });
@@ -70,7 +70,7 @@ test("jar: with the lid on, shaking the jar by hand keeps every block inside", a
     mimeType: "application/json",
     buffer: Buffer.from(await shapesBackup(30)),
   });
-  await expect(page.getByRole("status")).toContainText("30枚を貼った", { timeout: 30_000 });
+  await expect(page.getByRole("status")).toContainText("30枚を読み込んだ", { timeout: 30_000 });
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "瓶で見る" }).click();
   await expect(canvasOf(page)).toHaveAttribute("data-queue", "0", { timeout: 120_000 });

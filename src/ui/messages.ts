@@ -50,6 +50,18 @@ export const t = {
     handle: { label: "回転と大きさ(ドラッグ)", tooltip: "回転と大きさ" },
   },
 
+  pocket: {
+    open: (n: number) => `ポケット(${n}枚)`,
+    dialog: "ポケット",
+    pick: (who: string) => `${who} を手に取る`,
+    inHand: (who: string) => `${who}(ドラッグしてはがす)`,
+    stick: "はがしてページに貼る",
+    back: "ポケットに戻す",
+    made: "自分で作った",
+    from: "from",
+    date: (iso: string) => iso.replaceAll("-", "."),
+  },
+
   actionBar: {
     showQr: "QRを出す",
     discard: "捨てる",
@@ -58,8 +70,8 @@ export const t = {
   feedback: {
     discarded: "ポイした",
     receivedInvalid: "読み込めないステッカー",
-    receivedAdded: (who: string) => `${who} を貼った`,
-    receivedDuplicate: "もう貼ってある",
+    receivedAdded: (who: string) => `${who} がポケットに入った`,
+    receivedDuplicate: "もう持ってる",
     inviteCreate: "自分のも作る",
   },
 
@@ -79,7 +91,7 @@ export const t = {
     preview: "作成中のステッカー",
     exactMatch: "パレットと完全一致",
     saveFailed: "保存できなかった",
-    submit: "貼る",
+    submit: "ポケットに入れる",
     palette: "パレット",
     paletteNatural: "自然な色",
     paletteFilter: "フィルター",
@@ -99,7 +111,7 @@ export const t = {
     restore: "読み込む",
     restoreFailed: "読み込めなかった",
     restored: (stickers: number, skipped: number) =>
-      `${stickers}枚を貼った${skipped > 0 ? `\n読めない項目${skipped}件は飛ばした` : ""}`,
+      `${stickers}枚を読み込んだ${skipped > 0 ? `\n読めない項目${skipped}件は飛ばした` : ""}`,
     backupError: {
       "not-json": "バックアップのファイルではない",
       "not-backup": "バックアップのファイルではない",

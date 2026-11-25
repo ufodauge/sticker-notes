@@ -1,6 +1,7 @@
 import * as v from "valibot";
 import {
   applyChange,
+  autoPlace,
   bringToFront,
   nextPageOrder,
   topZ,
@@ -11,7 +12,7 @@ import {
 import { parseBackup, planMerge, serializeBackup, type BackupError } from "../core/backup.ts";
 import { decodeBody, type Sticker } from "../core/payload.ts";
 import {
-  addAndPlace,
+  addToPocket,
   applyMerge,
   discard,
   openStickerDb,
@@ -94,15 +95,57 @@ export const stickerStore = {
   getSnapshot: (): StoreSnapshot => state.snapshot,
 
   add: async (id: string, body: Uint8Array, origin: StickerOrigin): Promise<AddResult> => {
-    const result = await addAndPlace(await dbPromise(), {
+    const result = await addToPocket(await dbPromise(), {
       id,
       body,
       origin,
-      receivedAt: origin === "received" ? todayLocal() : null,
+      receivedAt: todayLocal(),
     });
     await refresh();
     if (result.kind === "added") void requestPersist().catch(() => undefined);
     return result;
+  },
+
+  // Out of the pocket and onto a page: at a point on a page (a page that does not exist yet is
+  // made), or, without a point, in the first free slot of the page it is near.
+  place: async (
+    stickerId: string,
+    at:
+      | { readonly pageId: string; readonly change: PlacementChange }
+      | { readonly near: string | undefined },
+  ): Promise<void> => {
+    const snap = ready();
+    if (!snap || snap.placements.some((p) => p.stickerId === stickerId)) return;
+    const ids = { page: crypto.randomUUID(), placement: crypto.randomUUID() };
+    const auto = autoPlace(
+      snap.pages,
+      snap.placements,
+      stickerId,
+      ids,
+      "near" in at ? at.near : at.pageId,
+    );
+    const atPoint = (pageId: string, change: PlacementChange) => {
+      const existing = snap.pages.find((p) => p.id === pageId);
+      const target = existing?.id ?? ids.page;
+      return {
+        placement: {
+          ...applyChange(auto.placement, change),
+          pageId: target,
+          z: topZ(snap.placements, target) + 1,
+        },
+        newPage: existing ? undefined : { id: ids.page, order: nextPageOrder(snap.pages) },
+      };
+    };
+    const { placement, newPage } =
+      "near" in at
+        ? { placement: auto.placement, newPage: auto.newPage ?? undefined }
+        : atPoint(at.pageId, at.change);
+    publish({
+      ...snap,
+      pages: newPage ? [...snap.pages, newPage] : snap.pages,
+      placements: [...snap.placements, placement],
+    });
+    await savePlacement(await dbPromise(), placement, newPage);
   },
 
   discard: async (stickerId: string): Promise<Discarded | undefined> => {

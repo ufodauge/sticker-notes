@@ -1,0 +1,153 @@
+/* A clear vinyl pocket clipped to the album's edge, stickers stuffed in any old way. */
+.pocket {
+  position: absolute;
+  inset-block-end: var(--space-2);
+  inset-inline-end: var(--space-4);
+  z-index: 3;
+  display: block;
+  inline-size: 96px;
+  block-size: 84px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--sheet-ink-strong);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.body {
+  position: absolute;
+  inset: 0;
+  transition: scale var(--t-fast) var(--ease-out);
+}
+
+.pocket:hover .body {
+  scale: 1.04;
+}
+
+.pocket:active .body {
+  scale: 0.96;
+}
+
+.pocket:focus-visible {
+  outline: 1px dashed var(--ink);
+  outline-offset: 4px;
+  border-radius: 10px;
+}
+
+.peek {
+  position: absolute;
+  inset-block-end: 30px;
+  inset-inline-start: calc(12px + var(--i) * 18px + var(--dx));
+  z-index: calc(3 - var(--i));
+  rotate: var(--r);
+  transform-origin: 50% 100%;
+}
+
+.peek > canvas {
+  display: block;
+  inline-size: 36px;
+  block-size: 36px;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.25));
+}
+
+.film {
+  position: absolute;
+  z-index: 4;
+  inset: 40px 0 0;
+  border: 1px solid var(--pocket-edge);
+  border-radius: 4px 4px 12px 12px;
+  background:
+    linear-gradient(
+      115deg,
+      rgb(255 255 255 / 0.65) 0 18%,
+      transparent 18% 30%,
+      rgb(255 255 255 / 0.3) 30% 36%,
+      transparent 36%
+    ),
+    var(--pocket-film);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.12);
+  backdrop-filter: blur(1.5px);
+}
+
+.film::before {
+  content: "";
+  position: absolute;
+  inset: 4px 6px auto;
+  border-block-start: 1px dashed var(--pocket-edge);
+}
+
+.count {
+  position: absolute;
+  z-index: 5;
+  inset-block-start: 30px;
+  inset-inline-end: -6px;
+  display: grid;
+  place-items: center;
+  min-inline-size: 22px;
+  block-size: 22px;
+  padding-inline: 6px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .body[data-effect="pocket"] {
+    animation: stuffed 620ms var(--ease-out) both;
+  }
+
+  .body[data-effect="pocket"] .peek:first-child {
+    animation: drop-in 520ms var(--ease-out) both;
+  }
+
+  .body[data-effect="wiggle"] {
+    animation: rustle 520ms ease-in-out both;
+  }
+}
+
+@keyframes stuffed {
+  0%,
+  35% {
+    transform: none;
+  }
+  55% {
+    transform: translateY(4px) scale(1.06, 0.92);
+  }
+  78% {
+    transform: translateY(-2px) scale(0.98, 1.03);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+@keyframes drop-in {
+  0% {
+    opacity: 0;
+    translate: 0 -60px;
+    rotate: calc(var(--r) - 40deg);
+  }
+  45% {
+    opacity: 1;
+  }
+  100% {
+    translate: 0 0;
+  }
+}
+
+@keyframes rustle {
+  25% {
+    transform: rotate(-6deg);
+  }
+  50% {
+    transform: rotate(5deg);
+  }
+  75% {
+    transform: rotate(-3deg);
+  }
+}
