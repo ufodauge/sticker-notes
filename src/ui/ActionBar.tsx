@@ -1,4 +1,4 @@
-import { QrCode, Trash2 } from "lucide-react";
+import { FlipHorizontal2, QrCode, Trash2 } from "lucide-react";
 import { snsDisplay, snsProfileUrl, type SnsKind } from "../core/sns.ts";
 import type { StoredSticker } from "../data/sticker-store.ts";
 import styles from "./ActionBar.module.css";
@@ -9,10 +9,11 @@ import { SnsIcon } from "./SnsIcon.tsx";
 type Props = {
   readonly sticker: StoredSticker;
   readonly onQr: () => void;
+  readonly onBack: () => void;
   readonly onDiscard: () => void;
 };
 
-export function ActionBar({ sticker, onQr, onDiscard }: Props) {
+export function ActionBar({ sticker, onQr, onBack, onDiscard }: Props) {
   const { snsKind, snsId } = sticker.sticker;
   const url = snsProfileUrl(snsKind, snsId);
   return (
@@ -29,6 +30,15 @@ export function ActionBar({ sticker, onQr, onDiscard }: Props) {
           <QrCode aria-hidden="true" size={20} strokeWidth={1.5} />
         </button>
       )}
+      <button
+        type="button"
+        className={common.icon}
+        aria-label={t.back.show}
+        title={t.back.show}
+        onClick={onBack}
+      >
+        <FlipHorizontal2 aria-hidden="true" size={20} strokeWidth={1.5} />
+      </button>
       <button
         type="button"
         className={common.icon}

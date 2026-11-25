@@ -8,6 +8,7 @@ import {
   ShieldCheck,
   Smartphone,
   Upload,
+  Users,
 } from "lucide-react";
 import {
   Suspense,
@@ -37,12 +38,17 @@ import { t } from "../../messages.ts";
 import { backupMarkCache } from "./backup-mark.ts";
 import styles from "./MenuDialog.module.css";
 
-type Props = { readonly onClose: () => void };
+type Props = { readonly onClose: () => void; readonly onPeople: () => void };
 
-export function MenuDialog({ onClose }: Props) {
+export function MenuDialog({ onClose, onPeople }: Props) {
   return (
     <Dialog label={t.menu.dialog} onClose={onClose}>
       <div className={styles.body}>
+        <Row icon={<Users aria-hidden="true" size={20} strokeWidth={1.5} />}>
+          <button type="button" className={common.button} onClick={onPeople}>
+            {t.people.open}
+          </button>
+        </Row>
         {isIos() && !isStandalone() && (
           <Row icon={<Share aria-hidden="true" size={20} strokeWidth={1.5} />}>
             <p className={`${common.warn} ${styles.pre}`}>{t.menu.iosInstall}</p>

@@ -25,6 +25,8 @@ import { JarPickDialog } from "./dialogs/jar/JarPickDialog.tsx";
 import { MenuDialog } from "./dialogs/menu/MenuDialog.tsx";
 import { PrintDialog } from "./dialogs/print/PrintDialog.tsx";
 import { QrDialog } from "./dialogs/QrDialog.tsx";
+import { BackDialog } from "./dialogs/back/BackDialog.tsx";
+import { PeopleDialog } from "./dialogs/people/PeopleDialog.tsx";
 import { PrinterCopy } from "./dialogs/print/Sheets.tsx";
 import { feedback } from "./feedback.ts";
 import { t } from "./messages.ts";
@@ -81,6 +83,8 @@ function Shell({ initialView }: { readonly initialView: View }) {
   const overlay = state.overlay;
   const qrSticker =
     overlay.kind === "qr" ? stickers.find((s) => s.id === overlay.stickerId) : undefined;
+  const backSticker =
+    overlay.kind === "back" ? stickers.find((s) => s.id === overlay.stickerId) : undefined;
   const close = () => dispatch({ type: "close", overlay: overlay.kind });
   const inJar = state.view === "jar" && stickers.length > 0;
   const jarSticker =
@@ -203,6 +207,9 @@ function Shell({ initialView }: { readonly initialView: View }) {
           onQr={() =>
             dispatch({ type: "open", overlay: { kind: "qr", stickerId: selectedSticker.id } })
           }
+          onBack={() =>
+            dispatch({ type: "open", overlay: { kind: "back", stickerId: selectedSticker.id } })
+          }
           onDiscard={() =>
             dispatch({
               type: "leave",
@@ -217,6 +224,9 @@ function Shell({ initialView }: { readonly initialView: View }) {
           key={jarSticker.id}
           sticker={jarSticker}
           onQr={() => dispatch({ type: "open", overlay: { kind: "qr", stickerId: jarSticker.id } })}
+          onBack={() =>
+            dispatch({ type: "open", overlay: { kind: "back", stickerId: jarSticker.id } })
+          }
           onDiscard={() => {
             blockSelection.set(null);
             void discardSticker(jarSticker.id);
@@ -246,7 +256,23 @@ function Shell({ initialView }: { readonly initialView: View }) {
       {qrSticker && <QrDialog sticker={qrSticker.sticker} onClose={close} />}
       {ready && overlay.kind === "print" && <PrintDialog album={ready} onClose={close} />}
       {ready && overlay.kind === "jarPick" && <JarPickDialog stickers={stickers} onClose={close} />}
-      {overlay.kind === "menu" && <MenuDialog onClose={close} />}
+      {overlay.kind === "menu" && (
+        <MenuDialog
+          onClose={close}
+          onPeople={() => dispatch({ type: "open", overlay: { kind: "people" } })}
+        />
+      )}
+      {backSticker && (
+        <BackDialog
+          sticker={backSticker}
+          all={stickers}
+          onPerson={(focus) => dispatch({ type: "open", overlay: { kind: "people", focus } })}
+          onClose={close}
+        />
+      )}
+      {overlay.kind === "people" && (
+        <PeopleDialog stickers={stickers} focus={overlay.focus} onClose={close} />
+      )}
       {ready && overlay.kind === "pocket" && (
         <PocketDialog
           stickers={pocket}

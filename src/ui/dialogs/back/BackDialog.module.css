@@ -1,0 +1,86 @@
+.body {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-6);
+  padding-block: var(--space-6) var(--space-2);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.card {
+  position: relative;
+  display: grid;
+  inline-size: 220px;
+  block-size: 220px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  perspective: 900px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.card:focus-visible {
+  outline: 1px dashed var(--ink);
+  outline-offset: 6px;
+}
+
+.face {
+  grid-area: 1 / 1;
+  display: grid;
+  place-items: center;
+  backface-visibility: hidden;
+  transform: rotateY(180deg);
+  transition: transform 560ms var(--ease-out);
+}
+
+.face > canvas {
+  display: block;
+  inline-size: 216px;
+  block-size: 216px;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 4px 6px rgb(0 0 0 / 0.2));
+}
+
+.back {
+  transform: rotateY(0deg);
+}
+
+.card[data-front] .face {
+  transform: rotateY(0deg);
+}
+
+.card[data-front] .back {
+  transform: rotateY(-180deg);
+}
+
+.paper {
+  inline-size: 220px;
+  block-size: 220px;
+  align-content: center;
+  color: var(--sheet-ink);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .card:not([data-front]) .face {
+    animation: turn-away 700ms var(--ease-out) both;
+  }
+
+  .card:not([data-front]) .back {
+    animation: turn-over 700ms var(--ease-out) both;
+  }
+}
+
+@keyframes turn-away {
+  0%,
+  25% {
+    transform: rotateY(0deg);
+  }
+}
+
+@keyframes turn-over {
+  0%,
+  25% {
+    transform: rotateY(-180deg);
+  }
+}

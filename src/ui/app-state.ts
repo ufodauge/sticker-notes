@@ -5,6 +5,8 @@ type Overlay =
   | { readonly kind: "print" }
   | { readonly kind: "menu" }
   | { readonly kind: "pocket" }
+  | { readonly kind: "back"; readonly stickerId: string }
+  | { readonly kind: "people"; readonly focus?: string }
   | { readonly kind: "jarPick" };
 
 export type View = "album" | "jar";

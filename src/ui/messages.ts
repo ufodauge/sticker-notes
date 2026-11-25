@@ -62,6 +62,21 @@ export const t = {
     date: (iso: string) => iso.replaceAll("-", "."),
   },
 
+  back: {
+    show: "裏を見る",
+    dialog: "シールの裏",
+    flip: "ひっくり返す",
+    fromPerson: (n: number) => `この人からのシール ${n}枚`,
+  },
+
+  people: {
+    open: "もらった人",
+    dialog: "もらった人",
+    none: "まだだれからももらっていない",
+    count: (n: number) => `${n}枚`,
+    since: (date: string) => `はじめて ${date}`,
+  },
+
   actionBar: {
     showQr: "QRを出す",
     discard: "捨てる",

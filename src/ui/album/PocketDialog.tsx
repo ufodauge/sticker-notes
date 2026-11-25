@@ -1,5 +1,5 @@
 import { ArrowLeft } from "lucide-react";
-import { useReducer, useRef, type CSSProperties, type PointerEvent, type ReactNode } from "react";
+import { useReducer, useRef, type CSSProperties, type PointerEvent } from "react";
 import { snsDisplay } from "../../core/sns.ts";
 import { stickerStore, type StoredSticker } from "../../data/sticker-store.ts";
 import common from "../common.module.css";
@@ -7,7 +7,7 @@ import { Dialog } from "../Dialog.tsx";
 import { useCloseDialog } from "../dialog-context.ts";
 import { feedback } from "../feedback.ts";
 import { t } from "../messages.ts";
-import { SnsIcon } from "../SnsIcon.tsx";
+import { Backing } from "../Backing.tsx";
 import { StickerView } from "../StickerView.tsx";
 import { jumble } from "./jumble.ts";
 import { pagePosition } from "./page-position.ts";
@@ -55,39 +55,6 @@ function PocketBody({ stickers, pageIds }: Omit<Props, "onClose">) {
         </button>
       ))}
     </div>
-  );
-}
-
-function Backing({
-  sticker,
-  small,
-  children,
-}: {
-  readonly sticker: StoredSticker;
-  readonly small?: boolean;
-  readonly children?: ReactNode;
-}) {
-  const s = sticker.sticker;
-  return (
-    <span className={styles.backing} data-small={small || undefined}>
-      {children ?? (
-        <span className={styles.art}>
-          <StickerView sticker={s} scale={0} label="" decorative />
-        </span>
-      )}
-      <span className={styles.note}>
-        {sticker.origin === "mine" ? (
-          <span>{t.pocket.made}</span>
-        ) : (
-          <span className={styles.from}>
-            <span className={styles.fromWord}>{t.pocket.from}</span>
-            <SnsIcon kind={s.snsKind} size={12} />
-            <span className={styles.id}>{s.snsId}</span>
-          </span>
-        )}
-        {sticker.receivedAt && <span>{t.pocket.date(sticker.receivedAt)}</span>}
-      </span>
-    </span>
   );
 }
 
@@ -213,7 +180,7 @@ function Hand({
 
   return (
     <div className={styles.hand}>
-      <Backing sticker={sticker}>
+      <Backing sticker={sticker} className={styles.wide}>
         <span className={styles.hollow}>
           <div
             className={styles.peelable}

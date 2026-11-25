@@ -1,0 +1,75 @@
+/* The backing paper: glossy, with the slits sticker sheets have on the back. */
+.backing {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-4) var(--space-3);
+  border-radius: 6px;
+  background:
+    repeating-linear-gradient(135deg, transparent 0 22px, var(--backing-slit) 22px 23px),
+    var(--backing);
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 0.18),
+    0 6px 14px rgb(0 0 0 / 0.1);
+  color: var(--sheet-ink);
+}
+
+.backing[data-small] {
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-2) var(--space-1);
+  border-radius: 4px;
+  font-size: 0.625rem;
+}
+
+.art > canvas {
+  display: block;
+  image-rendering: pixelated;
+  inline-size: 72px;
+  block-size: 72px;
+}
+
+.note {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0 var(--space-2);
+  max-inline-size: 100%;
+  font-size: var(--text-small);
+  overflow-wrap: anywhere;
+}
+
+.backing[data-small] {
+  inline-size: 96px;
+}
+
+.backing[data-small] .note {
+  display: grid;
+  justify-items: center;
+  inline-size: 100%;
+  font-size: inherit;
+}
+
+.backing[data-small] .note > * {
+  max-inline-size: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.backing[data-small] .fromWord {
+  display: none;
+}
+
+.from {
+  min-inline-size: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.id {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
