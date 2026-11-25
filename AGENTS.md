@@ -77,6 +77,8 @@ These commands map to their corresponding tools. For example, `vp dev --port 300
 
 # Project notes
 
+- Git hooks are config-based (Git 2.54+): enable once per clone with `git config set --local include.path ../.githooks/hooks.gitconfig`. pre-commit runs `vp check`; pre-push runs `vp run verify` and the full e2e. Do not bypass them.
+
 - Spec and milestones: `docs/plan.md`. Decisions: `docs/m0-decisions.md`. Status and remaining device checks: `docs/progress.md`.
 - UI work: load the `ui-conventions` skill (`.claude/skills/ui-conventions/SKILL.md`) first.
 - `src/core` is pure (no DOM / browser storage; enforced by lint). `src/data` wraps browser APIs. `src/ui` is React.

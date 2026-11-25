@@ -1,0 +1,11 @@
+# Git config-based hooks (Git 2.54+). Enable once per clone:
+#   git config set --local include.path ../.githooks/hooks.gitconfig
+[hook "check"]
+	command = vp check
+	event = pre-commit
+[hook "verify"]
+	command = vp run verify
+	event = pre-push
+[hook "e2e"]
+	command = vp exec playwright test --workers=4
+	event = pre-push

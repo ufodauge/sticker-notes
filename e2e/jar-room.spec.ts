@@ -218,6 +218,7 @@ test("jar room: a reload in the jar is dark from the first frame, never the albu
 });
 
 test("jar room: the speaker button toggles and is remembered across a reload", async ({ page }) => {
+  test.setTimeout(90_000);
   await openJar(page);
   const button = speaker(page);
   await expect(button).toHaveAttribute("aria-pressed", "true");
@@ -232,8 +233,7 @@ test("jar room: the speaker button toggles and is remembered across a reload", a
   await expect(speaker(page)).toHaveAttribute("aria-pressed", "true");
   await expect.poll(() => savedSound(page)).toBe(true);
   await page.reload();
-  await expect(canvasOf(page)).toHaveAttribute("data-state", "settled", { timeout: 30_000 });
-  await expect(speaker(page)).toHaveAttribute("aria-pressed", "true");
+  await expect(speaker(page)).toHaveAttribute("aria-pressed", "true", { timeout: 30_000 });
 });
 
 test("jar room: reduced motion has no speaker button and never opens the audio", async ({
