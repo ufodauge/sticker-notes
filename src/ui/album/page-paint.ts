@@ -21,7 +21,7 @@ const INK_SOFT = "#6b6b6b";
 
 const art = new Map<Sticker, HTMLCanvasElement>();
 
-function stickerCanvas(s: Sticker): HTMLCanvasElement {
+export function stickerCanvas(s: Sticker): HTMLCanvasElement {
   const known = art.get(s);
   if (known) return known;
   const { size, rgba } = renderRgba(s);
@@ -30,6 +30,22 @@ function stickerCanvas(s: Sticker): HTMLCanvasElement {
   c.height = size;
   c.getContext("2d")?.putImageData(new ImageData(rgba, size, size), 0, 0);
   art.set(s, c);
+  return c;
+}
+
+const backs = new Map<Sticker, HTMLCanvasElement>();
+
+// The sticker's back: its own outline in the white of the release side, no picture.
+export function stickerBack(s: Sticker): HTMLCanvasElement {
+  const known = backs.get(s);
+  if (known) return known;
+  const { size, rgba } = renderRgba(s);
+  const back = Uint8ClampedArray.from(rgba, (v, i) => (i % 4 === 3 ? (v > 0 ? 255 : 0) : 238));
+  const c = document.createElement("canvas");
+  c.width = size;
+  c.height = size;
+  c.getContext("2d")?.putImageData(new ImageData(back, size, size), 0, 0);
+  backs.set(s, c);
   return c;
 }
 
@@ -59,12 +75,16 @@ function paper(ctx: CanvasRenderingContext2D, w: number, h: number, spine: "left
   ctx.fillRect(spine === "left" ? 0 : w - shade, 0, shade, h);
 }
 
+// dimmed as the album is with the lights out
+const DUSK = "rgb(10 14 32 / 0.62)";
+
 export function paintFace(
   face: FaceArt,
   w: number,
   h: number,
   dpr: number,
   spine: "left" | "right",
+  dark: boolean,
 ): HTMLCanvasElement {
   const c = document.createElement("canvas");
   c.width = Math.round(w * dpr);
@@ -72,23 +92,18 @@ export function paintFace(
   const ctx = c.getContext("2d");
   if (!ctx) return c;
   ctx.scale(dpr, dpr);
+  paper(ctx, w, h, spine);
   if (face.kind === "new") {
-    ctx.fillStyle = SHEET;
-    ctx.fillRect(0, 0, w, h);
-    ctx.setLineDash([6, 5]);
     ctx.strokeStyle = INK_SOFT;
-    ctx.strokeRect(1, 1, w - 2, h - 2);
-    ctx.setLineDash([]);
+    ctx.lineWidth = 1.25;
     ctx.beginPath();
     ctx.moveTo(w / 2 - 14, h / 2);
     ctx.lineTo(w / 2 + 14, h / 2);
     ctx.moveTo(w / 2, h / 2 - 14);
     ctx.lineTo(w / 2, h / 2 + 14);
     ctx.stroke();
-    return c;
   }
-  paper(ctx, w, h, spine);
-  if (face.kind === "blank") return c;
+  if (face.kind !== "page") return dim(ctx, w, h, dark, c);
   ctx.imageSmoothingEnabled = false;
   face.placements
     .toSorted((a, b) => a.z - b.z)
@@ -105,5 +120,19 @@ export function paintFace(
       ctx.drawImage(stickerCanvas(s), -size / 2, -size / 2, size, size);
       ctx.restore();
     });
+  return dim(ctx, w, h, dark, c);
+}
+
+function dim(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  dark: boolean,
+  c: HTMLCanvasElement,
+): HTMLCanvasElement {
+  if (dark) {
+    ctx.fillStyle = DUSK;
+    ctx.fillRect(0, 0, w, h);
+  }
   return c;
 }

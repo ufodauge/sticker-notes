@@ -27,6 +27,7 @@ import {
   type Pt,
 } from "./gesture.ts";
 import { showPage } from "./page-position.ts";
+import { startPeel, type PeelView } from "./sticker-peel.ts";
 import styles from "./PageCanvas.module.css";
 import { paperSound } from "./paper-sound.ts";
 
@@ -70,8 +71,8 @@ const varsOf = (p: Placement): CSSProperties =>
 
 const NUDGE = 0.01;
 const TAP_SLOP = 6;
-// how far (in sticker sizes) the finger pulls before the sticker comes off the paper
-const PEEL_DISTANCE = 0.6;
+// how far (in sticker sizes) the finger pulls the rolled edge before the sticker comes off
+const PEEL_DISTANCE = 1.05;
 // only this close to its outline (in dots of the 36-dot sticker) can a sticker be lifted
 const EDGE_DOTS = 6;
 
@@ -126,8 +127,8 @@ function revealPage(el: HTMLElement | null): void {
   if (face !== undefined) showPage(Number(face));
 }
 
-// One finger on a sticker peels it: the side under the finger lifts and folds toward where the
-// finger goes, hinged on the far side. Pulled far enough, it comes off and is carried.
+// One finger on a sticker's edge peels it: the edge rolls back over the sticker toward the
+// finger (drawn on a canvas while it does). Pulled far enough, it comes off and is carried.
 type Peel = {
   readonly mode: "peel";
   readonly placement: Placement;
@@ -137,6 +138,7 @@ type Peel = {
   readonly size: number;
   readonly grab: HTMLElement;
   readonly els: readonly HTMLElement[];
+  readonly view: PeelView | null;
   readonly off: boolean;
 };
 
@@ -169,10 +171,6 @@ type Spin = {
 };
 
 const clipIdOf = (placementId: string) => `touch-${placementId}`;
-
-function clearPeel(grab: HTMLElement): void {
-  ["--peel", "--peel-x", "--peel-y"].forEach((k) => grab.style.removeProperty(k));
-}
 
 export function PageCanvas(props: Props) {
   const { dark, placements, stickers, selected, highlight, leaving, onLeft, onSelect, children } =
@@ -218,7 +216,10 @@ export function PageCanvas(props: Props) {
     const cur = hold.current;
     if ((cur?.mode === "peel" || cur?.mode === "hold") && cur.placement.id === p.id) {
       if (cur.mode === "peel" && cur.off) return;
-      clearPeel(cur.grab);
+      if (cur.mode === "peel") {
+        cur.view?.clear();
+        cur.els.forEach((el) => el.removeAttribute("data-peeling"));
+      }
       cur.grab.removeAttribute("data-stuck");
       const g = begin(p.id, box, p, cur.pointer, cur.from);
       hold.current = {
@@ -256,6 +257,7 @@ export function PageCanvas(props: Props) {
       size: (box.width / 300) * 36 * p.scale,
       grab: e.currentTarget,
       els: movers(p.id),
+      view: null,
       off: false,
     };
   };
@@ -290,24 +292,27 @@ export function PageCanvas(props: Props) {
       carry.move(e.clientX, e.clientY);
       return;
     }
-    const dx = e.clientX - cur.from.x;
-    const dy = e.clientY - cur.from.y;
-    const d = Math.hypot(dx, dy);
-    if (d < TAP_SLOP) return;
-    const k = d / (cur.size * PEEL_DISTANCE);
-    if (k < 1) {
-      const a = Math.atan2(dy, dx) - (cur.placement.rotation * Math.PI) / 180;
-      cur.grab.style.setProperty("--peel", k.toFixed(3));
-      cur.grab.style.setProperty("--peel-x", Math.cos(a).toFixed(3));
-      cur.grab.style.setProperty("--peel-y", Math.sin(a).toFixed(3));
-      return;
-    }
-    clearPeel(cur.grab);
+    const finger = { x: e.clientX, y: e.clientY };
+    if (Math.hypot(finger.x - cur.from.x, finger.y - cur.from.y) < TAP_SLOP) return;
     const box = pageBox();
     const centre = box
       ? { x: box.left + cur.placement.x * box.width, y: box.top + cur.placement.y * box.height }
       : cur.from;
-    cur.els.forEach((el) => el.setAttribute("data-carried", ""));
+    const view =
+      cur.view ??
+      startPeel(cur.sticker.sticker, centre, cur.size, cur.placement.rotation, cur.from);
+    if (!cur.view) {
+      cur.els.forEach((el) => el.setAttribute("data-peeling", ""));
+      hold.current = { ...cur, view: view ?? null };
+    }
+    const peeled = view?.show(finger) ?? PEEL_DISTANCE;
+    if (peeled < PEEL_DISTANCE) return;
+    const tipped = view?.direction();
+    view?.clear();
+    cur.els.forEach((el) => {
+      el.removeAttribute("data-peeling");
+      el.setAttribute("data-carried", "");
+    });
     onSelect(null);
     paperSound.peel();
     carry.pickUp(
@@ -317,11 +322,12 @@ export function PageCanvas(props: Props) {
         size: cur.size,
         rotation: cur.placement.rotation,
         offset: { x: centre.x - cur.from.x, y: centre.y - cur.from.y },
+        tipped,
       },
       e.clientX,
       e.clientY,
     );
-    hold.current = { ...cur, off: true };
+    hold.current = { ...cur, view: null, off: true };
   };
 
   const putDown = (cur: Peel, x: number, y: number, cancelled: boolean) => {
@@ -385,7 +391,10 @@ export function PageCanvas(props: Props) {
       putDown(cur, e.clientX, e.clientY, cancelled);
       return;
     }
-    clearPeel(cur.grab);
+    if (cur.view) {
+      const { els } = cur;
+      cur.view.settleBack(() => els.forEach((el) => el.removeAttribute("data-peeling")));
+    }
     const moved = Math.hypot(e.clientX - cur.from.x, e.clientY - cur.from.y) >= TAP_SLOP;
     if (cancelled || moved) return;
     pressSticker(cur.sticker.id);
@@ -437,22 +446,13 @@ export function PageCanvas(props: Props) {
     void stickerStore.update(p.id, change);
   };
 
-  const torch = (e: PointerEvent<HTMLDivElement>) => {
-    if (!dark) return;
-    const r = e.currentTarget.getBoundingClientRect();
-    e.currentTarget.style.setProperty("--torch-x", `${((e.clientX - r.left) / r.width) * 100}%`);
-    e.currentTarget.style.setProperty("--torch-y", `${((e.clientY - r.top) / r.height) * 100}%`);
-  };
-
   return (
     <div
       ref={pageRef}
       className={styles.page}
       data-paper=""
       data-dark={dark || undefined}
-      onPointerMove={torch}
       onPointerDown={(e) => {
-        torch(e);
         if (e.target === e.currentTarget) onSelect(null);
       }}
     >

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vite-plus/test";
-import { apply, fold, reach, settle } from "./page-curl.ts";
+import { apply, fold, reach, roll, settle, stripMatrix } from "./page-curl.ts";
 
 const W = 300;
 const H = 400;
@@ -44,5 +44,38 @@ describe("page curl", () => {
     const end = settle(from, to, 1, H);
     expect(end.x).toBeCloseTo(to.x);
     expect(end.y).toBeCloseTo(to.y);
+  });
+});
+
+describe("gripped by the edge", () => {
+  test("pulled straight across, the page folds along a straight up-and-down line", () => {
+    const grip = { x: W, y: H / 2 };
+    const f = fold(grip, { x: W - 120, y: H / 2 }, W, H);
+    if (!f) throw new Error("no fold");
+    expect(f.normal.x).toBeCloseTo(1);
+    expect(f.normal.y).toBeCloseTo(0);
+    expect(f.at.x).toBeCloseTo(W - 60);
+  });
+});
+
+describe("roll", () => {
+  test("the gripped point lands under the finger", () => {
+    const grip = { x: W, y: H / 2 };
+    const finger = { x: W - 150, y: H / 2 };
+    const r = roll(grip, finger, W, H);
+    if (!r) throw new Error("no roll");
+    const last = r.strips.at(-1);
+    if (!last) throw new Error("no strips");
+    const landed = apply(stripMatrix(r, last), grip);
+    expect(landed.x).toBeCloseTo(finger.x, 0);
+    expect(landed.y).toBeCloseTo(finger.y, 0);
+  });
+
+  test("the roll turns from front to back over its top", () => {
+    const r = roll({ x: W, y: H / 2 }, { x: W - 200, y: H / 2 }, W, H);
+    if (!r) throw new Error("no roll");
+    expect(r.strips[0]?.back).toBe(false);
+    expect(r.strips.at(-1)?.back).toBe(true);
+    expect(Math.max(...r.strips.map((s) => s.height))).toBeCloseTo(1);
   });
 });

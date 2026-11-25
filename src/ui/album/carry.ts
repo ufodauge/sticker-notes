@@ -12,6 +12,9 @@ export type Held = {
   readonly rotation: number;
   // from the finger to the sticker's centre, so it stays where it was grabbed
   readonly offset?: { readonly x: number; readonly y: number };
+  // peeled off: the direction it was rolled toward (on screen); it starts tipped up that way and
+  // settles flat
+  readonly tipped?: { readonly x: number; readonly y: number };
 };
 
 type Listener = () => void;
@@ -24,12 +27,14 @@ const EDGE_REPEAT_MS = 1400;
 const state: {
   held: Held | null;
   layer: HTMLElement | null;
+  peel: HTMLCanvasElement | null;
   edge: { side: -1 | 0 | 1; since: number; timer: ReturnType<typeof setTimeout> | undefined };
   turnPage: ((direction: -1 | 1) => void) | null;
   listeners: Set<Listener>;
 } = {
   held: null,
   layer: null,
+  peel: null,
   edge: { side: 0, since: 0, timer: undefined },
   turnPage: null,
   listeners: new Set(),
@@ -91,6 +96,11 @@ export const carry = {
   attach: (el: HTMLElement | null): void => {
     state.layer = el;
   },
+  // the canvas a sticker is drawn on while it is being peeled (over everything, the whole window)
+  attachPeel: (el: HTMLCanvasElement | null): void => {
+    state.peel = el;
+  },
+  peelCanvas: (): HTMLCanvasElement | null => state.peel,
   // what an edge hold does (the album registers its page turning)
   onEdge: (turn: (direction: -1 | 1) => void): (() => void) => {
     state.turnPage = turn;

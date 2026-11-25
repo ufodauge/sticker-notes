@@ -13,14 +13,14 @@ test("drag persists; discard peels off and undo puts it back", async ({ page }) 
   const edge = await edgeOf(placed);
   await page.mouse.move(edge.x, edge.y);
   await page.mouse.down();
-  await page.mouse.move(edge.x + 40, edge.y + 60, { steps: 8 });
+  await page.mouse.move(edge.x + 100, edge.y + 130, { steps: 10 });
   await page.mouse.up();
   // the move is saved in the background; a reload right away would abort that write
   await expect.poll(async () => (await savedPositions(page))[0]?.x).not.toBe(saved?.x);
   await page.reload();
   const after = await settledBox(page.getByRole("button", { name: SLIME, exact: true }));
-  expect(after?.x).toBeCloseTo(before.x + 40, -1);
-  expect(after?.y).toBeCloseTo(before.y + 60, -1);
+  expect(after?.x).toBeCloseTo(before.x + 100, -1);
+  expect(after?.y).toBeCloseTo(before.y + 130, -1);
 
   await page.getByRole("button", { name: SLIME, exact: true }).click();
   await expect(page.getByRole("toolbar", { name: SLIME })).toBeVisible();

@@ -41,15 +41,8 @@
   will-change: transform;
 }
 
-/*
- * Only the sticker's own shape can be touched (the clip path traced from its outline), and the
- * sticker peels where it is pulled: the side under the finger lifts and folds toward the
- * finger, hinged on the far edge.
- */
+/* Only the sticker's own shape can be touched (the clip path traced from its outline). */
 .grab {
-  --peel: 0;
-  --peel-x: 0;
-  --peel-y: 0;
   position: relative;
   display: block;
   padding: 0;
@@ -58,24 +51,11 @@
   pointer-events: none;
   touch-action: none;
   -webkit-tap-highlight-color: transparent;
-  transform-origin: calc(50% + var(--peel-x) * 50%) calc(50% + var(--peel-y) * 50%);
-  transform: translate(
-      calc(var(--peel-x) * var(--peel) * -18%),
-      calc(var(--peel-y) * var(--peel) * -18%)
-    )
-    perspective(260px)
-    rotate3d(calc(var(--peel-y) * -1), var(--peel-x), 0, calc(var(--peel) * 82deg));
-  filter: drop-shadow(
-    calc(var(--peel-x) * var(--peel) * -6px) calc(4px + var(--peel) * 6px) calc(var(--peel) * 8px)
-      rgb(0 0 0 / calc(var(--peel) * 0.35))
-  );
-  transition:
-    transform 260ms var(--ease-out),
-    filter 260ms var(--ease-out);
 }
 
-.grab[style*="--peel:"] {
-  transition: none;
+/* while it is peeled, it is drawn rolling on the canvas over the window instead */
+.placed[data-peeling] .art {
+  visibility: hidden;
 }
 
 .touch {

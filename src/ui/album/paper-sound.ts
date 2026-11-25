@@ -57,16 +57,17 @@ export const paperSound = {
     context();
   },
 
-  // A dry crackle that speeds up as the sticker comes away.
+  // A soft, papery rip that speeds up a little as the sticker comes away: quiet, low clicks under
+  // a hush, nothing sharp.
   peel: (): void => {
     const ctx = context();
     if (!ctx) return;
     const now = ctx.currentTime;
-    Array.from({ length: 9 }, (_, i) => i).reduce((at, i) => {
-      burst(ctx, at, 0.012 + Math.random() * 0.01, 0.16 + i * 0.012, "highpass", 2400);
-      return at + 0.034 * (1 - i / 12) + Math.random() * 0.012;
+    Array.from({ length: 12 }, (_, i) => i).reduce((at, i) => {
+      burst(ctx, at, 0.018 + Math.random() * 0.012, 0.035 + i * 0.003, "bandpass", 1500);
+      return at + 0.03 * (1 - i / 18) + Math.random() * 0.01;
     }, now);
-    burst(ctx, now, 0.26, 0.05, "bandpass", 5200);
+    burst(ctx, now, 0.32, 0.025, "lowpass", 2600);
   },
 
   // A page going over: a soft swish of air and paper.

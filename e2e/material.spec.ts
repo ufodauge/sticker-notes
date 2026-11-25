@@ -14,17 +14,21 @@ test("materials open up as one exchanges with people, and travel in the QR", asy
   await page.goto("/");
   await openMaker(page);
   const materials = page.getByRole("radiogroup", { name: "素材" });
-  await expect(materials.getByRole("radio", { name: "キラ", exact: true })).toBeEnabled();
-  await expect(
-    materials.getByRole("radio", { name: "ぷっくり: あと1人と交換すると使える" }),
-  ).toBeDisabled();
+  await expect(materials.getByRole("radio", { name: "キラ", exact: true })).toBeVisible();
+  await expect(materials.getByRole("radio", { name: /^ぷっくり/ })).toHaveCount(0);
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).toHaveCount(0);
 
   await receiveToPocket(page, "slime");
+  await expect(
+    page.getByRole("navigation").getByRole("button", { name: "画像からステッカーを作る" }),
+  ).toHaveAttribute("data-dot");
   await openMaker(page);
-  await materials.getByRole("radio", { name: "ぷっくり", exact: true }).click();
-  await expect(materials.getByRole("radio", { name: "ぷっくり", exact: true })).toHaveAttribute(
+  await expect(
+    materials.getByRole("radio", { name: "ぷっくり(新しく使えるようになった)" }),
+  ).toBeVisible();
+  await materials.getByRole("radio", { name: /^ぷっくり/ }).click();
+  await expect(materials.getByRole("radio", { name: /^ぷっくり/ })).toHaveAttribute(
     "aria-checked",
     "true",
   );

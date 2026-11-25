@@ -1,6 +1,7 @@
 import * as v from "valibot";
 import { LocalDateSchema } from "../core/backup.ts";
 import { JarSelectionSchema } from "../core/jar-selection.ts";
+import { MATERIAL_KINDS } from "../core/material.ts";
 import { SNS_KINDS } from "../core/sns.ts";
 
 export const SETTINGS = {
@@ -11,6 +12,7 @@ export const SETTINGS = {
   invitationShown: v.literal(true),
   backup: v.object({ receivedCount: v.pipe(v.number(), v.integer()), date: LocalDateSchema }),
   debug: v.object({ on: v.boolean(), unlockAll: v.boolean() }),
+  materialsSeen: v.array(v.picklist(MATERIAL_KINDS)),
 };
 
 export type SettingKey = keyof typeof SETTINGS;

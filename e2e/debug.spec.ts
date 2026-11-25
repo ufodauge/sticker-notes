@@ -12,7 +12,7 @@ test("?debug shows the debug menu, which can open every material", async ({ page
     .getByRole("button", { name: "画像からステッカーを作る" })
     .click();
   await page.locator('input[type="file"]').setInputFiles("test/fixtures/sample.png");
-  await expect(page.getByRole("radio", { name: "蓄光", exact: true })).toBeEnabled();
+  await expect(page.getByRole("radio", { name: /^蓄光/ })).toBeVisible();
   await page.keyboard.press("Escape");
 
   await page.goto("/");

@@ -38,6 +38,7 @@ import { PrintDialog } from "./dialogs/print/PrintDialog.tsx";
 import { QrDialog } from "./dialogs/QrDialog.tsx";
 import { BackDialog } from "./dialogs/back/BackDialog.tsx";
 import { DebugDialog } from "./dialogs/debug/DebugDialog.tsx";
+import { availableMaterials, materialsSeen } from "./dialogs/create/materials-seen.ts";
 import { debug } from "./debug.ts";
 import { PeopleDialog } from "./dialogs/people/PeopleDialog.tsx";
 import { PrinterCopy } from "./dialogs/print/Sheets.tsx";
@@ -73,6 +74,9 @@ function Shell({ initialView }: { readonly initialView: View }) {
   const blockId = useSyncExternalStore(blockSelection.subscribe, blockSelection.get);
   const lightsOut = useSyncExternalStore(lights.subscribe, lights.off);
   const debugOn = useSyncExternalStore(debug.subscribe, () => debug.get().on);
+  const seenMaterials = useSyncExternalStore(materialsSeen.subscribe, materialsSeen.get);
+  useSyncExternalStore(debug.subscribe, debug.get);
+
   const [dropping, setDropping] = useReducer((_: boolean, next: boolean) => next, false);
 
   const onSaved = (stickerId: string, result: AddResult) =>
@@ -88,6 +92,9 @@ function Shell({ initialView }: { readonly initialView: View }) {
     return <p className={`${common.warn} ${styles.error}`}>{t.app.storageUnavailable}</p>;
   }
   const ready = snap.status === "ready" ? snap : null;
+  // a material has opened up that the maker has not met yet
+  const newMaterial =
+    ready !== null && availableMaterials().some((k) => !seenMaterials.includes(k));
   const stickers = ready?.stickers ?? [];
   const mine = stickers.filter((s) => s.origin === "mine");
   const placed = new Set(ready?.placements.map((p) => p.stickerId));
@@ -146,9 +153,11 @@ function Shell({ initialView }: { readonly initialView: View }) {
         )}
         <button
           type="button"
-          className={mine.length === 0 ? `${common.button} ${styles.labeled}` : common.icon}
+          className={`${mine.length === 0 ? `${common.button} ${styles.labeled}` : common.icon} ${styles.menu}`}
           aria-label={t.app.create.label}
-          title={t.app.create.tooltip}
+          aria-description={newMaterial ? t.app.newMaterial : undefined}
+          title={newMaterial ? t.app.newMaterial : t.app.create.tooltip}
+          data-dot={newMaterial || undefined}
           onClick={() => dispatch({ type: "open", overlay: { kind: "create" } })}
         >
           <ImagePlus aria-hidden="true" size={22} strokeWidth={1.5} />

@@ -37,8 +37,10 @@ type Face =
 
 const WHEEL_PAGE_MS = 420;
 const DECIDE_PX = 10;
-// a turn goes through once the corner has been brought this far toward the spine (page widths)
-const COMMIT_SHARE = 0.5;
+// a turn goes through once the held point has been brought this close to the spine (page widths)
+const COMMIT_SHARE = 0.3;
+// paper is taken hold of at its free edge: this outer share of the page (or off the page)
+const EDGE_SHARE = 0.25;
 const FLICK_PX_PER_MS = 0.6;
 // room above and below the page for a corner lifted past its edge
 const CURL_MARGIN = 0.18;
@@ -64,6 +66,9 @@ type Turning = {
   readonly leaf: HTMLElement;
   readonly curl: Curl;
   readonly origin: { readonly x: number; readonly y: number };
+  // how far out from the spine a point on screen is, on the turning page's side
+  readonly outward: (x: number) => number;
+  readonly width: number;
 };
 
 function facesOf(pages: readonly Page[]): Face[] {
@@ -101,12 +106,15 @@ type CurlRefs = {
   readonly busy: RefObject<boolean>;
 };
 
-// Lays the leaf's two sides on the canvas and hides the leaf itself; the corner nearest the
-// finger (top or bottom) is the one that lifts.
+// Lays the leaf's two sides on the canvas and hides the leaf itself. The page is held where the
+// finger took it (`at`, on screen); without a finger, near the bottom of its free edge. Undefined
+// when there is no leaf to turn, or the finger is not at the page's free edge, where paper can be
+// taken hold of.
 function beginCurl(
   refs: CurlRefs,
+  dark: boolean,
   direction: -1 | 1,
-  atY: number | undefined,
+  at: { readonly x: number; readonly y: number } | undefined,
 ): Turning | undefined {
   const el = refs.book.current;
   const canvas = refs.canvas.current;
@@ -119,6 +127,11 @@ function beginCurl(
   const r = el.getBoundingClientRect();
   const w = r.width / 2;
   const h = r.height;
+  const grip = at
+    ? { x: (at.x - (r.left + w)) * direction, y: at.y - r.top }
+    : { x: w, y: h * 0.72 };
+  const offPage = grip.y < 0 || grip.y > h;
+  if (at && !offPage && grip.x < w * (1 - EDGE_SHARE)) return undefined;
   const margin = h * CURL_MARGIN;
   const dpr = Math.min(2, devicePixelRatio || 1);
   canvas.width = Math.round(r.width * dpr);
@@ -128,7 +141,6 @@ function beginCurl(
   const [front, back] = pair;
   const shown = direction > 0 ? front : back;
   const hidden = direction > 0 ? back : front;
-  const y = atY === undefined ? h : atY - r.top;
   const curl = startCurl({
     canvas,
     spineX: w,
@@ -136,16 +148,25 @@ function beginCurl(
     w,
     h,
     outward: direction,
-    front: paintFace(artOf(shown, current), w, h, dpr, direction > 0 ? "left" : "right"),
-    back: paintFace(artOf(hidden, current), w, h, dpr, direction > 0 ? "right" : "left"),
-    corner: { x: w, y: y < h / 2 ? 0 : h },
+    front: paintFace(artOf(shown, current), w, h, dpr, direction > 0 ? "left" : "right", dark),
+    back: paintFace(artOf(hidden, current), w, h, dpr, direction > 0 ? "right" : "left", dark),
+    grip: {
+      x: Math.min(w, Math.max(w * (1 - EDGE_SHARE), grip.x)),
+      y: Math.min(h, Math.max(0, grip.y)),
+    },
     dpr,
   });
   el.setAttribute("data-flipping", "");
   leaf.setAttribute("data-curling", "");
   canvas.setAttribute("data-on", "");
   refs.busy.current = true;
-  return { leaf, curl, origin: { x: r.left, y: r.top - margin } };
+  return {
+    leaf,
+    curl,
+    origin: { x: r.left, y: r.top - margin },
+    outward: (x: number) => (x - (r.left + w)) * direction,
+    width: w,
+  };
 }
 
 // once the book has taken its new place, the real leaf comes back and the picture goes
@@ -163,7 +184,8 @@ function endCurl(refs: CurlRefs, t: Turning): void {
 // a turn asked for without a finger (wheel, page track, a sticker held at the edge)
 function turnShown(refs: CurlRefs, direction: -1 | 1, apply: () => void): boolean {
   if (refs.busy.current) return false;
-  const t = beginCurl(refs, direction, undefined);
+  const dark = refs.book.current?.closest("[data-dusk]") !== null;
+  const t = beginCurl(refs, dark, direction, undefined);
   if (!t) return false;
   paperSound.flip();
   t.curl.release(true, () => {
@@ -215,22 +237,23 @@ export function Album(props: Props) {
     [count],
   );
 
-  const decide = (dx: number, wide: boolean, y: number): Turn => {
+  const decide = (dx: number, wide: boolean, at: { x: number; y: number }): Turn => {
     const { flipped, side } = pos;
     if (busy.current) return { kind: "none" };
     if (dx < 0) {
       if (!wide && side === "left") return { kind: "slide", direction: 1 };
       if (flipped >= leaves.length) return { kind: "none" };
-      const turning = beginCurl({ book, canvas: curlCanvas, busy }, 1, y);
+      const turning = beginCurl({ book, canvas: curlCanvas, busy }, dark, 1, at);
       return turning ? { kind: "flip", turning, direction: 1 } : { kind: "none" };
     }
     if (flipped === 0) return { kind: "none" };
     if (!wide && side === "right") return { kind: "slide", direction: -1 };
-    const turning = beginCurl({ book, canvas: curlCanvas, busy }, -1, y);
+    const turning = beginCurl({ book, canvas: curlCanvas, busy }, dark, -1, at);
     return turning ? { kind: "flip", turning, direction: -1 } : { kind: "none" };
   };
 
   const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
+    torch(e);
     if (track.current || carry.held()) return;
     if (e.pointerType === "mouse" && e.button !== 0) return;
     track.current = {
@@ -243,7 +266,18 @@ export function Album(props: Props) {
     };
   };
 
+  // one torch for the whole spread: each open page is lit where the pointer is, on it or not
+  const torch = (e: PointerEvent<HTMLDivElement>) => {
+    if (!dark) return;
+    e.currentTarget.querySelectorAll<HTMLElement>("[data-facing] [data-paper]").forEach((el) => {
+      const r = el.getBoundingClientRect();
+      el.style.setProperty("--torch-x", `${((e.clientX - r.left) / r.width) * 100}%`);
+      el.style.setProperty("--torch-y", `${((e.clientY - r.top) / r.height) * 100}%`);
+    });
+  };
+
   const onPointerMove = (e: PointerEvent<HTMLDivElement>) => {
+    torch(e);
     const cur = track.current;
     if (!cur || cur.pointer !== e.pointerId) return;
     const dx = e.clientX - cur.x0;
@@ -255,7 +289,9 @@ export function Album(props: Props) {
       if (Math.abs(dx) < DECIDE_PX && Math.abs(dy) < DECIDE_PX) return;
       const el = viewport.current;
       const turn: Turn =
-        Math.abs(dy) > Math.abs(dx) || !el ? { kind: "none" } : decide(dx, isWide(el), cur.y0);
+        Math.abs(dy) > Math.abs(dx) || !el
+          ? { kind: "none" }
+          : decide(dx, isWide(el), { x: cur.x0, y: cur.y0 });
       if (turn.kind !== "none") e.currentTarget.setPointerCapture(e.pointerId);
       if (turn.kind === "flip") paperSound.wake();
       if (turn.kind === "slide") book.current?.setAttribute("data-live", "");
@@ -278,8 +314,11 @@ export function Album(props: Props) {
     if (turn.kind !== "flip" && turn.kind !== "slide") return;
     const dx = e.clientX - cur.x0;
     const width = (book.current?.getBoundingClientRect().width ?? 600) / 2;
-    const far = (-dx * turn.direction) / width > COMMIT_SHARE;
     const flick = -cur.speed * turn.direction > FLICK_PX_PER_MS;
+    const far =
+      turn.kind === "flip"
+        ? turn.turning.outward(e.clientX) < turn.turning.width * COMMIT_SHARE
+        : (-dx * turn.direction) / width > 0.38;
     const through = far || flick;
     if (turn.kind === "slide") {
       book.current?.removeAttribute("data-live");
