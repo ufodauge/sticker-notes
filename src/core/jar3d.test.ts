@@ -2,6 +2,7 @@ import { describe, expect, test } from "vite-plus/test";
 import {
   JAR3D,
   cameraPosition,
+  downFromBase,
   gravityFromOrientation,
   innerProfile,
   jarCollisionPieces,
@@ -93,5 +94,36 @@ describe("gravity from the phone", () => {
 
   test("a landscape screen turns the direction with it", () => {
     near(gravityFromOrientation(0, -90, 90), [0, -1, 0]);
+  });
+});
+
+describe("tilt relative to the pose at switch-on", () => {
+  const near = (v: readonly number[], w: readonly number[]) =>
+    v.forEach((x, i) => expect(x).toBeCloseTo(w[i] ?? 0, 5));
+
+  test("the pose at switch-on is upright, whatever it was", () => {
+    const flat = gravityFromOrientation(0, 0, 0);
+    near(downFromBase(flat, flat), [0, -1, 0]);
+    const leaning = gravityFromOrientation(50, 20, 0);
+    near(downFromBase(leaning, leaning), [0, -1, 0]);
+  });
+
+  test("turning the phone over from there turns gravity over", () => {
+    const base = gravityFromOrientation(0, 0, 0);
+    near(downFromBase(base, [0, 0, 1]), [0, 1, 0]);
+  });
+
+  test("tipping sideways from the start pose tips the jar sideways", () => {
+    const base = gravityFromOrientation(90, 0, 0);
+    const [x, y] = downFromBase(base, gravityFromOrientation(90, 30, 0));
+    expect(Math.abs(x)).toBeLessThan(1e-9);
+    expect(y).toBeLessThan(0);
+    const [sx] = downFromBase(base, gravityFromOrientation(60, 30, 0));
+    expect(sx).toBeGreaterThan(0);
+  });
+
+  test("the length of the vector is kept", () => {
+    const [x, y, z] = downFromBase([0.6, -0.8, 0], [0, 0, -1]);
+    expect(Math.hypot(x, y, z)).toBeCloseTo(1, 9);
   });
 });

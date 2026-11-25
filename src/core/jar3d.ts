@@ -193,3 +193,19 @@ export function gravityFromOrientation(
   const dz = -Math.cos(g) * Math.cos(b);
   return [dx * Math.cos(a) - dy * Math.sin(a), dx * Math.sin(a) + dy * Math.cos(a), dz];
 }
+
+type Vec3 = readonly [number, number, number];
+
+// Gravity relative to how the phone was held when tilt was switched on: that pose counts as
+// upright, and only the change since then tips the jar.
+export function downFromBase(base: Vec3, now: Vec3): Vec3 {
+  const [ax, ay, az] = base;
+  const [bx, by, bz] = [0, -1, 0];
+  const c = ax * bx + ay * by + az * bz;
+  const [x, y, z] = now;
+  if (c < -0.9999) return [-x, -y, z];
+  const v: Vec3 = [ay * bz - az * by, az * bx - ax * bz, ax * by - ay * bx];
+  const cross: Vec3 = [v[1] * z - v[2] * y, v[2] * x - v[0] * z, v[0] * y - v[1] * x];
+  const k = (v[0] * x + v[1] * y + v[2] * z) / (1 + c);
+  return [x * c + cross[0] + v[0] * k, y * c + cross[1] + v[1] * k, z * c + cross[2] + v[2] * k];
+}

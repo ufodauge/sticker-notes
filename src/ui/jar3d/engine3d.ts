@@ -11,6 +11,7 @@ import {
   JAR3D,
   PHYSICS3D,
   cameraPosition,
+  downFromBase,
   gravityFromOrientation,
   outerRadiusAt,
   spawnPose,
@@ -150,7 +151,11 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
       moved: boolean;
     },
     shakes: [] as { at: number; amp: number }[],
-    tilt: { on: false, down: [0, -1, 0] as readonly [number, number, number] },
+    tilt: {
+      on: false,
+      down: [0, -1, 0] as readonly [number, number, number],
+      base: null as readonly [number, number, number] | null,
+    },
     yaw: 0,
   };
   canvas.dataset.renderer = "webgl";
@@ -892,11 +897,9 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
   };
 
   const onOrientation = (e: DeviceOrientationEvent) => {
-    st.tilt.down = gravityFromOrientation(
-      e.beta ?? 90,
-      e.gamma ?? 0,
-      screen.orientation?.angle ?? 0,
-    );
+    const down = gravityFromOrientation(e.beta ?? 90, e.gamma ?? 0, screen.orientation?.angle ?? 0);
+    st.tilt.base ??= down;
+    st.tilt.down = downFromBase(st.tilt.base, down);
     applyGravity();
     wakeAll();
     kick();
@@ -955,6 +958,8 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
     },
     setTilt: (on) => {
       st.tilt.on = on;
+      st.tilt.base = null;
+      st.tilt.down = [0, -1, 0];
       if (on) window.addEventListener("deviceorientation", onOrientation, { signal: abort.signal });
       else {
         window.removeEventListener("deviceorientation", onOrientation);
