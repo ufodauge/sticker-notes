@@ -103,9 +103,9 @@ export default defineConfig({
         globIgnores: ["assets/Jar-*.js"],
         runtimeCaching: [
           {
-            urlPattern: /\/assets\/Jar-[^/]+\.js$/,
+            urlPattern: /\/assets\/(Jar-[^/]+\.js|jolt-physics[^/]*\.wasm)$/,
             handler: "CacheFirst",
-            options: { cacheName: "jar-chunk", expiration: { maxEntries: 2 } },
+            options: { cacheName: "jar-chunk", expiration: { maxEntries: 4 } },
           },
         ],
         navigateFallback: "index.html",

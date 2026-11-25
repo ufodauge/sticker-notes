@@ -19,6 +19,8 @@ const probe = (page: Page) =>
     queue: Number(c.dataset.queue ?? 0),
     awake: Number(c.dataset.awake ?? 0),
     leaked: Number(c.dataset.leaked ?? 0),
+    embedded: Number(c.dataset.embedded ?? -1),
+    hits: Number(c.dataset.hits ?? -1),
     speeds: c.dataset.speeds ?? "",
     physics: c.dataset.physics ?? "",
   }));
@@ -36,7 +38,7 @@ test("jar physics: settle, tremble, leak and cost with 40 blocks", async ({
 }, info) => {
   test.skip(browserName !== "chromium", "software WebGL is only dependable in Chromium");
   test.setTimeout(330_000);
-  await page.goto("/");
+  await page.goto(`/${process.env.JAR_QUERY ?? ""}`);
   await page.getByRole("button", { name: "メニュー" }).click();
   await page.getByLabel("読み込む").setInputFiles({
     name: "b.json",
@@ -50,27 +52,34 @@ test("jar physics: settle, tremble, leak and cost with 40 blocks", async ({
   const t0 = Date.now();
   const result = {
     physics: "",
+    spawnedSteps: null as number | null,
     settleSteps: null as number | null,
     trembling: null as number | null,
     awakeAt20s: null as number | null,
     msPerStep: 0,
     leaked: 0,
     leakedAwake: 0,
+    embeddedSettled: -1,
+    embeddedShaken: -1,
+    hits: -1,
   };
   for (;;) {
     const p = await probe(page);
     result.physics = p.physics;
     const elapsed = Date.now() - t0;
+    if (result.spawnedSteps === null && p.queue === 0 && p.steps > 0) result.spawnedSteps = p.steps;
     if (result.trembling === null && elapsed >= TREMBLE_AT_MS) {
       result.trembling = trembling(p.speeds);
       result.awakeAt20s = p.awake;
     }
     if (p.state === "settled" && p.queue === 0) {
       result.settleSteps = p.steps;
+      result.embeddedSettled = p.embedded;
       result.msPerStep = p.physicsMs / Math.max(1, p.steps);
       break;
     }
     if (elapsed > SETTLE_CAP_MS) {
+      result.embeddedSettled = p.embedded;
       result.msPerStep = p.physicsMs / Math.max(1, p.steps);
       break;
     }
@@ -89,6 +98,8 @@ test("jar physics: settle, tremble, leak and cost with 40 blocks", async ({
   const after = await probe(page);
   result.leaked = after.leaked;
   result.leakedAwake = after.awake;
+  result.embeddedShaken = after.embedded;
+  result.hits = after.hits;
   await page.screenshot({ path: info.outputPath("shaken.png") });
   console.log(`JAR_PHYSICS ${JSON.stringify(result)}`);
 });
