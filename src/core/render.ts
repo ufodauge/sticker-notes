@@ -183,3 +183,14 @@ function simplify(loop: readonly Point[]): Point[] {
     return (p[0] - a[0]) * (b[1] - p[1]) - (p[1] - a[1]) * (b[0] - p[0]) !== 0;
   });
 }
+
+// The sticker's outline as an SVG path in 0..1 units of its rendered square (for a clip path in
+// objectBoundingBox units): the shape a finger can actually touch.
+export function outlinePath(s: Sticker, outline = DEFAULT_OUTLINE): string {
+  const layout = layoutSticker(s, outline);
+  const k = 1 / layout.size;
+  const f = (n: number) => String(Math.round(n * k * 10000) / 10000);
+  return traceContours(layout)
+    .map((loop) => `M${loop.map(([x, y]) => `${f(x)} ${f(y)}`).join("L")}Z`)
+    .join("");
+}

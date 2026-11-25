@@ -19,6 +19,7 @@ import { loadImageFile } from "../../../data/image.ts";
 import type { SettingValue } from "../../../data/settings.ts";
 import { settings, stickerStore, type AddResult } from "../../../data/sticker-store.ts";
 import common from "../../common.module.css";
+import { debug } from "../../debug.ts";
 import { Dialog } from "../../Dialog.tsx";
 import { useCloseDialog } from "../../dialog-context.ts";
 import { t } from "../../messages.ts";
@@ -394,7 +395,9 @@ function MaterialField({
   d,
   dispatch,
 }: Pick<EditorProps, "state" | "dispatch"> & { readonly d: Derived }) {
-  const people = useSyncExternalStore(stickerStore.subscribe, exchangedWith);
+  const exchanged = useSyncExternalStore(stickerStore.subscribe, exchangedWith);
+  const unlockAll = useSyncExternalStore(debug.subscribe, () => debug.get().unlockAll);
+  const people = unlockAll ? Number.POSITIVE_INFINITY : exchanged;
   const palette = PALETTES[d.paletteId];
   return (
     <fieldset className={styles.field}>

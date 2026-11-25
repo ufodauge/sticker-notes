@@ -195,6 +195,14 @@ export const stickerStore = {
     await savePlacement(await dbPromise(), next, newPage);
   },
 
+  // Off the page and back into the pocket.
+  unplace: async (placementId: string): Promise<void> => {
+    const snap = ready();
+    if (!snap) return;
+    publish({ ...snap, placements: snap.placements.filter((p) => p.id !== placementId) });
+    await (await dbPromise()).delete("placements", placementId);
+  },
+
   addPage: async (): Promise<string> => {
     const page = await addPage(await dbPromise());
     await refresh();

@@ -7,6 +7,7 @@ import { App } from "./ui/App.tsx";
 import { listenForPrint } from "./ui/print-mode.ts";
 import { listenForShine } from "./ui/shine.ts";
 import { followRoomLight } from "./ui/album/lights.ts";
+import { startDebug } from "./ui/debug.ts";
 import { reportReceived } from "./ui/received.ts";
 
 const links = new AbortController();
@@ -15,6 +16,7 @@ listenForStickerLinks(reportReceived, links.signal);
 listenForPrint(links.signal);
 listenForShine(links.signal);
 followRoomLight(links.signal);
+void startDebug();
 import.meta.hot?.dispose(() => links.abort());
 
 const root = document.getElementById("root");

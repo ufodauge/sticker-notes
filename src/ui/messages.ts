@@ -64,6 +64,13 @@ export const t = {
     date: (iso: string) => iso.replaceAll("-", "."),
   },
 
+  debug: {
+    open: "デバッグ",
+    dialog: "デバッグ",
+    unlockAll: "素材をすべて使えるようにする",
+    off: "デバッグをやめる",
+  },
+
   back: {
     show: "裏を見る",
     dialog: "シールの裏",

@@ -1,0 +1,38 @@
+.layer {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  pointer-events: none;
+}
+
+.held {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  translate: calc(var(--carry-x) - 50%) calc(var(--carry-y) - 50%);
+  rotate: var(--r);
+  filter: drop-shadow(0 16px 12px rgb(0 0 0 / 0.28));
+}
+
+.held canvas {
+  display: block;
+  inline-size: var(--size);
+  block-size: var(--size);
+  image-rendering: pixelated;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .held {
+    animation: lift-off 220ms var(--ease-out) both;
+  }
+}
+
+@keyframes lift-off {
+  from {
+    scale: 0.92;
+    filter: drop-shadow(0 2px 2px rgb(0 0 0 / 0.25));
+  }
+  to {
+    scale: 1.08;
+  }
+}

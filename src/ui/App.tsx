@@ -1,5 +1,6 @@
 import {
   BookOpen,
+  Bug,
   Ellipsis,
   FlaskRound,
   ImagePlus,
@@ -16,6 +17,7 @@ import { settings, stickerStore, type AddResult } from "../data/sticker-store.ts
 import { ActionBar } from "./ActionBar.tsx";
 import { Album } from "./album/Album.tsx";
 import { PageIndicator } from "./album/PageIndicator.tsx";
+import { CarryLayer } from "./album/CarryLayer.tsx";
 import { lights } from "./album/lights.ts";
 import { Pocket } from "./album/Pocket.tsx";
 import { PocketDialog } from "./album/PocketDialog.tsx";
@@ -35,6 +37,8 @@ import { MenuDialog } from "./dialogs/menu/MenuDialog.tsx";
 import { PrintDialog } from "./dialogs/print/PrintDialog.tsx";
 import { QrDialog } from "./dialogs/QrDialog.tsx";
 import { BackDialog } from "./dialogs/back/BackDialog.tsx";
+import { DebugDialog } from "./dialogs/debug/DebugDialog.tsx";
+import { debug } from "./debug.ts";
 import { PeopleDialog } from "./dialogs/people/PeopleDialog.tsx";
 import { PrinterCopy } from "./dialogs/print/Sheets.tsx";
 import { feedback } from "./feedback.ts";
@@ -68,6 +72,7 @@ function Shell({ initialView }: { readonly initialView: View }) {
   const [state, dispatch] = useReducer(reducer, initialView, initialState);
   const blockId = useSyncExternalStore(blockSelection.subscribe, blockSelection.get);
   const lightsOut = useSyncExternalStore(lights.subscribe, lights.off);
+  const debugOn = useSyncExternalStore(debug.subscribe, () => debug.get().on);
   const [dropping, setDropping] = useReducer((_: boolean, next: boolean) => next, false);
 
   const onSaved = (stickerId: string, result: AddResult) =>
@@ -113,10 +118,15 @@ function Shell({ initialView }: { readonly initialView: View }) {
   // stickers are still loading, so a reload in the jar never shows the album's colours first)
   const dark = state.view === "jar" && (!ready || stickers.length > 0);
   const albumDark = lightsOut && !inJar;
-  const room = (el: HTMLElement | null) => (el ? jarChrome(dark || albumDark) : undefined);
+  const room = (el: HTMLElement | null) => (el ? jarChrome(dark) : undefined);
 
   return (
-    <div className={styles.shell} ref={room} data-jar={dark || undefined}>
+    <div
+      className={styles.shell}
+      ref={room}
+      data-jar={dark || undefined}
+      data-dusk={albumDark || undefined}
+    >
       <nav className={styles.toolbar} aria-label={t.app.toolbar}>
         {!inJar && <PageIndicator count={Math.max(1, ready?.pages.length ?? 0)} />}
         {stickers.length > 0 && (
@@ -169,6 +179,17 @@ function Shell({ initialView }: { readonly initialView: View }) {
             onClick={() => dispatch({ type: "open", overlay: { kind: "print" } })}
           >
             <Printer aria-hidden="true" size={22} strokeWidth={1.5} />
+          </button>
+        )}
+        {debugOn && (
+          <button
+            type="button"
+            className={common.icon}
+            aria-label={t.debug.open}
+            title={t.debug.open}
+            onClick={() => dispatch({ type: "open", overlay: { kind: "debug" } })}
+          >
+            <Bug aria-hidden="true" size={22} strokeWidth={1.5} />
           </button>
         )}
         <button
@@ -262,6 +283,7 @@ function Shell({ initialView }: { readonly initialView: View }) {
           }}
         />
       )}
+      <CarryLayer />
       {toast && (
         <Toast
           key={toast.id}
@@ -302,6 +324,7 @@ function Shell({ initialView }: { readonly initialView: View }) {
       {overlay.kind === "people" && (
         <PeopleDialog stickers={stickers} focus={overlay.focus} onClose={close} />
       )}
+      {overlay.kind === "debug" && <DebugDialog onClose={close} />}
       {ready && overlay.kind === "pocket" && (
         <PocketDialog
           stickers={pocket}

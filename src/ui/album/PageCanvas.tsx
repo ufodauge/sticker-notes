@@ -7,11 +7,13 @@ import {
   type ReactNode,
 } from "react";
 import { applyChange, type Placement } from "../../core/album.ts";
+import { outlinePath } from "../../core/render.ts";
 import { snsDisplay } from "../../core/sns.ts";
 import { stickerStore, type StoredSticker } from "../../data/sticker-store.ts";
 import { feedback, type Highlight } from "../feedback.ts";
-import { paperSound } from "./paper-sound.ts";
+import { t } from "../messages.ts";
 import { StickerView } from "../StickerView.tsx";
+import { carry, dropTarget } from "./carry.ts";
 import {
   addPointer,
   begin,
@@ -24,11 +26,12 @@ import {
   type Live,
   type Pt,
 } from "./gesture.ts";
-import { t } from "../messages.ts";
+import { showPage } from "./page-position.ts";
 import styles from "./PageCanvas.module.css";
+import { paperSound } from "./paper-sound.ts";
 
 type Props = {
-  // lights out: the page is dark but for a torch under the finger and glow-in-the-dark stickers
+  // lights out: the page is dim but for a torch under the finger and glow-in-the-dark stickers
   readonly dark: boolean;
   readonly pageId: string;
   readonly placements: readonly Placement[];
@@ -66,8 +69,9 @@ const varsOf = (p: Placement): CSSProperties =>
   }) as CSSProperties;
 
 const NUDGE = 0.01;
-const EDGE = 56;
-const EDGE_SPEED = 14;
+const TAP_SLOP = 6;
+// how far (in sticker sizes) the finger pulls before the sticker comes off the paper
+const PEEL_DISTANCE = 0.6;
 
 const KEY_CHANGES: Readonly<
   Record<string, (p: Placement) => Parameters<typeof stickerStore.update>[1]>
@@ -89,28 +93,32 @@ const boxOf = (r: DOMRect): Box => ({
   height: r.height,
 });
 
+// a highlighted sticker opens the notebook at its page
 function revealPage(el: HTMLElement | null): void {
-  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  el?.closest("[data-page]")?.scrollIntoView({
-    behavior: reduced ? "auto" : "smooth",
-    inline: "center",
-    block: "nearest",
-  });
+  const face = el?.closest<HTMLElement>("[data-face]")?.dataset.face;
+  if (face !== undefined) showPage(Number(face));
 }
 
-function edgeSpeed(x: number, box: DOMRect): number {
-  if (x < box.left + EDGE) return -EDGE_SPEED * (1 - (x - box.left) / EDGE);
-  if (x > box.right - EDGE) return EDGE_SPEED * (1 - (box.right - x) / EDGE);
-  return 0;
-}
+// One finger on a sticker peels it: the side under the finger lifts and folds toward where the
+// finger goes, hinged on the far side. Pulled far enough, it comes off and is carried.
+type Peel = {
+  readonly mode: "peel";
+  readonly placement: Placement;
+  readonly sticker: StoredSticker;
+  readonly pointer: number;
+  readonly from: Pt;
+  readonly size: number;
+  readonly grab: HTMLElement;
+  readonly els: readonly HTMLElement[];
+  readonly off: boolean;
+};
 
-type Drag = {
+// Two fingers turn and size it where it lies.
+type Pinch = {
+  readonly mode: "pinch";
   readonly g: Gesture;
   readonly els: readonly HTMLElement[];
   readonly scale: number;
-  readonly scroller: HTMLElement | null;
-  readonly maxScroll: number;
-  readonly section: HTMLElement | null;
 };
 
 type Spin = {
@@ -122,11 +130,17 @@ type Spin = {
   readonly live: Live;
 };
 
+const clipIdOf = (placementId: string) => `touch-${placementId}`;
+
+function clearPeel(grab: HTMLElement): void {
+  ["--peel", "--peel-x", "--peel-y"].forEach((k) => grab.style.removeProperty(k));
+}
+
 export function PageCanvas(props: Props) {
   const { dark, placements, stickers, selected, highlight, leaving, onLeft, onSelect, children } =
     props;
   const pageRef = useRef<HTMLDivElement>(null);
-  const drag = useRef<Drag | null>(null);
+  const hold = useRef<Peel | Pinch | null>(null);
   const spin = useRef<Spin | null>(null);
   const frame = useRef(0);
 
@@ -136,125 +150,171 @@ export function PageCanvas(props: Props) {
     ) ?? []),
   ];
 
-  const tick = () => {
-    frame.current = 0;
-    const cur = drag.current;
+  const pageBox = (): Box | undefined => {
     const page = pageRef.current;
-    if (!cur || !page) return;
-    const box = boxOf(page.getBoundingClientRect());
-    const scrollerBox = cur.scroller?.getBoundingClientRect();
-    const g = settle(cur.g, box);
-    drag.current = { ...cur, g };
-    writeVars(cur.els, g.live, cur.scale);
-    const p = g.pointers.size === 1 ? [...g.pointers.values()][0] : undefined;
-    const v = p && scrollerBox ? edgeSpeed(p.x, scrollerBox) : 0;
-    if (v !== 0 && cur.scroller) {
-      const left = cur.scroller.scrollLeft;
-      cur.scroller.scrollLeft = Math.min(cur.maxScroll, Math.max(0, left + v));
-    }
-    frame.current = requestAnimationFrame(tick);
+    return page ? boxOf(page.getBoundingClientRect()) : undefined;
   };
 
-  const onPointerDown = (p: Placement) => (e: PointerEvent<HTMLButtonElement>) => {
+  const tick = () => {
+    frame.current = 0;
+    const cur = hold.current;
+    const box = pageBox();
+    if (!cur || cur.mode !== "pinch" || !box) return;
+    const g = settle(cur.g, box);
+    hold.current = { ...cur, g };
+    writeVars(cur.els, g.live, cur.scale);
+  };
+
+  const pressSticker = (stickerId: string) => {
+    if (highlight?.effect !== "lifted" || highlight.stickerId !== stickerId) return;
+    paperSound.stick();
+    feedback.landed(stickerId, "pressed", null);
+  };
+
+  const onPointerDown = (p: Placement, s: StoredSticker) => (e: PointerEvent<HTMLElement>) => {
     e.stopPropagation();
-    e.currentTarget.setPointerCapture(e.pointerId);
-    const page = pageRef.current;
-    if (!page) return;
-    const box = boxOf(page.getBoundingClientRect());
+    (e.target as Element).setPointerCapture(e.pointerId);
+    const box = pageBox();
+    if (!box) return;
     const at = { x: e.clientX, y: e.clientY };
-    const cur = drag.current;
-    if (cur && cur.g.placementId === p.id) {
-      drag.current = { ...cur, g: addPointer(cur.g, e.pointerId, at, box) };
+    const cur = hold.current;
+    if (cur?.mode === "peel" && cur.placement.id === p.id && !cur.off) {
+      clearPeel(cur.grab);
+      const g = begin(p.id, box, p, cur.pointer, cur.from);
+      hold.current = {
+        mode: "pinch",
+        g: addPointer(g, e.pointerId, at, box),
+        els: cur.els,
+        scale: p.scale,
+      };
       return;
     }
-    const scroller = page.closest<HTMLElement>("[data-scroller]");
-    drag.current = {
+    if (cur?.mode === "pinch" && cur.g.placementId === p.id) {
+      hold.current = { ...cur, g: addPointer(cur.g, e.pointerId, at, box) };
+      return;
+    }
+    if (cur) return;
+    paperSound.wake();
+    hold.current = {
+      mode: "peel",
+      placement: p,
+      sticker: s,
+      pointer: e.pointerId,
+      from: at,
+      size: (box.width / 300) * 36 * p.scale,
+      grab: e.currentTarget,
       els: movers(p.id),
-      scale: p.scale,
-      scroller,
-      maxScroll: scroller ? scroller.scrollWidth - scroller.clientWidth : 0,
-      section: page.closest<HTMLElement>("[data-page]"),
-      g: begin(
-        p.id,
-        box,
-        { x: p.x, y: p.y, scale: p.scale, rotation: p.rotation },
-        e.pointerId,
-        at,
-      ),
+      off: false,
     };
   };
 
-  const onPointerMove = (e: PointerEvent<HTMLButtonElement>) => {
-    const cur = drag.current;
+  const onPointerMove = (e: PointerEvent<HTMLElement>) => {
+    const cur = hold.current;
     if (!cur) return;
-    const g = point(cur.g, e.pointerId, { x: e.clientX, y: e.clientY });
-    drag.current = { ...cur, g };
-    if (g.moved && !cur.g.moved) {
-      cur.scroller?.setAttribute("data-dragging", "");
-      cur.section?.setAttribute("data-drag-origin", "");
-    }
-    if (g.moved && !frame.current) frame.current = requestAnimationFrame(tick);
-  };
-
-  const pageAt = (x: number, y: number) => {
-    const hits = document.elementsFromPoint(x, y);
-    const slot = hits.map((el) => el.closest<HTMLElement>("[data-new-page]")).find(Boolean);
-    if (slot) return { id: null, box: slot.getBoundingClientRect() };
-    const section = hits
-      .map((el) => el.closest<HTMLElement>("[data-page]"))
-      .find((el) => el?.dataset.page && el.dataset.page !== props.pageId);
-    const paper = section?.querySelector<HTMLElement>("[data-paper]");
-    const id = section?.dataset.page;
-    return id && paper ? { id, box: paper.getBoundingClientRect() } : undefined;
-  };
-
-  const finish = (e: PointerEvent<HTMLButtonElement>, cancelled: boolean) => {
-    const cur = drag.current;
-    const page = pageRef.current;
-    if (!cur || !page || !cur.g.pointers.has(e.pointerId)) return;
-    const box = boxOf(page.getBoundingClientRect());
-    const settled = settle(cur.g, box);
-    const g = removePointer(settled, e.pointerId, box);
-    if (g.pointers.size > 0) {
-      drag.current = { ...cur, g };
+    if (cur.mode === "pinch") {
+      const g = point(cur.g, e.pointerId, { x: e.clientX, y: e.clientY });
+      hold.current = { ...cur, g };
+      if (g.moved && !frame.current) frame.current = requestAnimationFrame(tick);
       return;
     }
-    drag.current = null;
-    cancelAnimationFrame(frame.current);
-    frame.current = 0;
-    cur.scroller?.removeAttribute("data-dragging");
-    cur.section?.removeAttribute("data-drag-origin");
-    const stickerId = placements.find((p) => p.id === settled.placementId)?.stickerId;
-    if (!cancelled && highlight?.effect === "lifted" && highlight.stickerId === stickerId) {
+    if (cur.pointer !== e.pointerId) return;
+    if (cur.off) {
+      carry.move(e.clientX, e.clientY);
+      return;
+    }
+    const dx = e.clientX - cur.from.x;
+    const dy = e.clientY - cur.from.y;
+    const d = Math.hypot(dx, dy);
+    if (d < TAP_SLOP) return;
+    const k = d / (cur.size * PEEL_DISTANCE);
+    if (k < 1) {
+      const a = Math.atan2(dy, dx) - (cur.placement.rotation * Math.PI) / 180;
+      cur.grab.style.setProperty("--peel", k.toFixed(3));
+      cur.grab.style.setProperty("--peel-x", Math.cos(a).toFixed(3));
+      cur.grab.style.setProperty("--peel-y", Math.sin(a).toFixed(3));
+      return;
+    }
+    clearPeel(cur.grab);
+    const box = pageBox();
+    const centre = box
+      ? { x: box.left + cur.placement.x * box.width, y: box.top + cur.placement.y * box.height }
+      : cur.from;
+    cur.els.forEach((el) => el.setAttribute("data-carried", ""));
+    onSelect(null);
+    paperSound.peel();
+    carry.pickUp(
+      {
+        stickerId: cur.sticker.id,
+        sticker: cur.sticker.sticker,
+        size: cur.size,
+        rotation: cur.placement.rotation,
+        offset: { x: centre.x - cur.from.x, y: centre.y - cur.from.y },
+      },
+      e.clientX,
+      e.clientY,
+    );
+    hold.current = { ...cur, off: true };
+  };
+
+  const putDown = (cur: Peel, x: number, y: number, cancelled: boolean) => {
+    const at = carry.centre(x, y);
+    const target = cancelled ? undefined : dropTarget(at.x, at.y);
+    carry.putDown();
+    cur.els.forEach((el) => el.removeAttribute("data-carried"));
+    const { placement, sticker } = cur;
+    if (target?.kind === "pocket") {
+      void stickerStore
+        .unplace(placement.id)
+        .then(() => feedback.landed(sticker.id, "pocket", null));
       paperSound.stick();
-      feedback.landed(stickerId, "pressed", null);
-    }
-    if (cancelled) {
-      writeVars(cur.els, cur.g.start, cur.scale);
       return;
     }
-    if (!settled.moved) {
-      onSelect(selected === settled.placementId ? null : settled.placementId);
-      void stickerStore.update(settled.placementId, { front: true });
+    if (target?.kind === "page") {
+      void stickerStore
+        .moveTo(placement.id, target.pageId, { x: target.x, y: target.y })
+        .then(() => feedback.landed(sticker.id, "pressed", null));
+      paperSound.stick();
       return;
     }
-    const live = settled.live;
-    const cx = box.left + live.x * box.width;
-    const cy = box.top + live.y * box.height;
-    const target = pageAt(cx, cy);
-    if (target) {
-      onSelect(null);
-      void stickerStore.moveTo(settled.placementId, target.id, {
-        x: (cx - target.box.left) / target.box.width,
-        y: (cy - target.box.top) / target.box.height,
-        scale: live.scale,
-        rotation: live.rotation,
-      });
+    feedback.landed(sticker.id, "pressed", null);
+  };
+
+  const finish = (e: PointerEvent<HTMLElement>, cancelled: boolean) => {
+    const cur = hold.current;
+    if (!cur) return;
+    if (cur.mode === "pinch") {
+      const box = pageBox();
+      if (!box || !cur.g.pointers.has(e.pointerId)) return;
+      const settled = settle(cur.g, box);
+      const g = removePointer(settled, e.pointerId, box);
+      if (g.pointers.size > 0) {
+        hold.current = { ...cur, g };
+        return;
+      }
+      hold.current = null;
+      cancelAnimationFrame(frame.current);
+      frame.current = 0;
+      const placed = placements.find((p) => p.id === settled.placementId);
+      if (cancelled) {
+        writeVars(cur.els, cur.g.start, cur.scale);
+        return;
+      }
+      if (placed) writeCommitted(cur.els, applyChange(placed, settled.live));
+      void stickerStore.update(settled.placementId, { ...settled.live, front: true });
       return;
     }
-    const placed = placements.find((p) => p.id === settled.placementId);
-    if (placed) writeCommitted(cur.els, applyChange(placed, live));
-    void stickerStore.update(settled.placementId, { ...live, front: true });
+    if (cur.pointer !== e.pointerId) return;
+    hold.current = null;
+    if (cur.off) {
+      putDown(cur, e.clientX, e.clientY, cancelled);
+      return;
+    }
+    clearPeel(cur.grab);
+    const moved = Math.hypot(e.clientX - cur.from.x, e.clientY - cur.from.y) >= TAP_SLOP;
+    if (cancelled || moved) return;
+    pressSticker(cur.sticker.id);
+    onSelect(selected === cur.placement.id ? null : cur.placement.id);
+    void stickerStore.update(cur.placement.id, { front: true });
   };
 
   const onSpinDown = (p: Placement) => (e: PointerEvent<HTMLButtonElement>) => {
@@ -325,7 +385,7 @@ export function PageCanvas(props: Props) {
           const s = stickers.get(p.stickerId);
           if (!s) return null;
           const hl = highlight?.stickerId === p.stickerId ? highlight : null;
-          const empty = s.sticker.pixels.every((px) => px === s.sticker.transparentIndex);
+          const shape = outlinePath(s.sticker);
           return (
             <div
               key={p.id}
@@ -339,10 +399,10 @@ export function PageCanvas(props: Props) {
                 className={styles.grab}
                 data-grab={p.id}
                 data-sticker={p.stickerId}
-                data-empty={empty || undefined}
+                data-empty={shape === "" || undefined}
                 aria-label={snsDisplay(s.sticker.snsKind, s.sticker.snsId)}
                 aria-pressed={selected === p.id}
-                onPointerDown={onPointerDown(p)}
+                onPointerDown={onPointerDown(p, s)}
                 onPointerMove={onPointerMove}
                 onPointerUp={(e) => finish(e, false)}
                 onPointerCancel={(e) => finish(e, true)}
@@ -359,6 +419,17 @@ export function PageCanvas(props: Props) {
                 >
                   <StickerView sticker={s.sticker} scale={0} label="" decorative />
                 </span>
+                <span
+                  className={styles.touch}
+                  style={shape ? { clipPath: `url(#${clipIdOf(p.id)})` } : undefined}
+                />
+                {shape && (
+                  <svg className={styles.defs} aria-hidden="true" focusable="false">
+                    <clipPath id={clipIdOf(p.id)} clipPathUnits="objectBoundingBox">
+                      <path d={shape} />
+                    </clipPath>
+                  </svg>
+                )}
               </button>
             </div>
           );

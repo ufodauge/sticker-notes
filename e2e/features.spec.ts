@@ -1,10 +1,10 @@
 import { expect, test } from "@playwright/test";
 import { bigBackup } from "./backup-fixture.ts";
-import { placementsPerPage, receive, settledBox } from "./helpers.ts";
+import { carrySticker, placementsPerPage, receive, turnPage } from "./helpers.ts";
 
 const SLIME = "X @sticker_fan2026";
 
-test("a sticker can be dragged onto the next page", async ({ page }) => {
+test("a sticker held at the edge goes over to the next page", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "メニュー" }).click();
   await page.getByLabel("読み込む").setInputFiles({
@@ -18,32 +18,21 @@ test("a sticker can be dragged onto the next page", async ({ page }) => {
   await expect(pages).toHaveCount(2);
 
   const sticker = page.getByRole("button", { name: "X @user_0", exact: true });
-  const from = await settledBox(sticker);
-  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
-  await page.mouse.down();
   const vw = page.viewportSize()?.width ?? 400;
-  await page.mouse.move(vw - 6, from.y + from.height / 2, { steps: 12 });
-  await expect
-    .poll(
-      async () => {
-        const b = await pages.nth(1).boundingBox();
-        return b !== null && b.x + b.width / 2 < vw * 0.75;
-      },
-      { timeout: 10_000, intervals: [50] },
-    )
-    .toBe(true);
-  await page.mouse.move(vw / 2, from.y + from.height / 2);
-  const target = await pages.nth(1).boundingBox();
-  if (!target) throw new Error("no target");
-  const x = Math.min(Math.max(vw / 2, target.x + 30), target.x + target.width - 30);
-  await page.mouse.move(x, from.y + from.height / 2, { steps: 2 });
-  await page.mouse.up();
+  const vh = page.viewportSize()?.height ?? 800;
+  await carrySticker(
+    page,
+    sticker,
+    { x: vw - 8, y: vh / 2 },
+    { holdMs: 1100, drop: { x: vw / 2, y: vh / 2 } },
+  );
 
   await expect(pages.nth(1).getByRole("button", { name: "X @user_0", exact: true })).toBeVisible();
   // saved to IndexedDB in the background (WebKit can take a moment): wait for the write
   // before reloading, as a reload would abort an uncommitted transaction
   await expect.poll(() => placementsPerPage(page), { timeout: 10_000 }).toEqual([11, 2]);
   await page.reload();
+  await turnPage(page, 1);
   await expect(
     page.locator("[data-page]").nth(1).getByRole("button", { name: "X @user_0", exact: true }),
   ).toHaveCount(1);

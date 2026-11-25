@@ -1,9 +1,40 @@
-type Listener = () => void;
-const state: { index: number; listeners: Set<Listener> } = { index: 0, listeners: new Set() };
+// Where the notebook is open. The album is a stack of leaves: leaf k carries page 2k on its front
+// and page 2k + 1 on its back. With `flipped` leaves turned over to the left, the open spread
+// shows page 2·flipped − 1 on the left and page 2·flipped on the right. A wide screen shows the
+// whole spread; a narrow one shows one side of it at a time (`side`), sliding between them.
 
-function set(index: number): void {
-  if (index === state.index) return;
-  state.index = index;
+export type BookPos = { readonly flipped: number; readonly side: "left" | "right" };
+
+type Listener = () => void;
+
+const state: {
+  pos: BookPos;
+  moved: boolean;
+  faces: number;
+  wide: boolean;
+  listeners: Set<Listener>;
+} = {
+  pos: { flipped: 0, side: "right" },
+  moved: false,
+  faces: 1,
+  wide: false,
+  listeners: new Set(),
+};
+
+const leaves = () => Math.ceil(state.faces / 2);
+
+const faceOf = (pos: BookPos): number =>
+  pos.side === "right" ? pos.flipped * 2 : pos.flipped * 2 - 1;
+
+const posOf = (face: number): BookPos =>
+  face % 2 === 0 ? { flipped: face / 2, side: "right" } : { flipped: (face + 1) / 2, side: "left" };
+
+function set(pos: BookPos): void {
+  const flipped = Math.max(0, Math.min(leaves(), pos.flipped));
+  const side = flipped === 0 ? "right" : flipped === leaves() ? "left" : pos.side;
+  if (flipped === state.pos.flipped && side === state.pos.side) return;
+  state.pos = { flipped, side };
+  state.moved = true;
   state.listeners.forEach((l) => l());
 }
 
@@ -12,47 +43,32 @@ export const pagePosition = {
     state.listeners.add(l);
     return () => state.listeners.delete(l);
   },
-  get: (): number => state.index,
+  get: (): BookPos => state.pos,
+  // whether the book has been turned at all since it opened (no page animates on first sight)
+  moved: (): boolean => state.moved,
+  // the page shown (on a wide screen, the right page of the spread, or the left one at the end)
+  face: (): number => faceOf(state.pos),
+
+  // the album tells how many pages (with the "+" at the end) there are and how wide it is
+  configure: (faces: number, wide: boolean): void => {
+    state.faces = Math.max(1, faces);
+    state.wide = wide;
+    set(state.pos);
+  },
+
+  // one step forward or back: turn a leaf, or on a narrow screen slide to the other side
+  step: (direction: -1 | 1): void => {
+    const { flipped, side } = state.pos;
+    if (state.wide) {
+      set({ flipped: flipped + direction, side: direction > 0 ? "left" : "right" });
+    } else if (direction > 0) {
+      set(side === "left" ? { flipped, side: "right" } : { flipped: flipped + 1, side: "left" });
+    } else {
+      set(side === "right" ? { flipped, side: "left" } : { flipped: flipped - 1, side: "right" });
+    }
+  },
+
+  show: (face: number): void => set(posOf(Math.max(0, Math.min(state.faces - 1, face)))),
 };
 
-export function trackPages(el: HTMLElement | null): (() => void) | undefined {
-  if (!el) return undefined;
-  const listening = new AbortController();
-  const frame = { id: 0 };
-  const measure = () => {
-    frame.id = 0;
-    const centre = el.scrollLeft + el.clientWidth / 2;
-    const sections = [...el.querySelectorAll<HTMLElement>("[data-page], [data-new-page]")];
-    const nearest = sections.reduce(
-      (best, s, i) => {
-        const d = Math.abs(s.offsetLeft + s.offsetWidth / 2 - centre);
-        return d < best.d ? { d, i } : best;
-      },
-      { d: Number.POSITIVE_INFINITY, i: 0 },
-    );
-    set(nearest.i);
-  };
-  el.addEventListener(
-    "scroll",
-    () => {
-      if (!frame.id) frame.id = requestAnimationFrame(measure);
-    },
-    { passive: true, signal: listening.signal },
-  );
-  measure();
-  return () => {
-    listening.abort();
-    cancelAnimationFrame(frame.id);
-  };
-}
-
-export function showPage(index: number): void {
-  const scroller = document.querySelector<HTMLElement>("[data-scroller]");
-  const target = scroller?.querySelectorAll<HTMLElement>("[data-page], [data-new-page]")[index];
-  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  target?.scrollIntoView({
-    behavior: reduced ? "auto" : "smooth",
-    inline: "center",
-    block: "nearest",
-  });
-}
+export const showPage = (index: number): void => pagePosition.show(index);

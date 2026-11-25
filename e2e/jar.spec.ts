@@ -89,7 +89,7 @@ test("jar: toggle, blocks settle, shake, back to the album", async ({ page }) =>
 
   await toggleToAlbum(page).click();
   await expect(canvas).toHaveCount(0);
-  await expect(page.locator("[data-scroller]")).toBeVisible();
+  await expect(page.locator("[data-album]")).toBeVisible();
   await expect(page.getByRole("navigation", { name: "操作" })).toBeVisible();
   await expect(toggleToJar(page)).toBeVisible();
 });
@@ -125,7 +125,7 @@ test("jar: the saved mode survives a reload without showing the album first", as
     const w = window as unknown as { __sawAlbum: boolean };
     w.__sawAlbum = false;
     new MutationObserver(() => {
-      if (document.querySelector("[data-scroller]")) w.__sawAlbum = true;
+      if (document.querySelector("[data-album]")) w.__sawAlbum = true;
     }).observe(document, { childList: true, subtree: true });
   });
   await page.reload();
@@ -139,7 +139,7 @@ test("jar: the saved mode survives a reload without showing the album first", as
   await toggleToAlbum(page).click();
   await expect.poll(() => savedView(page)).toBe("album");
   await page.reload();
-  await expect(page.locator("[data-scroller]")).toBeVisible();
+  await expect(page.locator("[data-album]")).toBeVisible();
   await expect(canvasOf(page)).toHaveCount(0);
 });
 
@@ -149,7 +149,7 @@ test("jar: the jar code is requested only after the first switch", async ({ page
     if (r.resourceType() === "script") scripts.push(new URL(r.url()).pathname);
   });
   await importStickers(page, 5);
-  await expect(page.locator("[data-scroller]")).toBeVisible();
+  await expect(page.locator("[data-album]")).toBeVisible();
   const isJarChunk = (p: string) => /\/assets\/Jar-/.test(p);
   expect(scripts.filter(isJarChunk)).toEqual([]);
 

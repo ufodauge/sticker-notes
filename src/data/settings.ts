@@ -10,6 +10,7 @@ export const SETTINGS = {
   sound: v.boolean(),
   invitationShown: v.literal(true),
   backup: v.object({ receivedCount: v.pipe(v.number(), v.integer()), date: LocalDateSchema }),
+  debug: v.object({ on: v.boolean(), unlockAll: v.boolean() }),
 };
 
 export type SettingKey = keyof typeof SETTINGS;

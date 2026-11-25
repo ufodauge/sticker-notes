@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { expect, test } from "@playwright/test";
 import { bigBackup } from "./backup-fixture.ts";
-import { receive, savedPositions, settledBox } from "./helpers.ts";
+import { receive, savedPositions, settledBox, turnPage } from "./helpers.ts";
 
 const SLIME = "X @sticker_fan2026";
 
@@ -35,7 +35,7 @@ test("drag persists; discard peels off and undo puts it back", async ({ page }) 
   await expect(page.getByRole("button", { name: SLIME, exact: true })).toBeVisible();
 });
 
-test("a full page grows the album sideways", async ({ page }) => {
+test("a full page adds the next page of the notebook", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "メニュー" }).click();
   await page.getByLabel("読み込む").setInputFiles({
@@ -46,11 +46,11 @@ test("a full page grows the album sideways", async ({ page }) => {
   await expect(page.getByRole("status")).toContainText("13枚を読み込んだ");
   await page.keyboard.press("Escape");
   await expect(page.locator("[data-page]")).toHaveCount(2);
-  const snapType = await page
-    .locator("[data-page]")
-    .first()
-    .evaluate((el) => getComputedStyle(el.parentElement as Element).scrollSnapType);
-  expect(snapType).toContain("x mandatory");
+  await expect(page.getByText("1 / 2")).toBeVisible();
+  await turnPage(page, 1);
+  await expect(page.getByText("2 / 2")).toBeVisible();
+  await turnPage(page, -1);
+  await expect(page.getByText("1 / 2")).toBeVisible();
 });
 
 test("backup export → import into a fresh browser", async ({ page, browser }) => {

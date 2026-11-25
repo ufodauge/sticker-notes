@@ -4,7 +4,7 @@ import styles from "./PageIndicator.module.css";
 import { pagePosition, showPage } from "./page-position.ts";
 
 export function PageIndicator({ count }: { readonly count: number }) {
-  const index = useSyncExternalStore(pagePosition.subscribe, pagePosition.get);
+  const index = useSyncExternalStore(pagePosition.subscribe, pagePosition.face);
   if (count < 1) return null;
   const current = Math.min(index, count - 1);
   const jump = (e: PointerEvent<HTMLButtonElement>) => {

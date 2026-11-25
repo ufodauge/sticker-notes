@@ -121,3 +121,33 @@ export function savedPositions(page: Page): Promise<{ x: number; y: number }[]> 
     return rows.map(({ x, y }) => ({ x, y }));
   });
 }
+
+// Turns the notebook one step by dragging across the strip above the pages.
+export async function turnPage(page: Page, direction: 1 | -1): Promise<void> {
+  const v = await page.locator("[data-album]").boundingBox();
+  if (!v) throw new Error("no album");
+  const y = v.y + 6;
+  const [from, to] = direction > 0 ? [0.85, 0.1] : [0.1, 0.85];
+  await page.mouse.move(v.x + v.width * from, y);
+  await page.mouse.down();
+  await page.mouse.move(v.x + v.width * to, y, { steps: 10 });
+  await page.mouse.up();
+  await page.waitForTimeout(800);
+}
+
+// Peels a sticker off and carries it to a point, holding it there for `holdMs` (an edge hold
+// turns the page), then lets go at `drop` (or where it is).
+export async function carrySticker(
+  page: Page,
+  sticker: Locator,
+  to: { readonly x: number; readonly y: number },
+  options: { readonly holdMs?: number; readonly drop?: { x: number; y: number } } = {},
+): Promise<void> {
+  const b = await settledBox(sticker);
+  await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(to.x, to.y, { steps: 12 });
+  if (options.holdMs) await page.waitForTimeout(options.holdMs);
+  if (options.drop) await page.mouse.move(options.drop.x, options.drop.y, { steps: 8 });
+  await page.mouse.up();
+}

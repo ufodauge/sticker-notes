@@ -1,6 +1,6 @@
 /// <reference lib="dom" />
 import { expect, test, type Page } from "@playwright/test";
-import { receive, savedPositions, settledBox } from "./helpers.ts";
+import { carrySticker, receive, savedPositions, settledBox, turnPage } from "./helpers.ts";
 
 const SLIME = "X @sticker_fan2026";
 
@@ -23,6 +23,7 @@ async function onScreen(page: Page, label: string) {
 test("the + after the last page adds a page; an empty page can be removed", async ({ page }) => {
   await receive(page, "slime", SLIME);
   await expect(page.locator("[data-page]")).toHaveCount(1);
+  await turnPage(page, 1);
   await page.getByRole("button", { name: "ページを足す" }).click();
   await expect(page.locator("[data-page]")).toHaveCount(2);
   await page.getByRole("button", { name: "2ページ目を消す" }).click();
@@ -30,47 +31,47 @@ test("the + after the last page adds a page; an empty page can be removed", asyn
   await expect(page.getByRole("button", { name: /ページ目を消す/ })).toHaveCount(0);
 });
 
-test("dropping a sticker on the + makes a new page for it", async ({ page }) => {
+test("a sticker held at the edge turns the page and can be dropped on the +", async ({ page }) => {
   await receive(page, "slime", SLIME);
   await receive(page, "discord", "Discord @pixel.trader");
-  const from = await settledBox(page.getByRole("button", { name: SLIME, exact: true }));
   const vw = page.viewportSize()?.width ?? 400;
-  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
-  await page.mouse.down();
-  await page.mouse.move(vw - 6, from.y + from.height / 2, { steps: 10 });
-  const slot = page.getByRole("button", { name: "ページを足す" });
-  await expect
-    .poll(async () => {
-      const b = await slot.boundingBox();
-      return b !== null && b.x + b.width / 2 < vw;
-    })
-    .toBe(true);
-  const s = await slot.boundingBox();
-  if (!s) throw new Error("no slot");
-  await page.mouse.move(Math.min(s.x + s.width / 2, vw - 70), s.y + s.height / 2, { steps: 6 });
-  await page.mouse.up();
+  const vh = page.viewportSize()?.height ?? 800;
+  const sticker = page.getByRole("button", { name: SLIME, exact: true });
+  await carrySticker(
+    page,
+    sticker,
+    { x: vw - 8, y: vh / 2 },
+    { holdMs: 1100, drop: { x: vw / 2, y: vh / 2 } },
+  );
   await expect(page.locator("[data-page]")).toHaveCount(2);
   await expect(
     page.locator("[data-page]").nth(1).getByRole("button", { name: SLIME, exact: true }),
   ).toHaveCount(1);
 });
 
-test("a sticker thrown off the page twice stays on the page edge", async ({ page }) => {
+test("a sticker let go off the paper goes back where it was", async ({ page }) => {
   await receive(page, "slime", SLIME);
   const sticker = page.getByRole("button", { name: SLIME, exact: true });
-  for (let i = 0; i < 2; i++) {
-    const b = await settledBox(sticker);
-    const before = (await savedPositions(page))[0];
-    await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
-    await page.mouse.down();
-    await page.mouse.move(b.x + b.width / 2, 2, { steps: 8 });
-    await page.mouse.up();
-    if (i === 0)
-      await expect.poll(async () => (await savedPositions(page))[0]?.y).not.toBe(before?.y);
-  }
+  const before = (await savedPositions(page))[0];
+  await carrySticker(page, sticker, { x: 4, y: 4 });
+  await expect(sticker).toBeVisible();
+  await page.waitForTimeout(300);
+  expect((await savedPositions(page))[0]).toEqual(before);
+});
+
+test("a sticker peeled and put down elsewhere on the page stays there", async ({ page }) => {
+  await receive(page, "slime", SLIME);
+  const sticker = page.getByRole("button", { name: SLIME, exact: true });
+  const paper = await page.locator("[data-facing] [data-paper]").first().boundingBox();
+  if (!paper) throw new Error("no paper");
+  await carrySticker(page, sticker, {
+    x: paper.x + paper.width * 0.7,
+    y: paper.y + paper.height * 0.8,
+  });
+  await expect.poll(async () => (await savedPositions(page))[0]?.y ?? 0).toBeCloseTo(0.8, 1);
+  expect((await savedPositions(page))[0]?.x).toBeCloseTo(0.7, 1);
   const pos = await onScreen(page, SLIME);
-  expect(pos.cy).toBeCloseTo(0, 1);
-  await expect(sticker).toBeInViewport();
+  expect(pos.cx).toBeCloseTo(0.7, 1);
 });
 
 for (const width of [320, 1200]) {
@@ -112,6 +113,7 @@ test("the album print matches the screen: same size and place on the page", asyn
 
 test("Ctrl+P prints the album as it is, one A4 per page", async ({ page, browserName }) => {
   await receive(page, "slime", SLIME);
+  await turnPage(page, 1);
   await page.getByRole("button", { name: "ページを足す" }).click();
   await expect(page.locator("[data-page]")).toHaveCount(2);
   await expect(page.locator(".printOnly")).toHaveCount(0);

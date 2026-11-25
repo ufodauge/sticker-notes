@@ -1,110 +1,214 @@
-.scroller {
-  --page-w: min(86vw, calc((100dvh - 140px) * 3 / 4), 560px);
-  display: flex;
-  gap: var(--space-4);
+/*
+ * The album is an open notebook. Leaves lie on the right until turned over the spine to the left.
+ * A wide screen shows the whole spread; a narrow one shows one page of it, with the other page
+ * peeking at the edge, and slides across the spine between them.
+ */
+.viewport {
+  --page-w: min(86cqw, calc((100cqh - 32px) * 3 / 4), 560px);
+  --wide: 0;
+  position: relative;
+  container-type: size;
   block-size: 100%;
-  align-items: center;
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding-inline: calc((100% - var(--page-w)) / 2);
-  scroll-snap-type: x mandatory;
-  scroll-padding-inline: calc((100% - var(--page-w)) / 2);
-  overscroll-behavior-x: contain;
-  scrollbar-width: none;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
-.scroller::-webkit-scrollbar {
-  display: none;
-}
-
-@media (pointer: fine) {
-  .scroller {
-    cursor: grab;
+@media (min-aspect-ratio: 23 / 20) and (min-width: 700px) {
+  .viewport {
+    --page-w: min(46cqw, calc((100cqh - 32px) * 3 / 4), 560px);
+    --wide: 1;
   }
 }
 
-.scroller[data-grabbing],
-.scroller[data-dragging] {
-  scroll-snap-type: none;
-  scroll-behavior: auto;
-  cursor: grabbing;
+.book {
+  --shift: calc(var(--page-w) * -1.5);
+  --drag: 0px;
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-start: 50%;
+  inline-size: calc(var(--page-w) * 2);
+  block-size: calc(var(--page-w) * 4 / 3);
+  translate: calc(var(--shift) + var(--drag)) -50%;
+  transition: translate 460ms var(--ease-out);
+  perspective: 2400px;
 }
 
-.page[data-drag-origin] {
-  position: relative;
-  z-index: 2;
+.book[data-side="left"] {
+  --shift: calc(var(--page-w) * -0.5);
 }
 
-.page[data-drag-origin] [data-clip] {
-  overflow: visible;
+@media (min-aspect-ratio: 23 / 20) and (min-width: 700px) {
+  .book,
+  .book[data-side="left"] {
+    --shift: calc(var(--page-w) * -1);
+  }
 }
 
-.page {
-  position: relative;
-  flex: 0 0 var(--page-w);
-  scroll-snap-align: center;
-  scroll-snap-stop: always;
+.book[data-live] {
+  transition: none;
+}
+
+.leaf {
+  --turn: 0;
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 50%;
+  inline-size: var(--page-w);
+  transform-origin: 0 50%;
+  transform-style: preserve-3d;
+  transform: rotateY(calc(var(--turn) * -180deg));
+  /* a leaf going over keeps its place on top until it has crossed the spine */
+  transition:
+    transform 680ms cubic-bezier(0.3, 0.75, 0.25, 1),
+    z-index 0s linear 300ms;
+}
+
+.leaf[data-turned] {
+  --turn: 1;
+}
+
+/* At rest only the two open pages are there to touch (hit testing between 3D-transformed leaves
+   does not follow z-index); the leaves beside them stay drawn while a turn reveals them. */
+.leaf:not([data-near]) {
+  visibility: hidden;
+  transition:
+    transform 680ms cubic-bezier(0.3, 0.75, 0.25, 1),
+    z-index 0s linear 300ms,
+    visibility 0s linear 700ms;
+}
+
+.leaf:not([data-shown]) {
+  visibility: hidden;
+  transition: none;
+}
+
+.book[data-flipping] .leaf[data-shown] {
+  visibility: visible;
+}
+
+.leaf[data-live] {
+  z-index: 10000 !important;
+  transform: rotateY(calc(var(--live) * -180deg));
+  transition: none;
+}
+
+/* the paper gives a little as it goes over: the free edge lags behind the spine */
+.sheet {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transform-origin: 0 50%;
+}
+
+.leaf[data-live] .sheet {
+  transform: skewY(var(--bend, 0deg));
+  transition: transform 90ms linear;
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .scroller {
-    scroll-behavior: smooth;
+  .book[data-moved] .leaf[data-shown][data-turned] .sheet {
+    animation: give-forward 680ms ease-out;
   }
 
-  /* Scrolling turns the pages: the next one rises from the stack, and the one leaving to the
-     left lifts on its left edge like paper turning over, its face darkening as it goes. The
-     scroll itself stays native; this only follows it. */
-  @supports (animation-timeline: view()) {
-    .page {
-      transform-origin: 0 50%;
-      animation:
-        settle linear both,
-        turn linear both;
-      animation-timeline: view(inline), view(inline);
-      animation-range:
-        entry 0% cover 50%,
-        cover 50% exit 100%;
-    }
+  .book[data-moved] .leaf[data-shown]:not([data-turned]) .sheet {
+    animation: give-back 680ms ease-out;
+  }
 
-    .page::after {
-      content: "";
-      position: absolute;
-      inset: 0;
-      border-radius: 4px;
-      background: linear-gradient(90deg, rgb(0 0 0 / 0.05), rgb(0 0 0 / 0.35));
-      opacity: 0;
-      pointer-events: none;
-      animation: shade linear both;
-      animation-timeline: view(inline);
-      animation-range: cover 50% exit 100%;
-    }
+  .leaf[data-live] .sheet {
+    animation: none !important;
   }
 }
 
-@keyframes settle {
-  from {
-    opacity: 0.4;
-    scale: 0.94;
+@keyframes give-forward {
+  30% {
+    transform: skewY(6deg);
   }
-  to {
-    opacity: 1;
-    scale: 1;
+  65% {
+    transform: skewY(-2deg);
   }
 }
 
-@keyframes turn {
-  from {
-    transform: perspective(1400px) rotateY(0deg);
+@keyframes give-back {
+  30% {
+    transform: skewY(-6deg);
   }
-  to {
-    transform: perspective(1400px) rotateY(-72deg);
+  65% {
+    transform: skewY(2deg);
   }
 }
 
-@keyframes shade {
-  to {
-    opacity: 1;
-  }
+.face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.back {
+  transform: rotateY(180deg);
+}
+
+/* a side lying face down is gone, not just turned away (hit testing ignores backface-visibility);
+   it switches halfway through a turn, when the leaf stands on its edge */
+.face {
+  transition: visibility 0s linear 330ms;
+}
+
+.leaf[data-turned] .front,
+.leaf:not([data-turned]) .back {
+  visibility: hidden;
+}
+
+.leaf[data-live] .face {
+  visibility: visible;
+  transition: none;
+}
+
+/* the shade of the spine: each page darkens a little toward the fold */
+.face::after {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  z-index: 99998;
+  inline-size: 12%;
+  pointer-events: none;
+}
+
+.front::after {
+  inset-inline-start: 0;
+  background: linear-gradient(90deg, rgb(0 0 0 / 0.13), transparent);
+}
+
+.back::after {
+  inset-inline-end: 0;
+  background: linear-gradient(270deg, rgb(0 0 0 / 0.13), transparent);
+}
+
+/* while a leaf is turning, light runs over it */
+.leaf[data-live] .face::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 99999;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    rgb(0 0 0 / calc(var(--live) * 0.22)),
+    rgb(255 255 255 / 0.14) 60%,
+    rgb(0 0 0 / calc(var(--live) * 0.18))
+  );
+}
+
+.blank {
+  border-radius: 4px;
+  background:
+    linear-gradient(var(--sheet-line) 1px, transparent 1px) 0 0 / 5% 3.75%,
+    linear-gradient(90deg, var(--sheet-line) 1px, transparent 1px) 0 0 / 5% 3.75%,
+    var(--sheet);
+  outline: 1px solid var(--sheet-edge);
+  outline-offset: -1px;
 }
 
 .slot {
@@ -151,32 +255,26 @@
   display: grid;
   place-items: center;
   inline-size: 100%;
-  aspect-ratio: 3 / 4;
+  block-size: 100%;
   border: 1.5px dashed var(--ink-soft);
   border-radius: 4px;
-  background: transparent;
+  background: var(--paper);
   color: var(--ink-soft);
   cursor: pointer;
   transition:
     border-color var(--t-fast) ease-out,
-    color var(--t-fast) ease-out,
-    scale var(--t-fast) var(--ease-out);
+    color var(--t-fast) ease-out;
 }
 
-.newPage:hover,
-.scroller[data-dragging] .newPage {
-  border-color: var(--ink-soft);
+.newPage:hover {
   color: var(--ink);
-}
-
-.newPage:active {
-  scale: 0.98;
 }
 
 .removePage {
   position: absolute;
   inset-block-start: var(--space-2);
   inset-inline-end: var(--space-2);
+  z-index: 1;
   display: grid;
   place-items: center;
   inline-size: var(--tap);
@@ -192,12 +290,9 @@
   color: var(--sheet-ink-strong);
 }
 
-@starting-style {
-  .page {
-    opacity: 0;
+@media (prefers-reduced-motion: reduce) {
+  .leaf,
+  .book {
+    transition: none;
   }
-}
-
-.page {
-  transition: opacity var(--t-med) ease-out;
 }

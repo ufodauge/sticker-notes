@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { pocketBackup } from "./backup-fixture.ts";
-import { pocketButton, receiveToPocket, savedPositions } from "./helpers.ts";
+import { carrySticker, pocketButton, receive, receiveToPocket, savedPositions } from "./helpers.ts";
 
 const SLIME = "X @sticker_fan2026";
 
@@ -68,4 +68,32 @@ test("stickers without a place in a backup come back into the pocket", async ({ 
   await expect(pocketButton(page)).toHaveAccessibleName("ポケット(5枚)");
   await pocketButton(page).click();
   await expect(page.getByRole("button", { name: / を手に取る$/ })).toHaveCount(5);
+});
+
+test("a sticker pulled straight out of the pocket lands where it is let go", async ({ page }) => {
+  await receiveToPocket(page, "slime");
+  const pocket = await pocketButton(page).boundingBox();
+  const paper = await page.locator("[data-facing] [data-paper]").first().boundingBox();
+  if (!pocket || !paper) throw new Error("no box");
+  await page.mouse.move(pocket.x + pocket.width / 2, pocket.y + 20);
+  await page.mouse.down();
+  await page.mouse.move(paper.x + paper.width * 0.5, paper.y + paper.height * 0.4, { steps: 12 });
+  await page.mouse.up();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: SLIME, exact: true })).toBeVisible();
+  await expect(pocketButton(page)).toHaveCount(0);
+  await expect.poll(async () => (await savedPositions(page))[0]?.y ?? 0).toBeCloseTo(0.4, 1);
+});
+
+test("a sticker peeled off a page and dropped on the pocket goes back in", async ({ page }) => {
+  await receive(page, "slime", SLIME);
+  await receiveToPocket(page, "discord");
+  const pocket = await pocketButton(page).boundingBox();
+  if (!pocket) throw new Error("no pocket");
+  await carrySticker(page, page.getByRole("button", { name: SLIME, exact: true }), {
+    x: pocket.x + pocket.width / 2,
+    y: pocket.y + pocket.height / 2,
+  });
+  await expect(pocketButton(page)).toHaveAccessibleName("ポケット(2枚)");
+  await expect(page.getByRole("button", { name: SLIME, exact: true })).toHaveCount(0);
 });

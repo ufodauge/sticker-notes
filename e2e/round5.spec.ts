@@ -1,11 +1,12 @@
 /// <reference lib="dom" />
 import { expect, test } from "@playwright/test";
-import { receive, savedPositions, settledBox } from "./helpers.ts";
+import { carrySticker, receive, savedPositions, settledBox, turnPage } from "./helpers.ts";
 
 const SLIME = "X @sticker_fan2026";
 
 test("the page indicator follows the album and jumps on tap", async ({ page }) => {
   await receive(page, "slime", SLIME);
+  await turnPage(page, 1);
   await page.getByRole("button", { name: "ページを足す" }).click();
   await expect(page.getByText("2 / 2")).toBeVisible();
   const track = page.getByRole("button", { name: "ページへ移る" });
@@ -15,18 +16,17 @@ test("the page indicator follows the album and jumps on tap", async ({ page }) =
   await expect(page.getByText("1 / 2")).toBeVisible();
 });
 
-test("the handle of a sticker pushed off the paper is still visible and usable", async ({
+test("the handle of a sticker at the top edge of the paper is still visible and usable", async ({
   page,
 }) => {
   await receive(page, "slime", SLIME);
   const sticker = page.getByRole("button", { name: SLIME, exact: true });
-  const b = await settledBox(sticker);
+  const paper = await page.locator("[data-facing] [data-paper]").first().boundingBox();
+  if (!paper) throw new Error("no paper");
   const before = (await savedPositions(page))[0];
-  await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
-  await page.mouse.down();
-  await page.mouse.move(b.x + b.width / 2, 4, { steps: 8 });
-  await page.mouse.up();
+  await carrySticker(page, sticker, { x: paper.x + paper.width / 2, y: paper.y + 2 });
   await expect.poll(async () => (await savedPositions(page))[0]?.y).not.toBe(before?.y);
+  const b = await settledBox(sticker);
   await sticker.click({ position: { x: b.width / 2, y: b.height * 0.75 } });
   const handle = page.getByRole("button", { name: "回転と大きさ(ドラッグ)" });
   await expect(handle).toBeInViewport();

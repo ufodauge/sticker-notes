@@ -7,6 +7,7 @@ import {
   fillHoles,
   layoutSticker,
   materialMask,
+  outlinePath,
   renderRgba,
   traceContours,
 } from "./render.ts";
@@ -382,5 +383,25 @@ describe("materials", () => {
       expect(alphaAt(whole.rgba, i)).toBe(c === CELL_EMPTY ? 0 : 255);
       expect(alphaAt(foil.rgba, i)).toBe(c === tone ? 255 : 0);
     });
+  });
+});
+
+describe("outlinePath", () => {
+  test("one closed loop per island, inside the unit square", () => {
+    const d = outlinePath(FIXTURES.slime as Sticker);
+    expect(d.startsWith("M")).toBe(true);
+    expect(d.endsWith("Z")).toBe(true);
+    const numbers = d.match(/[\d.]+/g)?.map(Number) ?? [];
+    expect(numbers.length).toBeGreaterThan(8);
+    expect(numbers.every((n) => n >= 0 && n <= 1)).toBe(true);
+  });
+
+  test("an empty sticker has nothing to touch", () => {
+    const slime = FIXTURES.slime as Sticker;
+    const empty = {
+      ...slime,
+      pixels: new Uint8Array(PIXEL_COUNT).fill(slime.transparentIndex ?? 0),
+    };
+    expect(outlinePath(empty)).toBe("");
   });
 });

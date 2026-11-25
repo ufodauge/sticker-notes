@@ -9,6 +9,7 @@ import { feedback } from "../feedback.ts";
 import { t } from "../messages.ts";
 import { Backing } from "../Backing.tsx";
 import { StickerView } from "../StickerView.tsx";
+import { dropTarget, pageStickerSize } from "./carry.ts";
 import { jumble } from "./jumble.ts";
 import { pagePosition } from "./page-position.ts";
 import { paperSound } from "./paper-sound.ts";
@@ -60,7 +61,6 @@ function PocketBody({ stickers, pageIds }: Omit<Props, "onClose">) {
 
 const PEEL_PX = 56;
 const PLACED_SCALE = 2;
-const DOTS = 36;
 
 type Peel = {
   readonly pointer: number;
@@ -69,25 +69,10 @@ type Peel = {
   readonly detached: boolean;
 };
 
-function paperAt(x: number, y: number) {
-  const papers = [...document.querySelectorAll<HTMLElement>("[data-scroller] [data-paper]")];
-  const hit = papers
-    .map((el) => ({ el, r: el.getBoundingClientRect() }))
-    .find(({ r }) => x >= r.left && x <= r.right && y >= r.top && y <= r.bottom);
-  if (!hit) return undefined;
-  return {
-    pageId: hit.el.closest<HTMLElement>("[data-page]")?.dataset.page ?? "",
-    x: (x - hit.r.left) / hit.r.width,
-    y: (y - hit.r.top) / hit.r.height,
-  };
-}
-
 // How big the sticker will be once it is on the page, relative to how big it is in the hand.
 function carriedScale(art: HTMLElement): number {
-  const paper = document.querySelector<HTMLElement>("[data-scroller] [data-paper]");
   const own = art.getBoundingClientRect().width;
-  if (!paper || own === 0) return 1;
-  return ((paper.getBoundingClientRect().width / 300) * DOTS * PLACED_SCALE) / own;
+  return own === 0 ? 1 : pageStickerSize(PLACED_SCALE) / own;
 }
 
 function Hand({
@@ -107,7 +92,7 @@ function Hand({
   const stickNear = async () => {
     paperSound.wake();
     paperSound.peel();
-    await stickerStore.place(sticker.id, { near: pageIds[pagePosition.get()] });
+    await stickerStore.place(sticker.id, { near: pageIds[pagePosition.face()] });
     feedback.landed(sticker.id, "lifted", null);
     close();
   };
@@ -158,7 +143,8 @@ function Hand({
     if (!p || p.pointer !== e.pointerId) return;
     peel.current = null;
     const el = e.currentTarget;
-    const target = p.detached ? paperAt(e.clientX, e.clientY) : undefined;
+    const found = p.detached ? dropTarget(e.clientX, e.clientY) : undefined;
+    const target = found?.kind === "page" ? found : undefined;
     if (!target) {
       reset(el);
       return;
@@ -166,7 +152,7 @@ function Hand({
     el.setAttribute("data-dropped", "");
     void stickerStore
       .place(sticker.id, {
-        pageId: target.pageId,
+        pageId: target.pageId ?? "",
         change: { x: target.x, y: target.y, scale: PLACED_SCALE, rotation },
       })
       .then(() => feedback.landed(sticker.id, "lifted", null));

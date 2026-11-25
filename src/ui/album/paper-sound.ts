@@ -69,6 +69,15 @@ export const paperSound = {
     burst(ctx, now, 0.26, 0.05, "bandpass", 5200);
   },
 
+  // A page going over: a soft swish of air and paper.
+  flip: (): void => {
+    const ctx = context();
+    if (!ctx) return;
+    const at = ctx.currentTime;
+    burst(ctx, at, 0.28, 0.07, "bandpass", 1600);
+    burst(ctx, at + 0.05, 0.22, 0.05, "bandpass", 3200);
+  },
+
   // A soft pat: a low thump with a little paper in it.
   stick: (): void => {
     const ctx = context();

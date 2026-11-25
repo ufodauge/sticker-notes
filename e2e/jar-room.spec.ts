@@ -163,7 +163,7 @@ for (const system of ["light", "dark"] as const) {
     });
 
     await toggleToAlbum(page).click();
-    await expect(page.locator("[data-scroller]")).toBeVisible();
+    await expect(page.locator("[data-album]")).toBeVisible();
     expect(await colours(page)).toEqual(album);
   });
 }
