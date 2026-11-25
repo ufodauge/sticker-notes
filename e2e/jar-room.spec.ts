@@ -232,6 +232,7 @@ test("jar room: the speaker button toggles and is remembered across a reload", a
   await expect(speaker(page)).toHaveAttribute("aria-pressed", "true");
   await expect.poll(() => savedSound(page)).toBe(true);
   await page.reload();
+  await expect(canvasOf(page)).toHaveAttribute("data-state", "settled", { timeout: 30_000 });
   await expect(speaker(page)).toHaveAttribute("aria-pressed", "true");
 });
 
