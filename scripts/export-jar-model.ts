@@ -166,10 +166,39 @@ const pieces = node("jar_pieces", {
     return node(`jar_piece_${i}`, { mesh: mesh(`jar_piece_${i}`, hull, hidden) });
   }),
 });
+const ring = (radius: number, y: number) =>
+  Array.from({ length: 24 }, (_, k) => {
+    const a = (k / 24) * Math.PI * 2;
+    return new THREE.Vector3(radius * Math.cos(a), y, radius * Math.sin(a));
+  });
+const capRadius = JAR3D.neckRadius + JAR3D.lipOut + 0.06;
+const plugRadius = JAR3D.neckRadius - JAR3D.wall - 0.02;
+const cap = new THREE.CylinderGeometry(capRadius, capRadius, 0.32, 48).translate(
+  0,
+  JAR3D.height + 0.12,
+  0,
+);
+const metal = material("lid", [0.72, 0.7, 0.66, 1]);
+const lid = node("lid", { mesh: mesh("lid", cap, metal) });
+const capHull = new ConvexGeometry([
+  ...ring(capRadius, JAR3D.height - 0.04),
+  ...ring(capRadius, JAR3D.height + 0.28),
+]);
+const plugHull = new ConvexGeometry([
+  ...ring(plugRadius, JAR3D.height - 0.5),
+  ...ring(plugRadius, JAR3D.height),
+]);
+[capHull, plugHull].forEach((g) => g.deleteAttribute("uv"));
+const lidCollision = node("lid_collision", {
+  children: [
+    node("lid_cap", { mesh: mesh("lid_cap", capHull, hidden) }),
+    node("lid_plug", { mesh: mesh("lid_plug", plugHull, hidden) }),
+  ],
+});
 const deskGeometry = new THREE.CircleGeometry(DESK_RADIUS, 96).rotateX(-Math.PI / 2);
 const desk = node("desk", { mesh: mesh("desk", deskGeometry, wood) });
 const spawn = node("spawn", { translation: [0, JAR3D.height + 1.4, 0] });
-doc.scenes[0]?.nodes.push(jar, collision, pieces, desk, spawn);
+doc.scenes[0]?.nodes.push(jar, collision, pieces, lid, lidCollision, desk, spawn);
 
 const all = new Uint8Array(offset.bytes);
 chunks.reduce((at, chunk) => {

@@ -100,6 +100,10 @@ export type Scene3d = {
   readonly collision: readonly TriangleMesh[];
   readonly pieces: readonly Float32Array[];
   readonly spawn: THREE.Vector3;
+  readonly lid: THREE.Object3D | null;
+  readonly lidPieces: readonly Float32Array[];
+  readonly jarHeight: number;
+  readonly innerRadiusAt: (y: number) => number;
   readonly contact: THREE.Mesh;
   readonly atmosphere: Atmosphere;
   readonly dispose: () => void;
@@ -212,6 +216,21 @@ export function buildScene(canvas: HTMLCanvasElement, model: JarModel): Scene3d 
     mesh.parent?.add(back);
   });
   jarGroup.add(model.jar);
+  if (model.lid) {
+    const metal = new THREE.MeshStandardMaterial({
+      color: 0xb9b4aa,
+      metalness: 0.85,
+      roughness: 0.32,
+    });
+    model.lid.traverse((o) => {
+      const mesh = o as THREE.Mesh;
+      if (!mesh.isMesh) return;
+      if (materialName(mesh) === "lid") mesh.material = metal;
+      mesh.castShadow = true;
+    });
+    model.lid.visible = false;
+    jarGroup.add(model.lid);
+  }
   scene.add(jarGroup);
 
   const dispose = () => {
@@ -237,6 +256,10 @@ export function buildScene(canvas: HTMLCanvasElement, model: JarModel): Scene3d 
     collision: model.collision,
     pieces: model.pieces,
     spawn: model.spawn,
+    lid: model.lid,
+    lidPieces: model.lidPieces,
+    jarHeight: model.height,
+    innerRadiusAt: model.innerRadiusAt,
     contact,
     atmosphere,
     dispose,

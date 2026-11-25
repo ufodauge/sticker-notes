@@ -35,6 +35,7 @@ export type Jar3dOptions = {
 
 export type Jar3dHandle = {
   readonly reset: () => void;
+  readonly setLid: (on: boolean) => void;
   readonly shake: () => void;
   readonly setTilt: (on: boolean) => void;
   readonly setBlocks: (blocks: readonly JarBlock[]) => void;
@@ -50,6 +51,7 @@ type Entry = {
   readonly visual: BlockVisual;
   body: number | null;
   vanishing: number;
+  inside: { pos: THREE.Vector3; rot: THREE.Quaternion } | null;
 };
 
 type Kind =
@@ -63,6 +65,10 @@ const SUBSTEPS = 2;
 const MAX_BODY_SPEED = 11 * PHYSICS3D.speedScale;
 const DESK_HALF = 9.5;
 const JAR_REST_Y = 0.02;
+const CLEAR_OUTSIDE = 0.15;
+const MOUTH_DEPTH = 0.9;
+const LID_ZONE = 0.7;
+const LID_INSIDE_MARGIN = 0.35;
 const FALL_LIMIT = -6;
 const MAX_STEPS_PER_FRAME = 6;
 const PROBE_STEPS_PER_FRAME = 16;
@@ -118,6 +124,10 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
     scene: null as Scene3d | null,
     physics: null as Physics | null,
     jar: null as number | null,
+    lid: false,
+    lidWanted: false,
+    escapes: 0,
+    escapeLog: [] as string[],
     jarLive: { on: false, calm: 0 },
     pileCalm: 0,
     marks: new Map<string, { t: THREE.Vector3; r: THREE.Quaternion }>(),
@@ -199,6 +209,7 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
       y: JAR_REST_Y,
       damping: JAR_HAND_DAMPING,
       smooth: !probeFlag("pieces=1"),
+      lid: sc.lidPieces,
     });
     st.kinds.set(jar, { kind: "jar" });
     st.jar = jar;
@@ -245,7 +256,15 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
     const visual = buildBlock(b.sticker, shape);
     visual.group.visible = false;
     sc.scene.add(visual.group);
-    const entry: Entry = { id: b.id, sticker: b.sticker, shape, visual, body: null, vanishing: 0 };
+    const entry: Entry = {
+      id: b.id,
+      sticker: b.sticker,
+      shape,
+      visual,
+      body: null,
+      vanishing: 0,
+      inside: null,
+    };
     st.entries.set(b.id, entry);
     st.spawnQueue.push(b.id);
   };
@@ -278,7 +297,7 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
 
   const spawnNext = (): boolean => {
     const id = st.spawnQueue[0];
-    if (id === undefined) return false;
+    if (id === undefined || st.lid) return false;
     const entry = st.entries.get(id);
     if (!entry || entry.body !== null) {
       st.spawnQueue.shift();
@@ -429,7 +448,7 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
           : a.kind === "desk" || b.kind === "desk"
             ? "base"
             : "glass";
-      jarSound.hit(surface, h.speed * HIT_SPEED_SCALE * 0.1, SOUND_SIDE_PX);
+      jarSound.hit(surface, h.speed * HIT_SPEED_SCALE, SOUND_SIDE_PX);
     });
   };
 
@@ -457,6 +476,7 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
     if (
       st.drag !== null ||
       st.shakes.length > 0 ||
+      st.lid !== st.lidWanted ||
       st.spawnQueue.length > 0 ||
       awake.length === 0
     ) {
@@ -489,7 +509,7 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
     const ph = st.physics;
     if (!ph) return;
     dragStep();
-    ph.step(seconds, SUBSTEPS);
+    ph.step(seconds, st.jarLive.on ? SUBSTEPS * 2 : SUBSTEPS);
     st.steps++;
     drainHits();
     freezeJarWhenCalm();
@@ -516,6 +536,107 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
     if (st.jar !== null && ph.position(st.jar).y < FALL_LIMIT) standJarUp();
   };
 
+  const jarLocal = (p: Vec): THREE.Vector3 => {
+    const ph = st.physics;
+    if (!ph || st.jar === null) return new THREE.Vector3(p.x, p.y, p.z);
+    const t = ph.position(st.jar);
+    const r = ph.rotation(st.jar);
+    return new THREE.Vector3(p.x - t.x, p.y - t.y, p.z - t.z).applyQuaternion(
+      new THREE.Quaternion(r.x, r.y, r.z, r.w).invert(),
+    );
+  };
+
+  const glassRegion = (local: THREE.Vector3): "inside" | "outside" | "wall" => {
+    const sc = st.scene;
+    if (!sc) return "inside";
+    const top = sc.jarHeight - (st.lid ? LID_INSIDE_MARGIN : 0);
+    const radius = Math.hypot(local.x, local.z);
+    const inner = sc.innerRadiusAt(Math.min(top, Math.max(0, local.y)));
+    if (local.y > JAR3D.baseThickness && local.y < top && radius < inner) return "inside";
+    if (local.y < -CLEAR_OUTSIDE || radius > inner + JAR3D.wall + CLEAR_OUTSIDE) return "outside";
+    return "wall";
+  };
+
+  const jarPose = () => {
+    const ph = st.physics;
+    if (!ph || st.jar === null) return { t: new THREE.Vector3(), r: new THREE.Quaternion() };
+    const t = ph.position(st.jar);
+    const r = ph.rotation(st.jar);
+    return { t: new THREE.Vector3(t.x, t.y, t.z), r: new THREE.Quaternion(r.x, r.y, r.z, r.w) };
+  };
+
+  const keepContained = () => {
+    const ph = st.physics;
+    const sc = st.scene;
+    if (!ph || !sc) return;
+    const jar = jarPose();
+    const toJar = jar.r.clone().invert();
+    st.entries.forEach((e) => {
+      if (e.body === null) return;
+      const p = ph.position(e.body);
+      const r = ph.rotation(e.body);
+      const local = new THREE.Vector3(p.x, p.y, p.z).sub(jar.t).applyQuaternion(toJar);
+      const region = glassRegion(local);
+      if (region === "wall") return;
+      if (region === "inside") {
+        e.inside = {
+          pos: local,
+          rot: toJar.clone().multiply(new THREE.Quaternion(r.x, r.y, r.z, r.w)),
+        };
+        return;
+      }
+      const viaMouth = !st.lid && local.y > sc.jarHeight - MOUTH_DEPTH;
+      if (!e.inside || viaMouth) {
+        e.inside = null;
+        return;
+      }
+      const back = e.inside.pos.clone().applyQuaternion(jar.r).add(jar.t);
+      const turn = jar.r.clone().multiply(e.inside.rot);
+      ph.place(e.body, back, { x: turn.x, y: turn.y, z: turn.z, w: turn.w });
+      const v = st.jar === null ? { x: 0, y: 0, z: 0 } : ph.linvel(st.jar);
+      ph.setVelocity(e.body, v, { x: 0, y: 0, z: 0 });
+      st.escapes++;
+      if (import.meta.env.VITE_JAR_PROBE)
+        st.escapeLog = [
+          ...st.escapeLog.slice(-7),
+          `${Math.hypot(local.x, local.z).toFixed(2)}@${local.y.toFixed(2)}`,
+        ];
+    });
+  };
+
+  const neckClear = (): boolean => {
+    const ph = st.physics;
+    const sc = st.scene;
+    if (!ph || !sc) return false;
+    const jar = jarPose();
+    const toJar = jar.r.clone().invert();
+    return [...st.entries.values()].every((e) => {
+      if (e.body === null) return true;
+      const p = ph.position(e.body);
+      return (
+        new THREE.Vector3(p.x, p.y, p.z).sub(jar.t).applyQuaternion(toJar).y <
+        sc.jarHeight - LID_ZONE
+      );
+    });
+  };
+
+  const applyLid = () => {
+    const ph = st.physics;
+    const sc = st.scene;
+    if (!ph || !sc || st.lid === st.lidWanted) return;
+    if (st.lidWanted && (st.spawnQueue.length > 0 || !neckClear())) return;
+    st.lid = st.lidWanted;
+    ph.setLid(st.lid);
+    if (sc.lid) sc.lid.visible = st.lid;
+    wakeAll();
+  };
+
+  const setLid = (on: boolean) => {
+    st.lidWanted = on;
+    applyLid();
+    kick();
+  };
+
   const resetAll = () => {
     standJarUp();
     st.entries.forEach((e) => {
@@ -534,13 +655,20 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
     canvas.dataset.leaked = String(
       [...st.entries.values()].filter((e) => {
         if (e.body === null) return false;
-        const t = ph.position(e.body);
+        const t = jarLocal(ph.position(e.body));
         return (
           Math.hypot(t.x, t.z) > outerRadiusAt(Math.min(JAR3D.height, Math.max(0, t.y))) &&
           t.y < JAR3D.height - 0.2
         );
       }).length,
     );
+    canvas.dataset.leakinfo = [...st.entries.values()]
+      .filter((e) => e.body !== null)
+      .map((e) => {
+        const t = jarLocal(ph.position(e.body ?? 0));
+        return `${Math.hypot(t.x, t.z).toFixed(2)}@${t.y.toFixed(2)}/${st.scene?.innerRadiusAt(t.y).toFixed(2)}/${e.inside ? 1 : 0}`;
+      })
+      .join(" ");
     canvas.dataset.embedded = String(
       [...st.entries.values()].filter((e) => {
         if (e.body === null) return false;
@@ -554,6 +682,7 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
     canvas.dataset.physicsMs = st.physicsMs.toFixed(1);
     canvas.dataset.physics = "jolt";
     canvas.dataset.hits = String(st.hits);
+    canvas.dataset.escapes = `${st.escapes} ${st.escapeLog.join(" ")}`;
     canvas.dataset.queue = String(st.spawnQueue.length);
     canvas.dataset.calm = String(st.pileCalm);
     const jar = st.jar;
@@ -595,6 +724,8 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
     Array.from({ length: due }).forEach(() => step(stepSeconds));
     st.physicsMs += performance.now() - p0;
     rescueStrays();
+    keepContained();
+    applyLid();
     syncMeshes();
     render();
     if (import.meta.env.VITE_JAR_PROBE) writeProbe();
@@ -810,6 +941,9 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
   return {
     reset: () => {
       if (!still && st.ready) resetAll();
+    },
+    setLid: (on) => {
+      if (st.ready) setLid(on);
     },
     shake: () => {
       if (still || !st.ready) return;

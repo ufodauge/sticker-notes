@@ -29,6 +29,7 @@ type JarSpec = {
     readonly index: ArrayLike<number>;
   }[];
   readonly pieces: readonly Float32Array[];
+  readonly lid: readonly Float32Array[];
   readonly density: number;
   readonly material: Material;
   readonly y: number;
@@ -41,7 +42,9 @@ export type Physics = {
   readonly addBlock: (spec: BlockSpec) => number;
   readonly addJar: (spec: JarSpec) => number;
   readonly setJarDynamic: (on: boolean) => void;
+  readonly setLid: (on: boolean) => void;
   readonly placeJar: (position: Vec) => void;
+  readonly place: (body: number, position: Vec, rotation: Rot) => void;
   readonly remove: (body: number) => void;
   readonly position: (body: number) => Vec;
   readonly rotation: (body: number) => Rot;
@@ -65,6 +68,8 @@ const LAYER_STATIC = 0;
 const LAYER_MOVING = 1;
 // Jolt's defaults are for metre-sized bodies; a scene unit is 3.3 cm, so points slower than 1 cm/s may sleep
 const SLEEP_POINT_SPEED = 0.3;
+// approach speed (units/s) below which a contact is a resting touch, not a knock
+const HIT_FLOOR = 2;
 const HULL_CONVEX_RADIUS = 0.02;
 
 const loaded: { jolt: Promise<J> | null } = { jolt: null };
@@ -124,7 +129,9 @@ export async function createPhysics(gravity: number): Promise<Physics> {
     id: null as InstanceType<J["BodyID"]> | null,
     smooth: null as InstanceType<J["Shape"]> | null,
     pieces: null as InstanceType<J["Shape"]> | null,
+    piecesLidded: null as InstanceType<J["Shape"]> | null,
     dynamic: false,
+    lid: false,
   };
   const hits: Hit[] = [];
 
@@ -152,6 +159,8 @@ export async function createPhysics(gravity: number): Promise<Physics> {
     Jolt.destroy(s);
     return shape;
   };
+
+  const jarShape = () => (jar.lid ? jar.piecesLidded : jar.dynamic ? jar.pieces : jar.smooth);
 
   const mesh = (meshes: JarSpec["meshes"]) => {
     const triangles = new Jolt.TriangleList();
@@ -205,7 +214,7 @@ export async function createPhysics(gravity: number): Promise<Physics> {
 
   const listener = new Jolt.ContactListenerJS();
   listener.OnContactValidate = () => Jolt.ValidateResult_AcceptAllContactsForThisBodyPair;
-  listener.OnContactAdded = (p1: number, p2: number, pm: number) => {
+  const reportHit = (p1: number, p2: number, pm: number) => {
     const b1 = Jolt.wrapPointer(p1, Jolt.Body);
     const b2 = Jolt.wrapPointer(p2, Jolt.Body);
     const n = Jolt.wrapPointer(pm, Jolt.ContactManifold).mWorldSpaceNormal;
@@ -214,13 +223,12 @@ export async function createPhysics(gravity: number): Promise<Physics> {
       const v = b.GetLinearVelocity();
       return v.GetX() * nx + v.GetY() * ny + v.GetZ() * nz;
     };
-    hits.push({
-      a: b1.GetUserData(),
-      b: b2.GetUserData(),
-      speed: Math.abs(along(b1) - along(b2)),
-    });
+    const speed = Math.abs(along(b1) - along(b2));
+    if (speed < HIT_FLOOR) return;
+    hits.push({ a: b1.GetUserData(), b: b2.GetUserData(), speed });
   };
-  listener.OnContactPersisted = () => undefined;
+  listener.OnContactAdded = reportHit;
+  listener.OnContactPersisted = reportHit;
   listener.OnContactRemoved = () => undefined;
   system.SetContactListener(listener);
 
@@ -280,6 +288,8 @@ export async function createPhysics(gravity: number): Promise<Physics> {
     addJar: (spec) => {
       jar.pieces = compound(spec.pieces, spec.density);
       jar.smooth = spec.smooth ? mesh(spec.meshes) : jar.pieces;
+      jar.piecesLidded =
+        spec.lid.length > 0 ? compound([...spec.pieces, ...spec.lid], spec.density) : jar.pieces;
       const s = new Jolt.BodyCreationSettings(
         jar.smooth,
         rvec({ x: 0, y: spec.y, z: 0 }),
@@ -301,18 +311,31 @@ export async function createPhysics(gravity: number): Promise<Physics> {
     },
     setJarDynamic: (on) => {
       const id = jar.id;
-      if (!id || !jar.pieces || !jar.smooth || on === jar.dynamic) return;
+      if (!id || on === jar.dynamic) return;
       jar.dynamic = on;
+      const shape = jarShape();
       if (on) {
-        if (jar.smooth !== jar.pieces)
-          api.SetShape(id, jar.pieces, false, Jolt.EActivation_DontActivate);
+        if (shape) api.SetShape(id, shape, false, Jolt.EActivation_DontActivate);
         api.SetMotionType(id, Jolt.EMotionType_Dynamic, Jolt.EActivation_Activate);
         return;
       }
       api.SetMotionType(id, Jolt.EMotionType_Static, Jolt.EActivation_DontActivate);
-      if (jar.smooth !== jar.pieces)
-        api.SetShape(id, jar.smooth, false, Jolt.EActivation_DontActivate);
+      if (shape) api.SetShape(id, shape, false, Jolt.EActivation_DontActivate);
     },
+    setLid: (on) => {
+      const id = jar.id;
+      if (!id || on === jar.lid) return;
+      jar.lid = on;
+      const shape = jarShape();
+      if (shape) api.SetShape(id, shape, false, Jolt.EActivation_Activate);
+    },
+    place: (body, position, rotation) =>
+      api.SetPositionAndRotation(
+        idOf(body),
+        rvec(position),
+        quat(rotation),
+        Jolt.EActivation_Activate,
+      ),
     placeJar: (position) => {
       if (!jar.id) return;
       api.SetPositionAndRotation(

@@ -4,7 +4,8 @@ const perCubicUnit = (kgPerCubicMetre: number) => kgPerCubicMetre * METRES_PER_U
 
 export const PHYSICS3D = {
   metresPerUnit: METRES_PER_UNIT,
-  gravity: 9.81 / METRES_PER_UNIT,
+  // a little lighter than real: at true g the blocks felt too heavy on a phone
+  gravity: (9.81 * 0.72) / METRES_PER_UNIT,
   acrylicDensity: perCubicUnit(1180),
   glassDensity: perCubicUnit(2500),
   // per-material values combined as a product's square root (Jolt) or a mean (rapier), giving
@@ -122,6 +123,9 @@ export const spawnPose = (
 
 const WALL_BANDS: readonly number[] = [0, 0.5, 1.6, 2.8, 3.6, 4.05, 4.5, JAR3D.height];
 const WALL_SEGMENTS = 20;
+// the grabbed jar's wall pieces are thicker than the glass, outward only: a block shoved against a
+// moving wall then has far more than one step's travel of solid to cross
+const PIECE_OUTSET = 0.5;
 
 export const outerRadiusAt = (y: number): number => {
   const profile = outerProfile();
@@ -164,8 +168,8 @@ export function jarCollisionPieces(): readonly Float32Array[] {
       const a0 = (k / WALL_SEGMENTS) * Math.PI * 2;
       const a1 = ((k + 1) / WALL_SEGMENTS) * Math.PI * 2;
       return Float32Array.from([
-        ...ring(outer0, y0, a0, a1),
-        ...ring(outer1, y1, a0, a1),
+        ...ring(outer0 + PIECE_OUTSET, y0, a0, a1),
+        ...ring(outer1 + PIECE_OUTSET, y1, a0, a1),
         ...ring(Math.max(0.1, outer0 - JAR3D.wall), y0, a0, a1),
         ...ring(Math.max(0.1, outer1 - JAR3D.wall), y1, a0, a1),
       ]);

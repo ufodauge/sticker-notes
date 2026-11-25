@@ -1,4 +1,5 @@
 import {
+  Cylinder,
   ListChecks,
   RotateCcw,
   Shuffle,
@@ -45,7 +46,10 @@ export function Jar({ onPick }: Props) {
   const snap = useSyncExternalStore(stickerStore.subscribe, stickerStore.getSnapshot);
   const selection = useSyncExternalStore(jarContent.subscribe, jarContent.get);
   const soundOn = useSyncExternalStore(soundPref.subscribe, soundPref.get);
-  const handle = useRef<(JarHandle & { reset?: () => void }) | null>(null);
+  const handle = useRef<
+    (JarHandle & { reset?: () => void; setLid?: (on: boolean) => void }) | null
+  >(null);
+  const [lidOn, setLidOn] = useReducer((_: boolean, next: boolean) => next, false);
   const backGlass = useRef<HTMLCanvasElement>(null);
   const frontGlass = useRef<HTMLCanvasElement>(null);
   const [tilting, setTilting] = useReducer((_: boolean, next: boolean) => next, false);
@@ -100,6 +104,7 @@ export function Jar({ onPick }: Props) {
       handle.current = null;
       blockSelection.set(null);
       setTilting(false);
+      setLidOn(false);
     };
   };
 
@@ -120,6 +125,21 @@ export function Jar({ onPick }: Props) {
           onClick={() => handle.current?.shake()}
         >
           <Vibrate aria-hidden="true" size={22} strokeWidth={1.5} />
+        </button>
+      )}
+      {!reduced && USE_3D && (
+        <button
+          type="button"
+          className={common.icon}
+          aria-label={t.jar.lid}
+          title={t.jar.lid}
+          aria-pressed={lidOn}
+          onClick={() => {
+            handle.current?.setLid?.(!lidOn);
+            setLidOn(!lidOn);
+          }}
+        >
+          <Cylinder aria-hidden="true" size={22} strokeWidth={1.5} />
         </button>
       )}
       {!reduced && USE_3D && (
