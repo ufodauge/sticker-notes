@@ -1,7 +1,23 @@
+// One scene unit is 3.3 cm: the jar is 17 cm tall, a block 4.1 cm across and 1.2 cm thick.
+const METRES_PER_UNIT = 0.033;
+const perCubicUnit = (kgPerCubicMetre: number) => kgPerCubicMetre * METRES_PER_UNIT ** 3;
+
+export const PHYSICS3D = {
+  metresPerUnit: METRES_PER_UNIT,
+  gravity: 9.81 / METRES_PER_UNIT,
+  acrylicDensity: perCubicUnit(1180),
+  glassDensity: perCubicUnit(2500),
+  // per-material values combined as a product's square root (Jolt) or a mean (rapier), giving
+  // acrylic/acrylic 0.5, acrylic/glass ~0.4, acrylic/wood 0.5, glass/wood ~0.4
+  friction: { acrylic: 0.5, glass: 0.32, wood: 0.5 },
+  restitution: { acrylic: 0.1, glass: 0.1, wood: 0.1 },
+  // real speeds are sqrt(g ratio) times the old toy speeds; a metre per second is 30 units/s
+  speedScale: Math.sqrt(9.81 / METRES_PER_UNIT / 20),
+} as const;
+
 export const JAR3D = {
   side: 1.25,
   thickness: 0.36,
-  gravity: 20,
   outerRadius: 2.45,
   neckRadius: 1.95,
   wall: 0.14,

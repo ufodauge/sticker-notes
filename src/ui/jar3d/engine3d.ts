@@ -10,6 +10,7 @@ import {
 } from "../../core/jar-quality.ts";
 import {
   JAR3D,
+  PHYSICS3D,
   cameraPosition,
   jarCollisionPieces,
   outerRadiusAt,
@@ -59,9 +60,9 @@ type Kind =
 const STEP = 1 / 60;
 const SUBSTEPS = 2;
 const CONTACT_SKIN = 0.012;
-const SOFT_CCD = 0.12;
+const SOFT_CCD = 0.12 * PHYSICS3D.speedScale;
 const SOLVER_ITERATIONS = 8;
-const MAX_BODY_SPEED = 11;
+const MAX_BODY_SPEED = 11 * PHYSICS3D.speedScale;
 const DESK_HALF = 9.5;
 const FALL_LIMIT = -6;
 const MAX_STEPS_PER_FRAME = 6;
@@ -73,18 +74,27 @@ const SLEEP_FRAMES_TO_SETTLE = 30;
 const VANISH_MS = 220;
 const TAP_SLOP_PX = 8;
 const TAP_MAX_MS = 600;
-const DRAG_GAIN = 16;
-const DRAG_MAX_SPEED = 16;
+const DRAG_GAIN = 16 * PHYSICS3D.speedScale;
+const DRAG_MAX_SPEED = 16 * PHYSICS3D.speedScale;
 const TILT_RANGE = 0.55;
 const PILE_WINDOW_STEPS = 45;
 const PILE_STILL_MOVE = 0.03;
 const PILE_STILL_TURN = 0.06;
-const JAR_CALM_SPEED = 0.05;
+const JAR_CALM_SPEED = 0.05 * PHYSICS3D.speedScale;
 const JAR_CALM_STEPS = 40;
-const JAR_PULL = 0.14;
-const JAR_PULL_CAP = 1.4;
+const JAR_PULL = 0.14 * PHYSICS3D.speedScale ** 2;
+const JAR_PULL_CAP = 1.4 * PHYSICS3D.speedScale ** 2;
 const SOUND_SIDE_PX = 48;
-const HIT_SPEED_SCALE = 1 / (60 * 0.5);
+const HIT_SPEED_SCALE = 1 / (60 * 0.5 * PHYSICS3D.speedScale);
+const SHAKE_KICK = 3.2 * PHYSICS3D.speedScale;
+const SHAKE_LIFT = PHYSICS3D.speedScale;
+const SHAKE_SPIN = 0.5 * PHYSICS3D.speedScale;
+// the hand that holds the jar, not air: blocks keep near-zero damping
+const JAR_HAND_DAMPING = {
+  linear: 0.5 * PHYSICS3D.speedScale,
+  angular: 1.2 * PHYSICS3D.speedScale,
+};
+const BLOCK_DAMPING = { linear: 0, angular: 0.05 };
 
 const rand4 = (): [number, number, number, number] => [
   Math.random(),
@@ -116,6 +126,7 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
     pileCalm: 0,
     marks: new Map<string, { t: THREE.Vector3; r: THREE.Quaternion }>(),
     steps: 0,
+    physicsMs: 0,
     entries: new Map<string, Entry>(),
     kinds: new Map<number, Kind>(),
     spawnQueue: [] as string[],
@@ -173,8 +184,8 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
     const desk = world.createCollider(
       RAPIER.ColliderDesc.cuboid(DESK_HALF, JAR3D.deskThickness / 2, DESK_HALF)
         .setTranslation(0, -JAR3D.deskThickness / 2, 0)
-        .setFriction(0.7)
-        .setRestitution(0.1),
+        .setFriction(PHYSICS3D.friction.wood)
+        .setRestitution(PHYSICS3D.restitution.wood),
     );
     registerCollider(desk, { kind: "desk" });
   };
@@ -198,10 +209,13 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
           })
         : jarCollisionPieces().flatMap((points) => {
             const desc = RAPIER.ColliderDesc.convexHull(points);
-            return desc ? [desc.setDensity(4)] : [];
+            return desc ? [desc.setDensity(PHYSICS3D.glassDensity)] : [];
           });
     descs.forEach((desc) => {
-      const collider = world.createCollider(desc.setFriction(0.4).setRestitution(0.05), jar);
+      const collider = world.createCollider(
+        desc.setFriction(PHYSICS3D.friction.glass).setRestitution(PHYSICS3D.restitution.glass),
+        jar,
+      );
       registerCollider(collider, { kind: "jar" });
       st.jarColliders.push(collider);
     });
@@ -211,8 +225,8 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
     world.createRigidBody(
       RAPIER.RigidBodyDesc.fixed()
         .setTranslation(0, 0.02, 0)
-        .setLinearDamping(0.5)
-        .setAngularDamping(1.2)
+        .setLinearDamping(JAR_HAND_DAMPING.linear)
+        .setAngularDamping(JAR_HAND_DAMPING.angular)
         .setCcdEnabled(true),
     );
 
@@ -239,8 +253,8 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
       RAPIER.RigidBodyDesc.dynamic()
         .setTranslation(pose.x, pose.y, pose.z)
         .setRotation({ x: q.x, y: q.y, z: q.z, w: q.w })
-        .setLinearDamping(0.4)
-        .setAngularDamping(2.4)
+        .setLinearDamping(BLOCK_DAMPING.linear)
+        .setAngularDamping(BLOCK_DAMPING.angular)
         .setSoftCcdPrediction(softCcd())
         .setAdditionalSolverIterations(2),
     );
@@ -252,7 +266,11 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
       const desc = RAPIER.ColliderDesc.convexHull(hullPoints(entry, part));
       if (!desc) return;
       const collider = world.createCollider(
-        desc.setFriction(0.7).setRestitution(0.02).setDensity(1).setContactSkin(CONTACT_SKIN),
+        desc
+          .setFriction(PHYSICS3D.friction.acrylic)
+          .setRestitution(PHYSICS3D.restitution.acrylic)
+          .setDensity(PHYSICS3D.acrylicDensity)
+          .setContactSkin(CONTACT_SKIN),
         body,
       );
       registerCollider(collider, { kind: "block", id: entry.id });
@@ -379,7 +397,7 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
   const applyGravity = () => {
     const world = st.world;
     if (!world) return;
-    const g = JAR3D.gravity;
+    const g = PHYSICS3D.gravity;
     const tx = st.tilt.on ? Math.max(-TILT_RANGE, Math.min(TILT_RANGE, st.tilt.gamma / 70)) : 0;
     const tz = st.tilt.on ? Math.max(-TILT_RANGE, Math.min(TILT_RANGE, st.tilt.beta / 70)) : 0;
     world.gravity = {
@@ -443,17 +461,17 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
         const mass = body.mass();
         body.applyImpulse(
           {
-            x: (Math.random() - 0.5) * 2 * 3.2 * mass * s.amp,
-            y: (3 + Math.random() * 5) * mass * s.amp,
-            z: (Math.random() - 0.5) * 2 * 3.2 * mass * s.amp,
+            x: (Math.random() - 0.5) * 2 * SHAKE_KICK * mass * s.amp,
+            y: (3 + Math.random() * 5) * SHAKE_LIFT * mass * s.amp,
+            z: (Math.random() - 0.5) * 2 * SHAKE_KICK * mass * s.amp,
           },
           true,
         );
         body.applyTorqueImpulse(
           {
-            x: (Math.random() - 0.5) * mass * 0.5 * s.amp,
-            y: (Math.random() - 0.5) * mass * 0.5 * s.amp,
-            z: (Math.random() - 0.5) * mass * 0.5 * s.amp,
+            x: (Math.random() - 0.5) * mass * SHAKE_SPIN * s.amp,
+            y: (Math.random() - 0.5) * mass * SHAKE_SPIN * s.amp,
+            z: (Math.random() - 0.5) * mass * SHAKE_SPIN * s.amp,
           },
           true,
         );
@@ -614,7 +632,8 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
       if (age >= VANISH_MS) removeEntry(e);
       else e.visual.group.scale.setScalar(Math.max(0.01, 1 - age / VANISH_MS));
     });
-    const stepSeconds = 1 / qualityOf(st.quality).stepHz;
+    // probe builds keep the step fixed so slow software rendering cannot change the simulation
+    const stepSeconds = import.meta.env.VITE_JAR_PROBE ? STEP : 1 / qualityOf(st.quality).stepHz;
     const dt = st.loop.last === 0 ? stepSeconds : Math.min((now - st.loop.last) / 1000, 0.1);
     st.loop.last = now;
     st.loop.acc += dt;
@@ -623,7 +642,9 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
       : Math.min(MAX_STEPS_PER_FRAME, Math.floor(st.loop.acc / stepSeconds));
     st.loop.acc = due === MAX_STEPS_PER_FRAME ? 0 : st.loop.acc - due * stepSeconds;
     if (st.world) st.world.timestep = stepSeconds / SUBSTEPS;
+    const p0 = performance.now();
     Array.from({ length: due }).forEach(step);
+    st.physicsMs += performance.now() - p0;
     rescueStrays();
     syncMeshes();
     render();
@@ -642,6 +663,8 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
         }).length,
       );
       canvas.dataset.steps = String(st.steps);
+      canvas.dataset.physicsMs = st.physicsMs.toFixed(1);
+      canvas.dataset.physics = "rapier";
       canvas.dataset.queue = String(st.spawnQueue.length);
       canvas.dataset.calm = String(st.pileCalm);
       const jar = st.jar;
@@ -825,7 +848,7 @@ export function createJar3d(o: Jar3dOptions): Jar3dHandle {
     await RAPIER.init();
     if (st.disposed) return;
     const sc = buildScene(canvas);
-    const world = new RAPIER.World({ x: 0, y: -JAR3D.gravity, z: 0 });
+    const world = new RAPIER.World({ x: 0, y: -PHYSICS3D.gravity, z: 0 });
     world.timestep = STEP / SUBSTEPS;
     world.integrationParameters.numSolverIterations = SOLVER_ITERATIONS;
     st.scene = sc;
