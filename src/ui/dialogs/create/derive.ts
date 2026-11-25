@@ -1,3 +1,4 @@
+import type { Material } from "../../../core/material.ts";
 import { PALETTES } from "../../../core/palette.ts";
 import type { Sticker } from "../../../core/payload.ts";
 import {
@@ -22,8 +23,29 @@ export type Derived = {
   readonly transparentIndex: number | null;
   readonly snsId: string;
   readonly snsValid: boolean;
+  // the colours the art uses, most used first (foil can only be one of these)
+  readonly used: readonly number[];
   readonly sticker: Sticker;
 };
+
+function usedColours(pixels: Uint8Array, transparentIndex: number | null): number[] {
+  const counts = pixels.reduce((c, p) => {
+    if (p !== transparentIndex) c[p] = (c[p] ?? 0) + 1;
+    return c;
+  }, new Array<number>(16).fill(0));
+  return counts
+    .map((n, i) => ({ n, i }))
+    .filter(({ n }) => n > 0)
+    .toSorted((a, b) => b.n - a.n)
+    .map(({ i }) => i);
+}
+
+function materialOf(s: EditState, used: readonly number[]): Material | undefined {
+  if (s.material === "matte") return undefined;
+  if (s.material !== "foil") return { kind: s.material, tone: 0 };
+  const tone = s.foilTone !== null && used.includes(s.foilTone) ? s.foilTone : used[0];
+  return tone === undefined ? undefined : { kind: "foil", tone };
+}
 
 function baseImage(s: EditState): Rgba {
   const { rgba, art } = s.source;
@@ -55,7 +77,16 @@ export function derive(s: EditState): Derived {
 
   const snsId = normalizeSnsInput(s.snsKind, s.snsInput);
   const snsValid = isValidSnsId(s.snsKind, snsId);
-  const sticker: Sticker = { paletteId, transparentIndex, snsKind: s.snsKind, snsId, pixels };
+  const used = usedColours(pixels, transparentIndex);
+  const material = materialOf(s, used);
+  const sticker: Sticker = {
+    paletteId,
+    transparentIndex,
+    snsKind: s.snsKind,
+    snsId,
+    pixels,
+    ...(material ? { material } : {}),
+  };
 
   return {
     base,
@@ -66,6 +97,7 @@ export function derive(s: EditState): Derived {
     transparentIndex,
     snsId,
     snsValid,
+    used,
     sticker,
   };
 }

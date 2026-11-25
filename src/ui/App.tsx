@@ -1,4 +1,12 @@
-import { BookOpen, Ellipsis, FlaskRound, ImagePlus, Printer } from "lucide-react";
+import {
+  BookOpen,
+  Ellipsis,
+  FlaskRound,
+  ImagePlus,
+  Lightbulb,
+  LightbulbOff,
+  Printer,
+} from "lucide-react";
 import { Suspense, use, useReducer, useSyncExternalStore } from "react";
 import { isIos, isStandalone } from "../data/platform.ts";
 import { writeViewHint } from "../data/view-hint.ts";
@@ -8,6 +16,7 @@ import { settings, stickerStore, type AddResult } from "../data/sticker-store.ts
 import { ActionBar } from "./ActionBar.tsx";
 import { Album } from "./album/Album.tsx";
 import { PageIndicator } from "./album/PageIndicator.tsx";
+import { lights } from "./album/lights.ts";
 import { Pocket } from "./album/Pocket.tsx";
 import { PocketDialog } from "./album/PocketDialog.tsx";
 import { initialState, reducer, type View } from "./app-state.ts";
@@ -58,6 +67,7 @@ function Shell({ initialView }: { readonly initialView: View }) {
   const printing = useSyncExternalStore(printMode.subscribe, printMode.get);
   const [state, dispatch] = useReducer(reducer, initialView, initialState);
   const blockId = useSyncExternalStore(blockSelection.subscribe, blockSelection.get);
+  const lightsOut = useSyncExternalStore(lights.subscribe, lights.off);
   const [dropping, setDropping] = useReducer((_: boolean, next: boolean) => next, false);
 
   const onSaved = (stickerId: string, result: AddResult) =>
@@ -102,7 +112,8 @@ function Shell({ initialView }: { readonly initialView: View }) {
   // the jar is a dark room: the page's theme follows the view in the same commit (and while the
   // stickers are still loading, so a reload in the jar never shows the album's colours first)
   const dark = state.view === "jar" && (!ready || stickers.length > 0);
-  const room = (el: HTMLElement | null) => (el ? jarChrome(dark) : undefined);
+  const albumDark = lightsOut && !inJar;
+  const room = (el: HTMLElement | null) => (el ? jarChrome(dark || albumDark) : undefined);
 
   return (
     <div className={styles.shell} ref={room} data-jar={dark || undefined}>
@@ -133,6 +144,22 @@ function Shell({ initialView }: { readonly initialView: View }) {
           <ImagePlus aria-hidden="true" size={22} strokeWidth={1.5} />
           {mine.length === 0 && t.app.create.text}
         </button>
+        {stickers.length > 0 && !inJar && (
+          <button
+            type="button"
+            className={common.icon}
+            aria-label={t.app.lightsOut}
+            title={t.app.lightsOut}
+            aria-pressed={albumDark}
+            onClick={lights.toggle}
+          >
+            {albumDark ? (
+              <LightbulbOff aria-hidden="true" size={22} strokeWidth={1.5} />
+            ) : (
+              <Lightbulb aria-hidden="true" size={22} strokeWidth={1.5} />
+            )}
+          </button>
+        )}
         {stickers.length > 0 && (
           <button
             type="button"
@@ -182,6 +209,7 @@ function Shell({ initialView }: { readonly initialView: View }) {
         )}
         {ready && !inJar && (
           <Album
+            dark={albumDark}
             snap={ready}
             selected={state.selected}
             highlight={highlight}
@@ -193,6 +221,7 @@ function Shell({ initialView }: { readonly initialView: View }) {
         )}
         {ready && !inJar && (
           <Pocket
+            dark={albumDark}
             stickers={pocket}
             highlight={highlight}
             onOpen={() => dispatch({ type: "open", overlay: { kind: "pocket" } })}

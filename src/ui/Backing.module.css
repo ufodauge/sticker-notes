@@ -21,7 +21,7 @@
   font-size: 0.625rem;
 }
 
-.art > canvas {
+.art canvas {
   display: block;
   image-rendering: pixelated;
   inline-size: 72px;

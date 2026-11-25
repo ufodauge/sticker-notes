@@ -276,3 +276,55 @@ describe("inflate limit", () => {
     expect(r.ok && hex(r.body)).toBe(hex(body));
   });
 });
+
+describe("material byte", () => {
+  const slime = FIXTURES.slime;
+  if (!slime) throw new Error("fixture");
+  const withMaterial = (material: Sticker["material"]): Sticker => ({ ...slime, material });
+
+  test.each(["holo", "puffy", "glitter", "clear", "glow"] as const)("%s round-trips", (kind) => {
+    const s = withMaterial({ kind, tone: 0 });
+    const body = encodeBody(s);
+    expect(body.length).toBe(encodeBody(slime).length + 1);
+    const r = decodeFragment(`#${encodeFragment(body)}`);
+    expect(r.ok && r.sticker).toEqual(s);
+  });
+
+  test("foil keeps its tone", () => {
+    const s = withMaterial({ kind: "foil", tone: 3 });
+    const r = decodeBody(encodeBody(s));
+    expect(r.ok && r.sticker.material).toEqual({ kind: "foil", tone: 3 });
+  });
+
+  test("matte is the plain body: same bytes, same ID", async () => {
+    const plain = encodeBody(slime);
+    const matte = encodeBody(withMaterial({ kind: "matte", tone: 0 }));
+    expect(hex(matte)).toBe(hex(plain));
+    expect(await stickerIdOf(matte)).toBe(await stickerIdOf(plain));
+    const r = decodeBody(matte);
+    expect(r.ok && "material" in r.sticker).toBe(false);
+  });
+
+  test("non-canonical or unknown bytes are rejected", () => {
+    const plain = encodeBody(slime);
+    const tail = (b: number) => Uint8Array.from([...plain, b]);
+    expect(decodeBody(tail(0x00))).toEqual({ ok: false, reason: "bad-material" });
+    expect(decodeBody(tail(0x70))).toEqual({ ok: false, reason: "bad-material" });
+    expect(decodeBody(tail(0x13))).toEqual({ ok: false, reason: "bad-material" });
+    expect(decodeBody(tail(0x50 | (slime.transparentIndex ?? 0)))).toEqual({
+      ok: false,
+      reason: "bad-material",
+    });
+    expect(decodeBody(Uint8Array.from([...plain, 0x10, 0x10]))).toEqual({
+      ok: false,
+      reason: "bad-length",
+    });
+  });
+
+  test("foil cannot turn the transparent colour to metal", () => {
+    const t = slime.transparentIndex ?? 0;
+    expect(() =>
+      encodeBody({ ...slime, transparentIndex: t, material: { kind: "foil", tone: t } }),
+    ).toThrow();
+  });
+});

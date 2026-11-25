@@ -112,7 +112,7 @@
   );
 }
 
-.peelable > canvas {
+.peelable canvas {
   display: block;
   image-rendering: pixelated;
   inline-size: 216px;

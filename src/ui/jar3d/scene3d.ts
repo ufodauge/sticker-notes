@@ -5,7 +5,7 @@ import type { BlockShape } from "../../core/jar-shape.ts";
 import { buildAtmosphere, type Atmosphere } from "./atmosphere.ts";
 import type { JarModel, TriangleMesh } from "./model.ts";
 import type { Sticker } from "../../core/payload.ts";
-import { renderRgba } from "../../core/render.ts";
+import { materialMask, renderRgba } from "../../core/render.ts";
 
 const TINT_TOWARD_WHITE = 0.35;
 const ART_SHARE = 0.9;
@@ -335,15 +335,7 @@ export function buildBlock(sticker: Sticker, shape: BlockShape): BlockVisual {
   slab.renderOrder = 2;
   slab.castShadow = true;
 
-  const artMaterial = new THREE.MeshStandardMaterial({
-    map: texture,
-    alphaTest: 0.5,
-    roughness: 0.7,
-    emissive: 0xffffff,
-    emissiveMap: texture,
-    emissiveIntensity: 0.02,
-    side: THREE.DoubleSide,
-  });
+  const { material: artMaterial, extra } = artMaterialOf(sticker, texture, size);
   const art = new THREE.Mesh(
     new THREE.PlaneGeometry(ART_SHARE * side, ART_SHARE * side),
     artMaterial,
@@ -357,8 +349,110 @@ export function buildBlock(sticker: Sticker, shape: BlockShape): BlockVisual {
     geometry.dispose();
     art.geometry.dispose();
     texture.dispose();
+    extra?.dispose();
     artMaterial.dispose();
     tint.dispose();
   };
   return { group, slab, art, tint, dispose };
+}
+
+// The printed face of a block, made of the sticker's material: a rainbow film, a glossy dome,
+// metal on one colour, or art that glows in the dark jar. Clear art needs nothing more: its
+// faint base falls under the alpha test and the acrylic shows through.
+function artMaterialOf(
+  sticker: Sticker,
+  texture: THREE.DataTexture,
+  size: number,
+): { material: THREE.MeshStandardMaterial; extra?: THREE.Texture } {
+  const base = {
+    map: texture,
+    alphaTest: 0.5,
+    roughness: 0.7,
+    emissive: 0xffffff,
+    emissiveMap: texture,
+    emissiveIntensity: 0.02,
+    side: THREE.DoubleSide,
+  };
+  switch (sticker.material?.kind) {
+    case "holo":
+      return {
+        material: new THREE.MeshPhysicalMaterial({
+          ...base,
+          roughness: 0.25,
+          metalness: 0.2,
+          iridescence: 1,
+          iridescenceIOR: 1.8,
+          iridescenceThicknessRange: [180, 720],
+        }),
+      };
+    case "puffy":
+      return {
+        material: new THREE.MeshPhysicalMaterial({
+          ...base,
+          roughness: 0.35,
+          clearcoat: 1,
+          clearcoatRoughness: 0.04,
+        }),
+      };
+    case "glitter": {
+      const sparks = sparkTexture(size);
+      return {
+        material: new THREE.MeshPhysicalMaterial({
+          ...base,
+          roughness: 0.3,
+          metalness: 0.55,
+          roughnessMap: sparks,
+          clearcoat: 0.6,
+        }),
+        extra: sparks,
+      };
+    }
+    case "foil": {
+      const metal = maskTexture(sticker);
+      return {
+        material: new THREE.MeshStandardMaterial({
+          ...base,
+          roughness: 0.22,
+          metalness: 1,
+          metalnessMap: metal,
+        }),
+        extra: metal,
+      };
+    }
+    case "glow":
+      return { material: new THREE.MeshStandardMaterial({ ...base, emissiveIntensity: 0.9 }) };
+    default:
+      return { material: new THREE.MeshStandardMaterial(base) };
+  }
+}
+
+// Metalness from the blue channel: 1 on the foil colour, 0 elsewhere.
+function maskTexture(sticker: Sticker): THREE.DataTexture {
+  const { size, rgba } = materialMask(sticker);
+  const rows = Uint8Array.from(rgba, (_, i) => {
+    const px = Math.floor(i / 4);
+    const row = size - 1 - Math.floor(px / size);
+    const alpha = rgba[(row * size + (px % size)) * 4 + 3] ?? 0;
+    return i % 4 === 3 ? 255 : alpha;
+  });
+  const t = new THREE.DataTexture(rows, size, size, THREE.RGBAFormat);
+  t.magFilter = THREE.NearestFilter;
+  t.minFilter = THREE.NearestFilter;
+  t.needsUpdate = true;
+  return t;
+}
+
+// Roughness with fine random dots so that tiny facets catch the light one by one.
+function sparkTexture(size: number): THREE.DataTexture {
+  const n = size * 4;
+  const data = new Uint8Array(n * n * 4);
+  Array.from({ length: n * n }).forEach((_, i) => {
+    const g = Math.random() < 0.12 ? 10 : 200;
+    data.set([g, g, g, 255], i * 4);
+  });
+  const t = new THREE.DataTexture(data, n, n, THREE.RGBAFormat);
+  t.magFilter = THREE.NearestFilter;
+  t.minFilter = THREE.NearestFilter;
+  t.needsUpdate = true;
+  return t;
 }

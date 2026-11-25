@@ -7,6 +7,7 @@ import { jumble } from "./jumble.ts";
 import styles from "./Pocket.module.css";
 
 type Props = {
+  readonly dark: boolean;
   readonly stickers: readonly StoredSticker[];
   readonly highlight: Highlight | null;
   readonly onOpen: () => void;
@@ -14,7 +15,7 @@ type Props = {
 
 const PEEKING = 3;
 
-export function Pocket({ stickers, highlight, onOpen }: Props) {
+export function Pocket({ dark, stickers, highlight, onOpen }: Props) {
   if (stickers.length === 0) return null;
   const hit = highlight && stickers.some((s) => s.id === highlight.stickerId) ? highlight : null;
   return (
@@ -23,6 +24,7 @@ export function Pocket({ stickers, highlight, onOpen }: Props) {
       className={styles.pocket}
       aria-label={t.pocket.open(stickers.length)}
       title={t.pocket.dialog}
+      data-dark={dark || undefined}
       onClick={onOpen}
     >
       <span key={hit?.nonce ?? 0} className={styles.body} data-effect={hit?.effect}>

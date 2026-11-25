@@ -6,6 +6,8 @@ export const BASE_COLOR: Rgb = [255, 255, 255];
 
 export const CELL_EMPTY = -1;
 export const CELL_BASE = 16;
+// a clear sticker has no white film behind the art: the paper shows through the base
+const CLEAR_BASE_ALPHA = 70;
 
 export type StickerLayout = {
   readonly size: number;
@@ -91,11 +93,28 @@ export function renderRgba(
   const palette = getPalette(s.paletteId);
   if (!palette) throw new Error("unknown palette");
   const { size, cells } = layoutSticker(s, outline);
+  const baseAlpha = s.material?.kind === "clear" ? CLEAR_BASE_ALPHA : 255;
   const rgba = new Uint8ClampedArray(size * size * 4);
   cells.forEach((c, i) => {
     if (c === CELL_EMPTY) return;
     const [r, g, b] = c === CELL_BASE ? BASE_COLOR : (palette.rgb[c] ?? BASE_COLOR);
-    rgba.set([r, g, b, 255], i * 4);
+    rgba.set([r, g, b, c === CELL_BASE ? baseAlpha : 255], i * 4);
+  });
+  return { size, rgba };
+}
+
+// Where the material shows, as an alpha mask the size of the rendered sticker: the whole sticker,
+// or for foil only the dots of the foil colour.
+export function materialMask(
+  s: Sticker,
+  outline = DEFAULT_OUTLINE,
+): { size: number; rgba: Uint8ClampedArray<ArrayBuffer> } {
+  const { size, cells } = layoutSticker(s, outline);
+  const foil = s.material?.kind === "foil" ? s.material.tone : undefined;
+  const rgba = new Uint8ClampedArray(size * size * 4);
+  cells.forEach((c, i) => {
+    const on = foil === undefined ? c !== CELL_EMPTY : c === foil;
+    if (on) rgba.set([0, 0, 0, 255], i * 4);
   });
   return { size, rgba };
 }

@@ -9,6 +9,7 @@ import { trackPages } from "./page-position.ts";
 import { PageCanvas } from "./PageCanvas.tsx";
 
 type Props = {
+  readonly dark: boolean;
   readonly snap: Ready;
   readonly selected: string | null;
   readonly highlight: Highlight | null;
@@ -21,7 +22,7 @@ type Props = {
 const WHEEL_PAGE_MS = 420;
 
 export function Album(props: Props) {
-  const { snap, selected, highlight, leaving, onSelect, onLeft, onCreate } = props;
+  const { dark, snap, selected, highlight, leaving, onSelect, onLeft, onCreate } = props;
   const scroller = useRef<HTMLDivElement | null>(null);
   // keep the element for handlers and track the centred page; the identity must stay stable,
   const attach = useCallback((el: HTMLDivElement | null) => {
@@ -90,6 +91,7 @@ export function Album(props: Props) {
       {pages.length === 0 ? (
         <section className={styles.page} data-page="">
           <PageCanvas
+            dark={dark}
             pageId=""
             placements={[]}
             stickers={byId}
@@ -122,6 +124,7 @@ export function Album(props: Props) {
                 aria-label={t.album.pageLabel(i + 1)}
               >
                 <PageCanvas
+                  dark={dark}
                   pageId={page.id}
                   placements={onPage}
                   stickers={byId}

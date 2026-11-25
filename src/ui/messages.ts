@@ -4,6 +4,7 @@
 // - Not here: SNS names (`core/sns.ts`, brand names), palette names (`core/palette-data.ts`,
 //   part of payload v1), the PWA manifest and <title> (`vite.config.ts`, `index.html`).
 import type { BackupError } from "../core/backup.ts";
+import type { MaterialKind } from "../core/material.ts";
 
 export const t = {
   common: {
@@ -20,6 +21,7 @@ export const t = {
     menu: "メニュー",
     viewJar: "瓶で見る",
     viewAlbum: "シール帳で見る",
+    lightsOut: "電気を消す",
   },
 
   jar: {
@@ -107,6 +109,18 @@ export const t = {
     exactMatch: "パレットと完全一致",
     saveFailed: "保存できなかった",
     submit: "ポケットに入れる",
+    material: "素材",
+    materials: {
+      matte: "ふつう",
+      holo: "キラ",
+      puffy: "ぷっくり",
+      glitter: "ラメ",
+      clear: "クリア",
+      foil: "箔",
+      glow: "蓄光",
+    } satisfies Readonly<Record<MaterialKind, string>>,
+    materialLocked: (name: string, n: number) => `${name}: あと${n}人と交換すると使える`,
+    foilTone: "箔にする色",
     palette: "パレット",
     paletteNatural: "自然な色",
     paletteFilter: "フィルター",

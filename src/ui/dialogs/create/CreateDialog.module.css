@@ -59,7 +59,7 @@
   background: var(--paper);
 }
 
-.previewArt > canvas {
+.previewArt canvas {
   display: block;
   inline-size: calc(36px * 3);
   block-size: calc(36px * 3);
@@ -67,7 +67,7 @@
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .previewArt > canvas {
+  .previewArt canvas {
     animation: appear var(--t-med) var(--ease-out) both;
   }
 }
@@ -104,7 +104,7 @@
   .preview {
     inset-block-start: 0;
   }
-  .previewArt > canvas {
+  .previewArt canvas {
     inline-size: calc(36px * 5);
     block-size: calc(36px * 5);
   }
@@ -287,4 +287,50 @@
   border-color: var(--ink);
   outline: 1px solid var(--ink);
   color: var(--ink);
+}
+
+.materials {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.material {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-block-size: 36px;
+  padding-inline: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: var(--text-small);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: scale var(--t-fast) var(--ease-out);
+}
+
+.material:active:not(:disabled) {
+  scale: 0.95;
+}
+
+.material[aria-checked="true"] {
+  border-color: var(--ink);
+  outline: 1px solid var(--ink);
+}
+
+.material:disabled {
+  color: var(--ink-soft);
+  border-style: dashed;
+  cursor: default;
+}
+
+.tone {
+  background: var(--swatch);
+}
+
+.tone[aria-checked="true"] {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
 }

@@ -28,6 +28,8 @@ import { t } from "../messages.ts";
 import styles from "./PageCanvas.module.css";
 
 type Props = {
+  // lights out: the page is dark but for a torch under the finger and glow-in-the-dark stickers
+  readonly dark: boolean;
   readonly pageId: string;
   readonly placements: readonly Placement[];
   readonly stickers: ReadonlyMap<string, StoredSticker>;
@@ -121,7 +123,8 @@ type Spin = {
 };
 
 export function PageCanvas(props: Props) {
-  const { placements, stickers, selected, highlight, leaving, onLeft, onSelect, children } = props;
+  const { dark, placements, stickers, selected, highlight, leaving, onLeft, onSelect, children } =
+    props;
   const pageRef = useRef<HTMLDivElement>(null);
   const drag = useRef<Drag | null>(null);
   const spin = useRef<Spin | null>(null);
@@ -298,12 +301,22 @@ export function PageCanvas(props: Props) {
     void stickerStore.update(p.id, change);
   };
 
+  const torch = (e: PointerEvent<HTMLDivElement>) => {
+    if (!dark) return;
+    const r = e.currentTarget.getBoundingClientRect();
+    e.currentTarget.style.setProperty("--torch-x", `${((e.clientX - r.left) / r.width) * 100}%`);
+    e.currentTarget.style.setProperty("--torch-y", `${((e.clientY - r.top) / r.height) * 100}%`);
+  };
+
   return (
     <div
       ref={pageRef}
       className={styles.page}
       data-paper=""
+      data-dark={dark || undefined}
+      onPointerMove={torch}
       onPointerDown={(e) => {
+        torch(e);
         if (e.target === e.currentTarget) onSelect(null);
       }}
     >
@@ -314,7 +327,13 @@ export function PageCanvas(props: Props) {
           const hl = highlight?.stickerId === p.stickerId ? highlight : null;
           const empty = s.sticker.pixels.every((px) => px === s.sticker.transparentIndex);
           return (
-            <div key={p.id} className={styles.placed} style={varsOf(p)} data-move={p.id}>
+            <div
+              key={p.id}
+              className={styles.placed}
+              style={varsOf(p)}
+              data-move={p.id}
+              data-glow={(dark && s.sticker.material?.kind === "glow") || undefined}
+            >
               <button
                 type="button"
                 className={styles.grab}
@@ -344,6 +363,7 @@ export function PageCanvas(props: Props) {
             </div>
           );
         })}
+        {dark && <span className={styles.dark} aria-hidden="true" />}
       </div>
       {placements
         .filter((p) => p.id === selected && leaving !== p.id)

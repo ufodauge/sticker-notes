@@ -40,6 +40,7 @@
 }
 
 .page {
+  position: relative;
   flex: 0 0 var(--page-w);
   scroll-snap-align: center;
   scroll-snap-stop: always;
@@ -50,11 +51,32 @@
     scroll-behavior: smooth;
   }
 
+  /* Scrolling turns the pages: the next one rises from the stack, and the one leaving to the
+     left lifts on its left edge like paper turning over, its face darkening as it goes. The
+     scroll itself stays native; this only follows it. */
   @supports (animation-timeline: view()) {
     .page {
-      animation: settle linear both;
+      transform-origin: 0 50%;
+      animation:
+        settle linear both,
+        turn linear both;
+      animation-timeline: view(inline), view(inline);
+      animation-range:
+        entry 0% cover 50%,
+        cover 50% exit 100%;
+    }
+
+    .page::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 4px;
+      background: linear-gradient(90deg, rgb(0 0 0 / 0.05), rgb(0 0 0 / 0.35));
+      opacity: 0;
+      pointer-events: none;
+      animation: shade linear both;
       animation-timeline: view(inline);
-      animation-range: entry 0% cover 50%;
+      animation-range: cover 50% exit 100%;
     }
   }
 }
@@ -67,6 +89,21 @@
   to {
     opacity: 1;
     scale: 1;
+  }
+}
+
+@keyframes turn {
+  from {
+    transform: perspective(1400px) rotateY(0deg);
+  }
+  to {
+    transform: perspective(1400px) rotateY(-72deg);
+  }
+}
+
+@keyframes shade {
+  to {
+    opacity: 1;
   }
 }
 

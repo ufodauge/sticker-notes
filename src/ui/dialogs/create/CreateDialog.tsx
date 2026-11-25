@@ -1,7 +1,16 @@
-import { Check, Grid2x2, ImagePlus, Sparkles } from "lucide-react";
-import { useCallback, useReducer, useRef, type ChangeEvent, type DragEvent } from "react";
+import { Check, Grid2x2, ImagePlus, Lock, Sparkles } from "lucide-react";
+import {
+  useCallback,
+  useReducer,
+  useRef,
+  useSyncExternalStore,
+  type ChangeEvent,
+  type DragEvent,
+} from "react";
 import Cropper, { type Area } from "react-easy-crop";
+import { MATERIAL_KINDS, peopleToUnlock } from "../../../core/material.ts";
 import { PALETTES, type PaletteKind } from "../../../core/palette.ts";
+import { peopleOf } from "../../../core/people.ts";
 import type { PaletteCandidate } from "../../../core/quantize.ts";
 import { encodeBody, stickerIdOf } from "../../../core/payload.ts";
 import { importPixelArt } from "../../../core/pixelart.ts";
@@ -201,6 +210,7 @@ function Editor({ state, dispatch, onSaved }: EditorProps) {
           <PaletteField d={d} dispatch={dispatch} />
           <TransparentField d={d} dispatch={dispatch} />
           {!state.source.art && <DitherField state={state} dispatch={dispatch} />}
+          <MaterialField state={state} d={d} dispatch={dispatch} />
           <SnsField state={state} d={d} dispatch={dispatch} />
           {state.failed && d.snsValid && <p className={common.warn}>{t.create.saveFailed}</p>}
           <button
@@ -369,6 +379,69 @@ function TransparentField({
           />
         ))}
       </div>
+    </fieldset>
+  );
+}
+
+function exchangedWith(): number {
+  const snap = stickerStore.getSnapshot();
+  return snap.status === "ready" ? peopleOf(snap.stickers).length : 0;
+}
+
+// Materials open up as the maker exchanges with more people; the locked ones say how many more.
+function MaterialField({
+  state,
+  d,
+  dispatch,
+}: Pick<EditorProps, "state" | "dispatch"> & { readonly d: Derived }) {
+  const people = useSyncExternalStore(stickerStore.subscribe, exchangedWith);
+  const palette = PALETTES[d.paletteId];
+  return (
+    <fieldset className={styles.field}>
+      <legend className={common.visuallyHidden}>{t.create.material}</legend>
+      <div className={styles.materials} role="radiogroup" aria-label={t.create.material}>
+        {MATERIAL_KINDS.map((kind) => {
+          const name = t.create.materials[kind];
+          const more = peopleToUnlock(kind, people);
+          return (
+            <button
+              key={kind}
+              type="button"
+              role="radio"
+              aria-checked={state.material === kind}
+              disabled={more > 0}
+              title={more > 0 ? t.create.materialLocked(name, more) : name}
+              aria-label={more > 0 ? t.create.materialLocked(name, more) : name}
+              className={styles.material}
+              data-material={kind}
+              onClick={() => dispatch({ type: "material", kind })}
+            >
+              {more > 0 && <Lock aria-hidden="true" size={12} strokeWidth={1.75} />}
+              {name}
+            </button>
+          );
+        })}
+      </div>
+      {state.material === "foil" && palette && (
+        <div className={styles.swatches} role="radiogroup" aria-label={t.create.foilTone}>
+          {d.used.map((i) => {
+            const hex = palette.colors[i] ?? "000000";
+            return (
+              <button
+                key={i}
+                type="button"
+                role="radio"
+                aria-checked={d.sticker.material?.tone === i}
+                aria-label={`${t.create.foilTone} #${hex}`}
+                title={`${t.create.foilTone} #${hex}`}
+                className={`${styles.swatch} ${styles.tone}`}
+                style={{ "--swatch": `#${hex}` } as React.CSSProperties}
+                onClick={() => dispatch({ type: "foil-tone", tone: i })}
+              />
+            );
+          })}
+        </div>
+      )}
     </fieldset>
   );
 }

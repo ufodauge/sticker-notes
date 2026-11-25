@@ -3,3 +3,128 @@
   image-rendering: pixelated;
   filter: drop-shadow(0 1px 1.5px rgb(0 0 0 / 0.35));
 }
+
+/* A sticker with a material: the art, and the sheen on top in the same grid cell. */
+.finished {
+  display: grid;
+  inline-size: fit-content;
+}
+
+.finished > * {
+  grid-area: 1 / 1;
+}
+
+.finish {
+  --x: var(--shine-x, 0);
+  --y: var(--shine-y, 0);
+  pointer-events: none;
+  mask-image: var(--mask);
+  mask-size: 100% 100%;
+  mask-repeat: no-repeat;
+  transition: background-position 160ms ease-out;
+}
+
+/* holo: a rainbow film that slides as the light moves */
+.finish[data-material="holo"] {
+  background:
+    linear-gradient(105deg, transparent 30%, rgb(255 255 255 / 0.75) 45%, transparent 60%),
+    linear-gradient(125deg, #ff9ad5, #ffe27a, #9dffb0, #8fd8ff, #c69cff, #ff9ad5, #ffe27a, #9dffb0);
+  background-size:
+    260% 260%,
+    320% 320%;
+  background-position:
+    calc(50% + var(--x) * 60%) calc(50% + var(--y) * 60%),
+    calc(50% - var(--x) * 40%) calc(50% - var(--y) * 40%);
+  background-blend-mode: screen;
+  mix-blend-mode: hard-light;
+  opacity: 0.5;
+}
+
+/* puffy: a glossy dome, its highlight following the light */
+.finished[data-finished="puffy"] {
+  filter: drop-shadow(0 2px 2px rgb(0 0 0 / 0.25));
+}
+
+.finish[data-material="puffy"] {
+  background:
+    radial-gradient(
+      circle at calc(34% - var(--x) * 14%) calc(26% - var(--y) * 14%),
+      rgb(255 255 255 / 0.9) 0 6%,
+      rgb(255 255 255 / 0.35) 14%,
+      transparent 30%
+    ),
+    radial-gradient(circle at 50% 45%, transparent 52%, rgb(0 0 0 / 0.2) 80%);
+}
+
+/* glitter: fine sparks that twinkle */
+.finish[data-material="glitter"] {
+  background:
+    radial-gradient(circle, rgb(255 255 255) 0 0.7px, transparent 1.4px) 0 0 / 11px 9px,
+    radial-gradient(circle, rgb(255 244 190) 0 0.6px, transparent 1.3px) 4px 6px / 13px 15px,
+    radial-gradient(circle, rgb(196 234 255) 0 0.6px, transparent 1.3px) 8px 2px / 17px 13px;
+  mix-blend-mode: screen;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .finish[data-material="glitter"] {
+    animation: twinkle 1.4s steps(5) infinite;
+  }
+}
+
+@keyframes twinkle {
+  33% {
+    opacity: 0.45;
+    background-position:
+      1px 2px,
+      3px 0,
+      0 3px;
+  }
+  66% {
+    opacity: 0.85;
+    background-position:
+      3px 1px,
+      0 4px,
+      2px 2px;
+  }
+}
+
+/* foil: one colour of the art turns to metal */
+.finish[data-material="foil"] {
+  background: linear-gradient(
+    120deg,
+    var(--metal-dark) 0%,
+    var(--metal-light) calc(38% + var(--x) * 18%),
+    var(--metal-mid) 55%,
+    var(--metal-light) calc(72% + var(--y) * 14%),
+    var(--metal-dark) 100%
+  );
+}
+
+.finish[data-metal="gold"] {
+  --metal-dark: #7a5512;
+  --metal-mid: #c5952f;
+  --metal-light: #fff1b8;
+}
+
+.finish[data-metal="silver"] {
+  --metal-dark: #5e646c;
+  --metal-mid: #a9b0b8;
+  --metal-light: #ffffff;
+}
+
+/* glow: pale by day; it shines when the lights go out */
+.finish[data-material="glow"] {
+  background: #c9ffd5;
+  mix-blend-mode: multiply;
+  opacity: 0.45;
+}
+
+/* clear: a film with a glint */
+.finish[data-material="clear"] {
+  background: linear-gradient(
+    135deg,
+    transparent calc(20% + var(--x) * 15%),
+    rgb(255 255 255 / 0.7) calc(30% + var(--x) * 15%),
+    transparent calc(42% + var(--x) * 15%)
+  );
+}

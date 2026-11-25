@@ -6,6 +6,7 @@ import {
   dilate,
   fillHoles,
   layoutSticker,
+  materialMask,
   renderRgba,
   traceContours,
 } from "./render.ts";
@@ -354,5 +355,32 @@ describe("traceContours details", () => {
     for (const s of Object.values(FIXTURES)) {
       for (const c of traceContours(layoutSticker(s))) expect(shoelace(c)).toBeGreaterThan(0);
     }
+  });
+});
+
+describe("materials", () => {
+  const slime = FIXTURES.slime as Sticker;
+  const alphaAt = (rgba: Uint8ClampedArray, i: number) => rgba[i * 4 + 3];
+
+  test("a clear sticker's white base lets the paper through; its art stays opaque", () => {
+    const plain = renderRgba(slime);
+    const clear = renderRgba({ ...slime, material: { kind: "clear", tone: 0 } });
+    const { cells } = layoutSticker(slime);
+    const base = cells.indexOf(CELL_BASE);
+    const art = cells.findIndex((c) => c >= 0 && c < 16);
+    expect(alphaAt(plain.rgba, base)).toBe(255);
+    expect(alphaAt(clear.rgba, base)).toBeLessThan(128);
+    expect(alphaAt(clear.rgba, art)).toBe(255);
+  });
+
+  test("the mask covers the whole sticker, or only the foil colour", () => {
+    const { cells } = layoutSticker(slime);
+    const whole = materialMask({ ...slime, material: { kind: "holo", tone: 0 } });
+    const tone = cells.find((c) => c >= 0 && c < 16) ?? 0;
+    const foil = materialMask({ ...slime, material: { kind: "foil", tone } });
+    cells.forEach((c, i) => {
+      expect(alphaAt(whole.rgba, i)).toBe(c === CELL_EMPTY ? 0 : 255);
+      expect(alphaAt(foil.rgba, i)).toBe(c === tone ? 255 : 0);
+    });
   });
 });

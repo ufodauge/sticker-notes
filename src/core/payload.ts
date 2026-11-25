@@ -1,5 +1,6 @@
 import { Inflate, deflateSync } from "fflate";
 import { decodeAlnum43, encodeAlnum43 } from "./alnum43.ts";
+import { MATERIALS, materialOfCode, type Material } from "./material.ts";
 import { PALETTE_COUNT } from "./palette.ts";
 import { MAX_ID_BYTES, isSnsKind, isValidSnsId, type SnsKind } from "./sns.ts";
 
@@ -15,6 +16,8 @@ export type Sticker = {
   readonly snsKind: SnsKind;
   readonly snsId: string;
   readonly pixels: Uint8Array;
+  // absent: matte (the v1 body exactly, without the material byte)
+  readonly material?: Material;
 };
 
 export type DecodeResult =
@@ -30,7 +33,8 @@ type DecodeError =
   | "bad-palette"
   | "bad-transparent"
   | "bad-sns-kind"
-  | "bad-sns-id";
+  | "bad-sns-id"
+  | "bad-material";
 
 const fail = (reason: DecodeError): DecodeResult => ({ ok: false, reason });
 
@@ -46,9 +50,20 @@ function isValidSticker(s: Sticker): boolean {
     isSnsKind(s.snsKind) &&
     isValidSnsId(s.snsKind, s.snsId) &&
     s.pixels.length === PIXEL_COUNT &&
-    s.pixels.every((p) => p < 16)
+    s.pixels.every((p) => p < 16) &&
+    (s.material === undefined || isValidMaterial(s.material, s.transparentIndex))
   );
 }
+
+function isValidMaterial(m: Material, transparentIndex: number | null): boolean {
+  if (!Object.hasOwn(MATERIALS, m.kind) || !Number.isInteger(m.tone)) return false;
+  if (m.kind !== "foil") return m.tone === 0;
+  return m.tone >= 0 && m.tone < 16 && m.tone !== transparentIndex;
+}
+
+// The byte after the pixels: material code in the high nibble, foil tone in the low one.
+const materialByte = (m: Material | undefined): number | undefined =>
+  m === undefined || m.kind === "matte" ? undefined : (MATERIALS[m.kind].code << 4) | m.tone;
 
 export function encodeBody(s: Sticker): Uint8Array {
   if (!isValidSticker(s)) throw new Error("invalid sticker");
@@ -58,7 +73,8 @@ export function encodeBody(s: Sticker): Uint8Array {
     ((s.transparentIndex === null ? 0 : 1) << 10) |
     ((s.transparentIndex ?? 0) << 6) |
     s.snsKind;
-  const body = new Uint8Array(3 + id.length + PIXEL_BYTES);
+  const extra = materialByte(s.material);
+  const body = new Uint8Array(3 + id.length + PIXEL_BYTES + (extra === undefined ? 0 : 1));
   body[0] = header >> 8;
   body[1] = header & 0xff;
   body[2] = id.length;
@@ -67,6 +83,7 @@ export function encodeBody(s: Sticker): Uint8Array {
   for (let i = 0; i < PIXEL_BYTES; i++) {
     body[base + i] = ((s.pixels[i * 2] ?? 0) << 4) | (s.pixels[i * 2 + 1] ?? 0);
   }
+  if (extra !== undefined) body[base + PIXEL_BYTES] = extra;
   return body;
 }
 
@@ -75,7 +92,10 @@ const utf8 = new TextDecoder("utf-8", { fatal: true });
 export function decodeBody(body: Uint8Array): DecodeResult {
   if (body.length < 3) return fail("bad-length");
   const n = body[2] ?? 0;
-  if (n < 1 || n > MAX_ID_BYTES || body.length !== 3 + n + PIXEL_BYTES) return fail("bad-length");
+  const plain = 3 + n + PIXEL_BYTES;
+  if (n < 1 || n > MAX_ID_BYTES || (body.length !== plain && body.length !== plain + 1)) {
+    return fail("bad-length");
+  }
   const header = ((body[0] ?? 0) << 8) | (body[1] ?? 0);
   const paletteId = header >> 11;
   const hasTransparent = (header >> 10) & 1;
@@ -93,17 +113,33 @@ export function decodeBody(body: Uint8Array): DecodeResult {
     pixels[i * 2] = b >> 4;
     pixels[i * 2 + 1] = b & 0xf;
   }
+  const transparentIndex = hasTransparent ? tIndex : null;
+  const material = decodeMaterial(body[plain], transparentIndex);
+  if (material === "bad") return fail("bad-material");
   return {
     ok: true,
     body: body.slice(),
     sticker: {
       paletteId,
-      transparentIndex: hasTransparent ? tIndex : null,
+      transparentIndex,
       snsKind: kind,
       snsId,
       pixels,
+      ...(material ? { material } : {}),
     },
   };
+}
+
+// Only canonical bytes are accepted: matte is written by leaving the byte out, never as 0.
+function decodeMaterial(
+  byte: number | undefined,
+  transparentIndex: number | null,
+): Material | undefined | "bad" {
+  if (byte === undefined) return undefined;
+  const kind = materialOfCode(byte >> 4);
+  if (!kind || kind === "matte") return "bad";
+  const m = { kind, tone: byte & 0xf };
+  return isValidMaterial(m, transparentIndex) ? m : "bad";
 }
 
 function decodeUtf8(bytes: Uint8Array): string | undefined {

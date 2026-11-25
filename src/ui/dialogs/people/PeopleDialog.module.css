@@ -54,7 +54,7 @@
   gap: var(--space-1);
 }
 
-.stickers > canvas {
+.stickers canvas {
   inline-size: 48px;
   block-size: 48px;
   image-rendering: pixelated;

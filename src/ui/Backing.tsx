@@ -34,6 +34,9 @@ export function Backing({ sticker, small, className, children }: Props) {
           </span>
         )}
         {sticker.receivedAt && <span>{t.pocket.date(sticker.receivedAt)}</span>}
+        {s.material && s.material.kind !== "matte" && (
+          <span>{t.create.materials[s.material.kind]}</span>
+        )}
       </span>
     </span>
   );

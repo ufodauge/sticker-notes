@@ -1,5 +1,6 @@
 import type { Fit } from "../../../core/pixelart.ts";
 import type { CropRect, Rgba } from "../../../core/quantize.ts";
+import type { MaterialKind } from "../../../core/material.ts";
 import type { SnsKind } from "../../../core/sns.ts";
 
 type Point = { readonly x: number; readonly y: number };
@@ -26,6 +27,9 @@ export type EditState = {
   readonly snsKind: SnsKind;
   readonly snsInput: string;
   readonly snsTouched: boolean;
+  readonly material: MaterialKind;
+  // the colour that turns to foil; null: the most used colour
+  readonly foilTone: number | null;
   readonly saving: boolean;
   readonly failed: boolean;
 };
@@ -52,6 +56,8 @@ export type CreateAction =
   | { readonly type: "sns-kind"; readonly kind: SnsKind }
   | { readonly type: "sns-input"; readonly value: string }
   | { readonly type: "sns-blur" }
+  | { readonly type: "material"; readonly kind: MaterialKind }
+  | { readonly type: "foil-tone"; readonly tone: number }
   | { readonly type: "saving" }
   | { readonly type: "save-failed" }
   | { readonly type: "reset" };
@@ -85,6 +91,8 @@ export function createReducer(state: CreateState, action: CreateAction): CreateS
           snsKind: action.sns?.kind ?? 1,
           snsInput: action.sns?.id ?? "",
           snsTouched: false,
+          material: "matte",
+          foilTone: null,
           saving: false,
           failed: false,
         };
@@ -117,6 +125,10 @@ export function createReducer(state: CreateState, action: CreateAction): CreateS
       return { ...state, snsInput: action.value };
     case "sns-blur":
       return { ...state, snsTouched: true };
+    case "material":
+      return { ...state, material: action.kind };
+    case "foil-tone":
+      return { ...state, foilTone: action.tone };
     case "saving":
       return { ...state, saving: true, failed: false, snsTouched: true };
     case "save-failed":
