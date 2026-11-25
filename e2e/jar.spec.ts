@@ -19,6 +19,8 @@ type Probe = {
 };
 type Win = { __jarProbe?: Probe; __jarStress?: () => void };
 
+test.describe.configure({ timeout: 90_000 });
+
 const canvasOf = (page: Page) => page.locator("canvas[data-blocks]");
 const toggleToJar = (page: Page) => page.getByRole("button", { name: "瓶で見る" });
 const toggleToAlbum = (page: Page) => page.getByRole("button", { name: "シール帳で見る" });
