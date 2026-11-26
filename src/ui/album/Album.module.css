@@ -1,7 +1,8 @@
 /*
  * The album is an open notebook. Leaves lie on the right until turned over the spine to the left.
- * A wide screen shows the whole spread; a narrow one shows one page of it, with the other page
- * peeking at the edge, and slides across the spine between them.
+ * A wide screen shows the whole spread; a narrow one centres one page of it, with the other page
+ * running off the screen's edge (it lies there on the desk, whole, if the desk is scrolled), and
+ * slides across the spine between them.
  */
 .viewport {
   --page-w: min(86cqw, calc((100cqh - 128px) * 3 / 4), 560px);
@@ -9,7 +10,6 @@
   position: relative;
   container-type: size;
   block-size: 100%;
-  overflow: hidden;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
