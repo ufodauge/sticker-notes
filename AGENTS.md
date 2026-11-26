@@ -79,6 +79,7 @@ These commands map to their corresponding tools. For example, `vp dev --port 300
 
 - Git hooks are config-based (Git 2.54+): enable once per clone with `git config set --local include.path ../.githooks/hooks.gitconfig`. pre-commit runs `vp check`; pre-push runs `vp run verify` and the full e2e (2 workers: the WebKit jar tests time out under heavier load). Do not bypass them. CI runs the checks and unit tests only (e2e timing was not stable there); the e2e gate is the pre-push hook.
 
+- When a decision changes how the app looks or behaves, update in the same commit the documents that describe it: the UI conventions skill, `docs/m0-decisions.md` (mark the row "のちに変更"), the ideas docs, `docs/progress.md`. A retired feature goes into `RETIRED` in `tools/docs-drift.test.ts`; docs may then name it only on a line saying it was removed.
 - Spec and milestones: `docs/plan.md`. Decisions: `docs/m0-decisions.md`. Status and remaining device checks: `docs/progress.md`.
 - UI work: load the `ui-conventions` skill (`.claude/skills/ui-conventions/SKILL.md`) first.
 - `src/core` is pure (no DOM / browser storage; enforced by lint). `src/data` wraps browser APIs. `src/ui` is React.
