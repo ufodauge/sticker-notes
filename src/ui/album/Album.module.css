@@ -4,7 +4,7 @@
  * peeking at the edge, and slides across the spine between them.
  */
 .viewport {
-  --page-w: min(86cqw, calc((100cqh - 32px) * 3 / 4), 560px);
+  --page-w: min(86cqw, calc((100cqh - 64px) * 3 / 4), 560px);
   --wide: 0;
   position: relative;
   container-type: size;
@@ -17,7 +17,7 @@
 
 @media (min-aspect-ratio: 23 / 20) and (min-width: 700px) {
   .viewport {
-    --page-w: min(46cqw, calc((100cqh - 32px) * 3 / 4), 560px);
+    --page-w: min(46cqw, calc((100cqh - 64px) * 3 / 4), 560px);
     --wide: 1;
   }
 }
@@ -48,6 +48,55 @@
 
 .book[data-live] {
   transition: none;
+}
+
+/*
+ * It reads as a book: the pages lie on a board a little larger than they are, and under each
+ * side lies the block of pages already there, its edges showing below and outside the open page
+ * (as seen from a little in front). Turned leaves move from the right block to the left one.
+ */
+.book {
+  --board: color-mix(in oklab, var(--ink) 22%, var(--paper));
+  --block: calc(var(--page-w) * 0.026);
+}
+
+.book::before {
+  content: "";
+  position: absolute;
+  inset: calc(var(--page-w) * -0.022);
+  inset-block-end: calc(var(--page-w) * -0.022 - var(--block));
+  border-radius: calc(var(--page-w) * 0.018);
+  background: var(--board);
+  outline: 1px solid color-mix(in oklab, var(--ink) 30%, transparent);
+  outline-offset: -1px;
+  box-shadow:
+    0 calc(var(--page-w) * 0.02) calc(var(--page-w) * 0.05) rgb(0 0 0 / 0.22),
+    0 1px 2px rgb(0 0 0 / 0.2);
+}
+
+.stack {
+  position: absolute;
+  inset-block-start: 0;
+  inline-size: var(--page-w);
+  block-size: 100%;
+  border-radius: 2px;
+  background: repeating-linear-gradient(to bottom, var(--sheet) 0 2px, var(--sheet-edge) 2px 3px) 0
+    100% / 100% var(--depth);
+  background-color: var(--sheet);
+  box-shadow: 0 1px 0 var(--sheet-edge);
+  translate: calc(var(--out) * var(--depth) * 0.35) var(--depth);
+  pointer-events: none;
+  transition: translate 300ms var(--ease-out);
+}
+
+.stack[data-side="right"] {
+  --out: 1;
+  inset-inline-start: 50%;
+}
+
+.stack[data-side="left"] {
+  --out: -1;
+  inset-inline-start: 0;
 }
 
 .leaf {

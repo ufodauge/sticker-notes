@@ -3,6 +3,7 @@ import {
   useCallback,
   useRef,
   useSyncExternalStore,
+  type CSSProperties,
   type PointerEvent,
   type WheelEvent,
 } from "react";
@@ -298,6 +299,26 @@ export function Album(props: Props) {
         data-open={pos.flipped}
         data-moved={pagePosition.moved() || undefined}
       >
+        {(["left", "right"] as const).map((s) => {
+          // the share of the leaves lying on this side (the left also holds the cover)
+          const share =
+            s === "left"
+              ? pos.flipped / leaves.length
+              : (leaves.length - pos.flipped) / leaves.length;
+          return (
+            <div
+              key={s}
+              className={styles.stack}
+              data-side={s}
+              aria-hidden="true"
+              style={
+                {
+                  "--depth": `calc(var(--block) * ${Math.min(1, 0.25 + share * 0.75)})`,
+                } as CSSProperties
+              }
+            />
+          );
+        })}
         <div
           className={styles.leaf}
           style={{ zIndex: 0 }}
