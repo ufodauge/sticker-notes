@@ -79,7 +79,6 @@ export type CurlRefs = {
 // taken hold of.
 export function beginCurl(
   refs: CurlRefs,
-  dark: boolean,
   direction: -1 | 1,
   at: { readonly x: number; readonly y: number } | undefined,
 ): Turning | undefined {
@@ -114,8 +113,8 @@ export function beginCurl(
     w,
     h,
     outward: direction,
-    front: paintFace(artOf(shown, current), w, h, dpr, direction > 0 ? "left" : "right", dark),
-    back: paintFace(artOf(hidden, current), w, h, dpr, direction > 0 ? "right" : "left", dark),
+    front: paintFace(artOf(shown, current), w, h, dpr, direction > 0 ? "left" : "right"),
+    back: paintFace(artOf(hidden, current), w, h, dpr, direction > 0 ? "right" : "left"),
     grip: {
       x: Math.min(w, Math.max(w * (1 - EDGE_SHARE), grip.x)),
       y: Math.min(h, Math.max(0, grip.y)),
@@ -150,8 +149,7 @@ export function endCurl(refs: CurlRefs, t: Turning): void {
 // a turn asked for without a finger (wheel, page track, a sticker held at the edge)
 export function turnShown(refs: CurlRefs, direction: -1 | 1, apply: () => void): boolean {
   if (refs.busy.current) return false;
-  const dark = refs.book.current?.closest("[data-dusk]") !== null;
-  const t = beginCurl(refs, dark, direction, undefined);
+  const t = beginCurl(refs, direction, undefined);
   if (!t) return false;
   paperSound.flip();
   t.curl.release(true, () => {

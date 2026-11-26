@@ -35,8 +35,6 @@ type Props = {
   // the half of the spread this side of the leaf shows (the whole spread is drawn, the side shows
   // its half; a sticker over the spine is drawn on both and belongs to the half its centre is on)
   readonly half: 0 | 1;
-  // lights out: the page is dim
-  readonly dark: boolean;
   readonly pageId: string;
   readonly placements: readonly Placement[];
   readonly stickers: ReadonlyMap<string, StoredSticker>;
@@ -149,18 +147,8 @@ type Spin = {
 const clipIdOf = (placementId: string) => `touch-${placementId}`;
 
 export function PageCanvas(props: Props) {
-  const {
-    half,
-    dark,
-    placements,
-    stickers,
-    selected,
-    highlight,
-    leaving,
-    onLeft,
-    onSelect,
-    children,
-  } = props;
+  const { half, placements, stickers, selected, highlight, leaving, onLeft, onSelect, children } =
+    props;
   const owns = (p: Placement) => (p.x < 0.5 ? 0 : 1) === half;
   const pageRef = useRef<HTMLDivElement>(null);
   const hold = useRef<Peel | Hold | Pinch | null>(null);
@@ -438,7 +426,6 @@ export function PageCanvas(props: Props) {
       ref={pageRef}
       className={styles.page}
       data-paper=""
-      data-dark={dark || undefined}
       onPointerDown={(e) => {
         if (e.target === e.currentTarget) onSelect(null);
       }}
@@ -502,7 +489,6 @@ export function PageCanvas(props: Props) {
             </div>
           );
         })}
-        {dark && <span className={styles.dark} aria-hidden="true" />}
       </div>
       {placements
         .filter((p) => p.id === selected && leaving !== p.id && owns(p))

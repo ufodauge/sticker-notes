@@ -15,7 +15,8 @@
 }
 
 .finish {
-  --x: var(--shine-x, 0);
+  /* the tilt of the phone, plus where the room's light comes from */
+  --x: calc(var(--shine-x, 0) + var(--light-x, 0) * 0.6);
   --y: var(--shine-y, 0);
   pointer-events: none;
   mask-image: var(--mask);
@@ -37,7 +38,8 @@
     calc(50% - var(--x) * 40%) calc(50% - var(--y) * 40%);
   background-blend-mode: screen;
   mix-blend-mode: hard-light;
-  opacity: 0.5;
+  /* brighter the more light there is to catch */
+  opacity: calc(0.32 + var(--glint, 0.3) * 0.4);
 }
 
 /* puffy: a glossy dome, its highlight following the light */
@@ -103,13 +105,13 @@
 .finish[data-metal="gold"] {
   --metal-dark: #7a5512;
   --metal-mid: #c5952f;
-  --metal-light: #fff1b8;
+  --metal-light: color-mix(in oklab, #fff1b8, #ffb070 calc(var(--warm, 0) * 55%));
 }
 
 .finish[data-metal="silver"] {
   --metal-dark: #5e646c;
   --metal-mid: #a9b0b8;
-  --metal-light: #ffffff;
+  --metal-light: color-mix(in oklab, #ffffff, #ffc090 calc(var(--warm, 0) * 55%));
 }
 
 /* clear: a film with a glint */

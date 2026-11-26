@@ -9,7 +9,6 @@ import { paperSound } from "./paper-sound.ts";
 import styles from "./Pocket.module.css";
 
 type Props = {
-  readonly dark: boolean;
   readonly stickers: readonly StoredSticker[];
   readonly highlight: Highlight | null;
   readonly onOpen: () => void;
@@ -27,7 +26,7 @@ type Pull = {
 };
 
 // The pocket: tap it to look inside, or pull a sticker straight out of it onto a page.
-export function Pocket({ dark, stickers, highlight, onOpen }: Props) {
+export function Pocket({ stickers, highlight, onOpen }: Props) {
   const pull = useRef<Pull | null>(null);
   const pulled = useRef(false);
   // an empty pocket stays, so a sticker can always be put back into it
@@ -106,7 +105,6 @@ export function Pocket({ dark, stickers, highlight, onOpen }: Props) {
       className={styles.pocket}
       aria-label={t.pocket.open(stickers.length)}
       title={t.pocket.dialog}
-      data-dark={dark || undefined}
       data-pocket=""
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}

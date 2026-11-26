@@ -20,7 +20,6 @@ export const t = {
     newMaterial: "新しい素材が使えるようになった",
     print: "印刷",
     menu: "メニュー",
-    lightsOut: "電気を消す",
   },
 
   album: {
@@ -174,4 +173,7 @@ export const debugText = {
   simulate: "交換をためす",
   simulateHint: "知らない誰かのシールが届く",
   off: "デバッグをやめる",
+  hour: "時刻",
+  hourClock: "端末の時計",
+  hourAt: (h: number) => `${h}時`,
 } as const;

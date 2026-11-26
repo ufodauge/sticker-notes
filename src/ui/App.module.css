@@ -19,6 +19,8 @@
 
 .main {
   position: relative;
+  isolation: isolate;
+  overflow: hidden;
   min-block-size: 0;
   min-inline-size: 0;
   padding-block-end: max(var(--space-6), env(safe-area-inset-bottom));
@@ -66,24 +68,4 @@
 .main[data-dropping] {
   outline: 2px dashed var(--ink);
   outline-offset: -8px;
-}
-
-/* lights out: a dim evening room */
-.shell[data-dusk] {
-  color-scheme: dark;
-  --paper: #262a3c;
-  --ink: #e8e7ef;
-  --ink-soft: #a6a8ba;
-  --line: #41465e;
-  --line-faint: #30344a;
-  --surface: #2d3147;
-  --scrim: rgb(0 0 0 / 0.45);
-  --focus: #e8e7ef;
-  color: var(--ink);
-  background: radial-gradient(ellipse 90% 70% at 50% 45%, #33384f, #1d2030);
-  transition: background var(--t-med) ease-out;
-}
-
-.shell[data-dusk] .toolbar {
-  background: transparent;
 }

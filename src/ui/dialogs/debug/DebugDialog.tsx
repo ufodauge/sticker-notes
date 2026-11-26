@@ -3,6 +3,7 @@ import { useSyncExternalStore } from "react";
 import { madeUpSticker } from "../../../core/made-up.ts";
 import { encodeBody, encodeFragment } from "../../../core/payload.ts";
 import { hashStore } from "../../../data/location-hash.ts";
+import { daylight } from "../../scene/clock.ts";
 import common from "../../common.module.css";
 import { debug } from "../../debug.ts";
 import { Dialog } from "../../Dialog.tsx";
@@ -16,6 +17,7 @@ export function DebugDialog({ onClose }: { readonly onClose: () => void }) {
     <Dialog label={debugText.dialog} onClose={onClose}>
       <div className={styles.body}>
         <Simulate />
+        <Hour />
         <label className={styles.switch}>
           <span>{debugText.unlockAll}</span>
           <input
@@ -53,5 +55,29 @@ function Simulate() {
       </button>
       <p className={common.muted}>{debugText.simulateHint}</p>
     </div>
+  );
+}
+
+// Looks at the desk at another hour (the app itself only ever follows the clock).
+function Hour() {
+  const shifted = useSyncExternalStore(daylight.subscribe, daylight.shifted);
+  return (
+    <label className={styles.switch}>
+      <span>{debugText.hour}</span>
+      <select
+        value={shifted === null ? "" : String(shifted / 60)}
+        onChange={(e) => {
+          const v = e.currentTarget.value;
+          daylight.shift(v === "" ? null : Number(v) * 60);
+        }}
+      >
+        <option value="">{debugText.hourClock}</option>
+        {Array.from({ length: 24 }, (_, h) => (
+          <option key={h} value={h}>
+            {debugText.hourAt(h)}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }

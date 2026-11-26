@@ -152,7 +152,3 @@
     transform: rotate(-3deg);
   }
 }
-
-.pocket[data-dark] {
-  filter: brightness(0.7);
-}

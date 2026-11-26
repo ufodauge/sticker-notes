@@ -28,7 +28,6 @@ import { PageCanvas } from "./PageCanvas.tsx";
 import { paperSound } from "./paper-sound.ts";
 
 type Props = {
-  readonly dark: boolean;
   readonly snap: Ready;
   readonly selected: string | null;
   readonly highlight: Highlight | null;
@@ -61,7 +60,7 @@ type Track = {
 };
 
 export function Album(props: Props) {
-  const { dark, snap, selected, highlight, leaving, onSelect, onLeft, onCreate } = props;
+  const { snap, selected, highlight, leaving, onSelect, onLeft, onCreate } = props;
   const viewport = useRef<HTMLDivElement | null>(null);
   const book = useRef<HTMLDivElement | null>(null);
   const track = useRef<Track | null>(null);
@@ -104,13 +103,13 @@ export function Album(props: Props) {
     if (dx < 0) {
       if (!wide && side === "left") return { kind: "slide", direction: 1 };
       if (flipped >= leaves.length - 1) return { kind: "none" };
-      const turning = beginCurl({ book, canvas: curlCanvas, busy }, dark, 1, at);
+      const turning = beginCurl({ book, canvas: curlCanvas, busy }, 1, at);
       return turning ? { kind: "flip", turning, direction: 1 } : { kind: "none" };
     }
     // on a narrow screen the first spread's right half slides back to its left half
     if (!wide && side === "right") return { kind: "slide", direction: -1 };
     if (flipped === 0) return { kind: "none" };
-    const turning = beginCurl({ book, canvas: curlCanvas, busy }, dark, -1, at);
+    const turning = beginCurl({ book, canvas: curlCanvas, busy }, -1, at);
     return turning ? { kind: "flip", turning, direction: -1 } : { kind: "none" };
   };
 
@@ -213,7 +212,6 @@ export function Album(props: Props) {
         >
           <div className={styles.half} data-half={half}>
             <PageCanvas
-              dark={dark}
               half={half}
               pageId=""
               placements={[]}
@@ -254,7 +252,6 @@ export function Album(props: Props) {
       >
         <div className={styles.half} data-half={half}>
           <PageCanvas
-            dark={dark}
             half={half}
             pageId={id}
             placements={onPage}

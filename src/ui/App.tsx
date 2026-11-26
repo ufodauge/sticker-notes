@@ -1,4 +1,4 @@
-import { Bug, Ellipsis, ImagePlus, Lightbulb, LightbulbOff, Printer } from "lucide-react";
+import { Bug, Ellipsis, ImagePlus, Printer } from "lucide-react";
 import { useReducer, useSyncExternalStore } from "react";
 import { isIos, isStandalone } from "../data/platform.ts";
 import { sortedPages } from "../core/album.ts";
@@ -8,7 +8,6 @@ import { ActionBar } from "./ActionBar.tsx";
 import { Album } from "./album/Album.tsx";
 import { PageIndicator } from "./album/PageIndicator.tsx";
 import { CarryLayer } from "./album/CarryLayer.tsx";
-import { lights } from "./album/lights.ts";
 import { Pocket } from "./album/Pocket.tsx";
 import { PocketDialog } from "./album/PocketDialog.tsx";
 import { initialState, reducer } from "./app-state.ts";
@@ -24,6 +23,9 @@ import { DebugDialog } from "./dialogs/debug/DebugDialog.tsx";
 import { availableMaterials, materialsSeen } from "./dialogs/create/materials-seen.ts";
 import { debug } from "./debug.ts";
 import { DEBUG_BUILD } from "./debug-build.ts";
+import { daylight } from "./scene/clock.ts";
+import { lightStyle } from "./scene/light-style.ts";
+import { DaylightLayer, Desk } from "./scene/Room.tsx";
 import { PeopleDialog } from "./dialogs/people/PeopleDialog.tsx";
 import { PrinterCopy } from "./dialogs/print/Sheets.tsx";
 import { feedback } from "./feedback.ts";
@@ -43,8 +45,8 @@ export function App() {
   const { toast, highlight } = useSyncExternalStore(feedback.subscribe, feedback.get);
   const printing = useSyncExternalStore(printMode.subscribe, printMode.get);
   const [state, dispatch] = useReducer(reducer, initialState);
-  const lightsOut = useSyncExternalStore(lights.subscribe, lights.off);
   const debugOn = useSyncExternalStore(debug.subscribe, () => debug.get().on);
+  const day = useSyncExternalStore(daylight.subscribe, daylight.get);
   const seenMaterials = useSyncExternalStore(materialsSeen.subscribe, materialsSeen.get);
   useSyncExternalStore(debug.subscribe, debug.get);
 
@@ -84,10 +86,8 @@ export function App() {
     overlay.kind === "back" ? stickers.find((s) => s.id === overlay.stickerId) : undefined;
   const opened = state.opened;
   const close = () => dispatch({ type: "close", opened });
-  const albumDark = lightsOut;
-
   return (
-    <div className={styles.shell} data-dusk={albumDark || undefined}>
+    <div className={styles.shell}>
       <nav className={styles.toolbar} aria-label={t.app.toolbar}>
         <PageIndicator count={Math.max(1, ready?.pages.length ?? 0)} />
         <button
@@ -102,22 +102,6 @@ export function App() {
           <ImagePlus aria-hidden="true" size={22} strokeWidth={1.5} />
           {mine.length === 0 && t.app.create.text}
         </button>
-        {stickers.length > 0 && (
-          <button
-            type="button"
-            className={common.icon}
-            aria-label={t.app.lightsOut}
-            title={t.app.lightsOut}
-            aria-pressed={albumDark}
-            onClick={lights.toggle}
-          >
-            {albumDark ? (
-              <LightbulbOff aria-hidden="true" size={22} strokeWidth={1.5} />
-            ) : (
-              <Lightbulb aria-hidden="true" size={22} strokeWidth={1.5} />
-            )}
-          </button>
-        )}
         {stickers.length > 0 && (
           <button
             type="button"
@@ -154,6 +138,8 @@ export function App() {
 
       <main
         className={styles.main}
+        style={lightStyle(day.light)}
+        data-phase={day.phase}
         data-dropping={dropping || undefined}
         onDragOver={(e) => {
           if (!hasImage(e.dataTransfer)) return;
@@ -171,9 +157,9 @@ export function App() {
           dispatch({ type: "open", overlay: { kind: "create", file } });
         }}
       >
+        <Desk />
         {ready && (
           <Album
-            dark={albumDark}
             snap={ready}
             selected={state.selected}
             highlight={highlight}
@@ -185,12 +171,12 @@ export function App() {
         )}
         {ready && stickers.length > 0 && (
           <Pocket
-            dark={albumDark}
             stickers={pocket}
             highlight={highlight}
             onOpen={() => dispatch({ type: "open", overlay: { kind: "pocket" } })}
           />
         )}
+        <DaylightLayer light={day.light} />
       </main>
 
       {selectedPlacement && selectedSticker && !state.leaving && (
