@@ -178,10 +178,15 @@ export async function carrySticker(
   await page.mouse.down();
   await page.mouse.move(to.x, to.y, { steps: 12 });
   if (options.turnsPage) {
-    // held at the edge: wait until the first leaf has gone over and the curl is put away
+    // held at the edge: as soon as the first leaf has gone over, away from the edge (held on, it
+    // would turn the next one too), then wait for the curl to be put away and the book to settle,
+    // as a finger would wait to see the new page
     await expect(page.locator('[data-leaf="0"][data-turned]')).toHaveCount(1, { timeout: 5000 });
+    if (options.drop) await page.mouse.move(options.drop.x, options.drop.y, { steps: 4 });
     await expect(page.locator("[data-curling]")).toHaveCount(0);
+    await page.waitForTimeout(600);
+  } else if (options.drop) {
+    await page.mouse.move(options.drop.x, options.drop.y, { steps: 8 });
   }
-  if (options.drop) await page.mouse.move(options.drop.x, options.drop.y, { steps: 8 });
   await page.mouse.up();
 }
