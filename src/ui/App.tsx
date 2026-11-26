@@ -4,7 +4,6 @@ import { sortedPages } from "../core/album.ts";
 import { layoutAlbum } from "../core/print.ts";
 import { stickerStore, type AddResult } from "../data/sticker-store.ts";
 import { ActionBar } from "./ActionBar.tsx";
-import { Album } from "./album/Album.tsx";
 import { PageIndicator } from "./album/PageIndicator.tsx";
 import { CarryLayer } from "./album/CarryLayer.tsx";
 import { Pocket } from "./album/Pocket.tsx";
@@ -24,8 +23,8 @@ import { debug } from "./debug.ts";
 import { DEBUG_BUILD } from "./debug-build.ts";
 import { daylight } from "./scene/clock.ts";
 import { lightStyle } from "./scene/light-style.ts";
-import { DaylightLayer, Desk } from "./scene/Room.tsx";
-import { DeskPlane } from "./scene/DeskTop.tsx";
+import { DaylightLayer } from "./scene/Room.tsx";
+import { DeskView } from "./scene/DeskView.tsx";
 import { PeopleDialog } from "./dialogs/people/PeopleDialog.tsx";
 import { PrinterCopy } from "./dialogs/print/Sheets.tsx";
 import { feedback } from "./feedback.ts";
@@ -50,17 +49,6 @@ const FlowPanel =
   import.meta.env.DEV || import.meta.env.VITE_DEBUG === "1"
     ? lazy(() => import("./flows/FlowPanel.tsx").then((m) => ({ default: m.FlowPanel })))
     : null;
-
-// The desk can be larger than the screen; it opens with the album in the middle of the view.
-// (A ref callback: it runs once, when the desk is first laid out.)
-function centreOnce(el: HTMLElement | null): void {
-  if (!el || el.dataset.centred) return;
-  el.dataset.centred = "";
-  el.scrollTo({
-    left: (el.scrollWidth - el.clientWidth) / 2,
-    top: (el.scrollHeight - el.clientHeight) / 2,
-  });
-}
 
 export function App() {
   const snap = useSyncExternalStore(stickerStore.subscribe, stickerStore.getSnapshot);
@@ -187,31 +175,17 @@ export function App() {
           openCreate({ file });
         }}
       >
-        <div className={styles.scroller} ref={centreOnce} data-desk-view="">
-          <div className={styles.table}>
-            <Desk />
-            {ready && (
-              <DeskPlane
-                snap={ready}
-                selected={state.selected}
-                onSelect={(placementId) => dispatch({ type: "select", placementId })}
-              />
-            )}
-            <div className={styles.album}>
-              {ready && (
-                <Album
-                  snap={ready}
-                  selected={state.selected}
-                  highlight={highlight}
-                  leaving={state.leaving?.placementId ?? null}
-                  onSelect={(placementId) => dispatch({ type: "select", placementId })}
-                  onLeft={onLeft}
-                  onCreate={() => openCreate()}
-                />
-              )}
-            </div>
-          </div>
-        </div>
+        {ready && (
+          <DeskView
+            snap={ready}
+            selected={state.selected}
+            highlight={highlight}
+            leaving={state.leaving?.placementId ?? null}
+            onSelect={(placementId) => dispatch({ type: "select", placementId })}
+            onLeft={onLeft}
+            onCreate={() => openCreate()}
+          />
+        )}
         {ready && stickers.length > 0 && (
           <Pocket
             stickers={pocket}
