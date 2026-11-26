@@ -14,23 +14,21 @@ export type Light = {
   readonly dim: number;
   // the desk lamp's pool of light (0..1)
   readonly lamp: number;
-  // light falling in stripes through the blind (0..1)
-  readonly blinds: number;
 };
 
 export type Phase = "morning" | "day" | "evening" | "night";
 
-const NIGHT: Light = { sun: 0, sunX: 0, length: 0, warm: 0.45, dim: 0.5, lamp: 1, blinds: 0 };
+const NIGHT: Light = { sun: 0, sunX: 0, length: 0, warm: 0.45, dim: 0.5, lamp: 1 };
 
 // minutes after midnight → the light then
 const KEYS: readonly (readonly [number, Light])[] = [
   [0, NIGHT],
   [5 * 60, NIGHT],
-  [6 * 60 + 30, { sun: 1, sunX: -1, length: 0.9, warm: 0.15, dim: 0.1, lamp: 0, blinds: 0 }],
+  [6 * 60 + 30, { sun: 1, sunX: -1, length: 0.9, warm: 0.15, dim: 0.1, lamp: 0 }],
   // midday: plain daylight, nothing laid over the desk
-  [10 * 60, { sun: 0, sunX: 0, length: 0, warm: 0, dim: 0, lamp: 0, blinds: 0 }],
-  [15 * 60, { sun: 0, sunX: 0, length: 0, warm: 0, dim: 0, lamp: 0, blinds: 0 }],
-  [17 * 60 + 30, { sun: 1, sunX: 1, length: 1, warm: 1, dim: 0.18, lamp: 0, blinds: 1 }],
+  [10 * 60, { sun: 0, sunX: 0, length: 0, warm: 0, dim: 0, lamp: 0 }],
+  [15 * 60, { sun: 0, sunX: 0, length: 0, warm: 0, dim: 0, lamp: 0 }],
+  [17 * 60 + 30, { sun: 1, sunX: 1, length: 1, warm: 1, dim: 0.18, lamp: 0 }],
   [19 * 60, NIGHT],
   [24 * 60, NIGHT],
 ];
@@ -53,7 +51,6 @@ export function lightAt(minutes: number): Light {
     warm: mix(from.warm, to.warm, t),
     dim: mix(from.dim, to.dim, t),
     lamp: mix(from.lamp, to.lamp, t),
-    blinds: mix(from.blinds, to.blinds, t),
   };
 }
 

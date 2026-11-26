@@ -18,8 +18,13 @@ const HOURS = [7, 12, 17.5, 21] as const;
 function withMaterial(seed: number, kind: MaterialKind): Sticker {
   const s = madeUpSticker(seed);
   if (kind === "matte") return { ...s, material: undefined };
-  // foil turns one of the art's own colours to metal (never the transparent one)
-  const tone = [...s.pixels].find((p) => p !== s.transparentIndex) ?? 1;
+  // foil turns one of the art's own colours to metal (never the transparent one): here the one
+  // used most, so the metal shows
+  const counts = [...s.pixels].reduce(
+    (c, p) => (p === s.transparentIndex ? c : c.set(p, (c.get(p) ?? 0) + 1)),
+    new Map<number, number>(),
+  );
+  const tone = [...counts].toSorted((a, b) => b[1] - a[1])[0]?.[0] ?? 1;
   return { ...s, material: { kind, tone: kind === "foil" ? tone : 0 } };
 }
 

@@ -2,7 +2,7 @@ import type { Light } from "../../core/daylight.ts";
 import styles from "./Room.module.css";
 
 // The room the album lies in: a wooden desk under it, and over everything the light of the hour
-// (the window's sun, a houseplant's shadow, the blind's stripes, the desk lamp at night). The
+// (the window's sun and its frame's shadow, a houseplant's shadow, the desk lamp at night). The
 // light is laid over the desk, so pages, a page being turned and the stickers on them are all lit
 // alike. It takes no touches.
 //
@@ -18,7 +18,7 @@ export function Desk() {
 
 export function DaylightLayer({ light }: { readonly light: Light }) {
   const shade = light.dim > SOME || light.warm > SOME;
-  const glow = light.sun > SOME || light.blinds > SOME || light.lamp > SOME;
+  const glow = light.sun > SOME || light.lamp > SOME;
   if (!shade && !glow) return null;
   return (
     <div
@@ -27,6 +27,11 @@ export function DaylightLayer({ light }: { readonly light: Light }) {
       data-sun-side={light.sunX < 0 ? "left" : "right"}
     >
       {glow && <div className={styles.glow} />}
+      {light.sun > SOME && (
+        <div className={styles.window}>
+          <div className={styles.pane} />
+        </div>
+      )}
       {light.sun > SOME && <Plant />}
       {shade && <div className={styles.shade} />}
     </div>

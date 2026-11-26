@@ -10,5 +10,4 @@ export const lightStyle = (l: Light): CSSProperties =>
     "--warm": l.warm.toFixed(3),
     "--dim": l.dim.toFixed(3),
     "--lamp": l.lamp.toFixed(3),
-    "--blinds": l.blinds.toFixed(3),
   }) as CSSProperties;

@@ -13,12 +13,12 @@ describe("lightAt", () => {
     expect(lightAt(at(3))).toEqual(l);
   });
 
-  test("morning sun comes low from the left; evening sun low from the right, warm, through the blind", () => {
+  test("morning sun comes low from the left; evening sun low from the right, warm", () => {
     const morning = lightAt(at(6, 30));
-    expect(morning).toMatchObject({ sun: 1, sunX: -1, lamp: 0, blinds: 0 });
+    expect(morning).toMatchObject({ sun: 1, sunX: -1, lamp: 0 });
     expect(morning.length).toBeGreaterThan(0.8);
     const evening = lightAt(at(17, 30));
-    expect(evening).toMatchObject({ sun: 1, sunX: 1, warm: 1, blinds: 1, length: 1 });
+    expect(evening).toMatchObject({ sun: 1, sunX: 1, warm: 1, length: 1 });
   });
 
   test("midday is plain daylight: nothing at all", () => {
@@ -29,12 +29,11 @@ describe("lightAt", () => {
       warm: 0,
       dim: 0,
       lamp: 0,
-      blinds: 0,
     });
   });
 
   test("the light drifts minute by minute, never jumping, and wraps round midnight", () => {
-    const keys: (keyof Light)[] = ["sun", "sunX", "length", "warm", "dim", "lamp", "blinds"];
+    const keys: (keyof Light)[] = ["sun", "sunX", "length", "warm", "dim", "lamp"];
     const worst = Array.from({ length: 24 * 60 }, (_, m) => {
       const a = lightAt(m);
       const b = lightAt(m + 1);
@@ -48,7 +47,7 @@ describe("lightAt", () => {
   test("every value stays within its range", () => {
     for (let m = 0; m < 24 * 60; m += 7) {
       const l = lightAt(m);
-      for (const v of [l.sun, l.length, l.warm, l.dim, l.lamp, l.blinds]) {
+      for (const v of [l.sun, l.length, l.warm, l.dim, l.lamp]) {
         expect(v).toBeGreaterThanOrEqual(0);
         expect(v).toBeLessThanOrEqual(1);
       }
