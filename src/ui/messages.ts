@@ -48,7 +48,6 @@ export const t = {
     createFirst: "画像からステッカーを作る",
     pageLabel: (n: number) => `${n}`,
     removePage: { label: (n: number) => `${n}ページ目を消す`, tooltip: "空のページを消す" },
-    addPage: "ページを足す",
     pageJump: "ページへ移る",
     handle: { label: "回転と大きさ(ドラッグ)", tooltip: "回転と大きさ" },
   },

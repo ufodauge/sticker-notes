@@ -1,4 +1,4 @@
-import { ImagePlus, Plus, Trash2 } from "lucide-react";
+import { ImagePlus, Trash2 } from "lucide-react";
 import {
   type RefObject,
   useCallback,
@@ -15,7 +15,7 @@ import styles from "./Album.module.css";
 import { carry } from "./carry.ts";
 import { startCurl, type Curl } from "./curl.ts";
 import { paintFace, type FaceArt } from "./page-paint.ts";
-import { pagePosition, showPage } from "./page-position.ts";
+import { pagePosition } from "./page-position.ts";
 import { PageCanvas } from "./PageCanvas.tsx";
 import { paperSound } from "./paper-sound.ts";
 
@@ -33,6 +33,7 @@ type Props = {
 // A page of the album is a spread; a side of a leaf carries one half of a spread.
 type Spread =
   | { readonly kind: "page"; readonly page: Page; readonly index: number }
+  // after the last page, a blank spread that becomes a page when a sticker is put on it
   | { readonly kind: "new"; readonly index: number }
   | { readonly kind: "empty"; readonly index: number };
 
@@ -95,8 +96,7 @@ function leavesOf(spreads: readonly Spread[]): Leaf[] {
 }
 
 function artOf(side: Side | undefined, snap: Ready): FaceArt {
-  if (!side || side.spread.kind === "empty") return { kind: "blank" };
-  if (side.spread.kind === "new") return { kind: "new" };
+  if (!side || side.spread.kind !== "page") return { kind: "blank" };
   const id = side.spread.page.id;
   return {
     kind: "page",
@@ -217,11 +217,6 @@ export function Album(props: Props) {
   const leaves = leavesOf(spreads);
   // the halves there are, two to a spread (the "+" spread at the end included)
   const count = (pages.length === 0 ? 1 : pages.length + 1) * 2;
-
-  const addPage = async () => {
-    await stickerStore.addPage();
-    showPage(pages.length * 2);
-  };
 
   // the page count and the screen's width decide where steps go; the identity must follow count
   const attach = useCallback(
@@ -357,34 +352,14 @@ export function Album(props: Props) {
     if (!sd) return <div className={`${cls} ${styles.blank}`} />;
     const { spread, half } = sd;
     const face = spread.index * 2 + half;
-    if (spread.kind === "new") {
-      return (
-        <section
-          className={cls}
-          data-new-page=""
-          data-face={face}
-          data-facing={facing || undefined}
-        >
-          <button
-            type="button"
-            className={styles.newPage}
-            aria-label={t.album.addPage}
-            title={t.album.addPage}
-            aria-hidden={half === 1 || undefined}
-            tabIndex={half === 1 ? -1 : undefined}
-            onClick={() => void addPage()}
-          >
-            <Plus aria-hidden="true" size={32} strokeWidth={1.25} />
-          </button>
-        </section>
-      );
-    }
-    if (spread.kind === "empty") {
+    // no page yet: the first spread (showing where to start), or the blank one after the last
+    // page, which becomes a page as soon as a sticker is put on it
+    if (spread.kind !== "page") {
       const first = slotCenter(0);
       return (
         <section
           className={cls}
-          data-page={half === 0 ? "" : undefined}
+          data-page={half === 0 && spread.kind === "empty" ? "" : undefined}
           data-spread=""
           data-face={face}
           data-facing={facing || undefined}
@@ -402,7 +377,7 @@ export function Album(props: Props) {
               onLeft={onLeft}
               onSelect={onSelect}
             >
-              {half === 0 && (
+              {half === 0 && spread.kind === "empty" && (
                 <button
                   type="button"
                   className={styles.slot}

@@ -249,7 +249,7 @@ function Shell({ initialView }: { readonly initialView: View }) {
             onCreate={() => dispatch({ type: "open", overlay: { kind: "create" } })}
           />
         )}
-        {ready && !inJar && (
+        {ready && !inJar && stickers.length > 0 && (
           <Pocket
             dark={albumDark}
             stickers={pocket}

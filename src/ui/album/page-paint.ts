@@ -13,13 +13,11 @@ export type FaceArt =
       readonly placements: readonly Placement[];
       readonly stickers: ReadonlyMap<string, Sticker>;
     }
-  | { readonly kind: "new" }
   | { readonly kind: "blank" };
 
 const SHEET = "#ffffff";
 const SHEET_LINE = "#ececec";
 const SHEET_EDGE = "#d6d6d6";
-const INK_SOFT = "#6b6b6b";
 
 const art = new Map<Sticker, HTMLCanvasElement>();
 
@@ -95,16 +93,6 @@ export function paintFace(
   if (!ctx) return c;
   ctx.scale(dpr, dpr);
   paper(ctx, w, h, spine);
-  if (face.kind === "new") {
-    ctx.strokeStyle = INK_SOFT;
-    ctx.lineWidth = 1.25;
-    ctx.beginPath();
-    ctx.moveTo(w / 2 - 14, h / 2);
-    ctx.lineTo(w / 2 + 14, h / 2);
-    ctx.moveTo(w / 2, h / 2 - 14);
-    ctx.lineTo(w / 2, h / 2 + 14);
-    ctx.stroke();
-  }
   if (face.kind !== "page") return dim(ctx, w, h, dark, c);
   ctx.imageSmoothingEnabled = false;
   face.placements

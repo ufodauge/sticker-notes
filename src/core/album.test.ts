@@ -1,7 +1,6 @@
 import * as v from "valibot";
 import { describe, expect, test } from "vite-plus/test";
 import {
-  spreadsFromPages,
   PAGE_ASPECT,
   PAGE_CAPACITY,
   PlacementSchema,
@@ -240,29 +239,5 @@ describe("album details", () => {
     expect(normalizeRotation(0)).toBe(0);
     expect(normalizeRotation(12.34)).toBe(12.3);
     expect(normalizeRotation(-725)).toBe(-5);
-  });
-});
-
-describe("spreads from pages", () => {
-  test("every two pages become a spread, left then right; stickers move into their half", () => {
-    const pages: Page[] = [
-      { id: "c", order: 2 },
-      { id: "a", order: 0 },
-      { id: "b", order: 1 },
-    ];
-    const r = spreadsFromPages(pages, [
-      placement({ id: "1", pageId: "a", x: 0.5 }),
-      placement({ id: "2", pageId: "b", x: 0.5 }),
-      placement({ id: "3", pageId: "c", x: 1 }),
-    ]);
-    expect(r.pages).toEqual([
-      { id: "a", order: 0 },
-      { id: "c", order: 1 },
-    ]);
-    expect(r.placements.map((p) => [p.id, p.pageId, p.x])).toEqual([
-      ["1", "a", 0.25],
-      ["2", "a", 0.75],
-      ["3", "c", 0.5],
-    ]);
   });
 });

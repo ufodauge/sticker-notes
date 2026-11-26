@@ -34,7 +34,7 @@ test("peeling a sticker off its backing and dropping it on the page sticks it th
 
   await placed.click();
   await expect(placed.locator("[data-effect]")).toHaveAttribute("data-effect", "pressed");
-  await expect(pocketButton(page)).toHaveCount(0);
+  await expect(pocketButton(page)).toHaveAccessibleName("ポケット(0枚)");
 });
 
 test("let go away from the album, the peeled sticker goes back into the hand", async ({ page }) => {
@@ -81,7 +81,7 @@ test("a sticker pulled straight out of the pocket lands where it is let go", asy
   await page.mouse.up();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(page.getByRole("button", { name: SLIME, exact: true })).toBeVisible();
-  await expect(pocketButton(page)).toHaveCount(0);
+  await expect(pocketButton(page)).toHaveAccessibleName("ポケット(0枚)");
   await expect.poll(async () => (await savedPositions(page))[0]?.y ?? 0).toBeCloseTo(0.4, 1);
 });
 

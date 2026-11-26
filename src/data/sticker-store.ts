@@ -16,7 +16,6 @@ import {
   applyMerge,
   discard,
   openStickerDb,
-  addPage,
   deleteEmptyPage,
   readAll,
   restore,
@@ -203,11 +202,6 @@ export const stickerStore = {
     await (await dbPromise()).delete("placements", placementId);
   },
 
-  addPage: async (): Promise<string> => {
-    const page = await addPage(await dbPromise());
-    await refresh();
-    return page.id;
-  },
   deletePage: async (pageId: string): Promise<void> => {
     if (await deleteEmptyPage(await dbPromise(), pageId)) await refresh();
   },

@@ -24,7 +24,7 @@ export async function stickFromPocket(page: Page, label: string): Promise<void> 
 }
 
 export async function stickAllFromPocket(page: Page): Promise<void> {
-  while ((await pocketButton(page).count()) > 0) {
+  while ((await pocketButton(page).getAttribute("aria-label")) !== "ポケット(0枚)") {
     await pocketButton(page).click();
     await page
       .getByRole("button", { name: / を手に取る$/ })

@@ -51,17 +51,6 @@ describe("backup", () => {
     });
   });
 
-  test("a version 1 backup's pages are read as spreads, two at a time", async () => {
-    const data = await sample();
-    const text = serializeBackup(
-      { ...data, pages: [...data.pages, { id: "p2", order: 1 }] },
-      new Date(),
-    ).replace('"version":2', '"version":1');
-    const r = await parseBackup(text);
-    expect(r.ok && r.data.pages).toEqual([{ id: "p1", order: 0 }]);
-    expect(r.ok && r.data.placements.map((p) => p.x)).toEqual(data.placements.map((p) => p.x / 2));
-  });
-
   test("skips tampered stickers and dangling placements", async () => {
     const data = await sample();
     const json = JSON.parse(serializeBackup(data, new Date())) as {

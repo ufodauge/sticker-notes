@@ -7,7 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import { applyChange, type Placement } from "../../core/album.ts";
-import { edgeDepth, outlinePath } from "../../core/render.ts";
+import { DEFAULT_OUTLINE, edgeDepth, outlinePath } from "../../core/render.ts";
 import { snsDisplay } from "../../core/sns.ts";
 import { stickerStore, type StoredSticker } from "../../data/sticker-store.ts";
 import { feedback, type Highlight } from "../feedback.ts";
@@ -77,7 +77,11 @@ const TAP_SLOP = 6;
 // how far (in sticker sizes) the finger pulls the rolled edge before the sticker comes off
 const PEEL_DISTANCE = 1.05;
 // only this close to its outline (in dots of the 36-dot sticker) can a sticker be lifted
-const EDGE_DOTS = 6;
+// (a fingertip covers more of it than a mouse pointer)
+const EDGE_DOTS = { fine: 6, coarse: 9 } as const;
+// the touchable shape reaches this many dots beyond the sticker's outline, so an edge is easy to
+// catch with a finger
+const GRACE_DOTS = 3;
 
 const depths = new Map<string, ReturnType<typeof edgeDepth>>();
 const depthOf = (s: StoredSticker) => {
@@ -89,7 +93,7 @@ const depthOf = (s: StoredSticker) => {
 };
 
 // Whether a point on screen lies on the sticker's edge, where a fingernail can get under it.
-function onEdge(s: StoredSticker, p: Placement, box: Box, at: Pt): boolean {
+function onEdge(s: StoredSticker, p: Placement, box: Box, at: Pt, pointer: string): boolean {
   const size = (box.width / 600) * 36 * p.scale;
   const dx = at.x - (box.left + p.x * box.width);
   const dy = at.y - (box.top + p.y * box.height);
@@ -99,9 +103,10 @@ function onEdge(s: StoredSticker, p: Placement, box: Box, at: Pt): boolean {
   const { size: cells, depth } = depthOf(s);
   const cx = Math.floor(u * cells);
   const cy = Math.floor(v * cells);
-  if (cx < 0 || cy < 0 || cx >= cells || cy >= cells) return false;
+  // just outside the outline (where the grace lets a finger land) counts as the edge
+  if (cx < 0 || cy < 0 || cx >= cells || cy >= cells) return true;
   const d = depth[cy * cells + cx] ?? 0;
-  return d > 0 && d <= EDGE_DOTS;
+  return d <= (pointer === "mouse" ? EDGE_DOTS.fine : EDGE_DOTS.coarse);
 }
 
 const KEY_CHANGES: Readonly<
@@ -249,7 +254,7 @@ export function PageCanvas(props: Props) {
     }
     if (cur) return;
     paperSound.wake();
-    if (!onEdge(s, p, box, at)) {
+    if (!onEdge(s, p, box, at, e.pointerType)) {
       hold.current = {
         mode: "hold",
         placement: p,
@@ -279,7 +284,8 @@ export function PageCanvas(props: Props) {
   const onHover = (p: Placement, s: StoredSticker) => (e: PointerEvent<HTMLElement>) => {
     if (hold.current || e.pointerType !== "mouse" || e.buttons !== 0) return;
     const box = pageBox();
-    const edge = box !== undefined && onEdge(s, p, box, { x: e.clientX, y: e.clientY });
+    const edge =
+      box !== undefined && onEdge(s, p, box, { x: e.clientX, y: e.clientY }, e.pointerType);
     e.currentTarget.toggleAttribute("data-edge", edge);
   };
 
@@ -474,7 +480,7 @@ export function PageCanvas(props: Props) {
           const s = stickers.get(p.stickerId);
           if (!s) return null;
           const hl = highlight?.stickerId === p.stickerId ? highlight : null;
-          const shape = outlinePath(s.sticker);
+          const shape = outlinePath(s.sticker, DEFAULT_OUTLINE + GRACE_DOTS);
           return (
             <div
               key={p.id}
@@ -516,7 +522,12 @@ export function PageCanvas(props: Props) {
                 </span>
                 <span
                   className={styles.touch}
-                  style={shape ? { clipPath: `url(#${clipIdOf(p.id)})` } : undefined}
+                  style={
+                    {
+                      "--grace": GRACE_DOTS,
+                      clipPath: shape ? `url(#${clipIdOf(p.id)})` : undefined,
+                    } as CSSProperties
+                  }
                 />
                 {shape && (
                   <svg className={styles.defs} aria-hidden="true" focusable="false">

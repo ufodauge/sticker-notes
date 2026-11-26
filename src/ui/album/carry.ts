@@ -119,7 +119,8 @@ export type DropTarget =
     }
   | { readonly kind: "pocket" };
 
-// What lies under a point: a page (null for the "+" that makes a new one), or the pocket. By
+// What lies under a point: a page (null for the blank spread after the last page, which a
+// sticker put on it makes into a page), or the pocket. By
 // geometry rather than hit testing, so it also works while a modal dialog makes the album inert.
 // Where leaves overlap, the one on top of its stack wins.
 export function dropTarget(x: number, y: number): DropTarget | undefined {
@@ -131,20 +132,13 @@ export function dropTarget(x: number, y: number): DropTarget | undefined {
   const stackOrder = (el: Element) =>
     Number(getComputedStyle(el.closest("[data-leaf]") ?? el).zIndex) || 0;
   const found = [
-    ...document.querySelectorAll<HTMLElement>(
-      "[data-shown] [data-facing][data-new-page], [data-shown] [data-facing] [data-paper]",
-    ),
+    ...document.querySelectorAll<HTMLElement>("[data-shown] [data-facing] [data-paper]"),
   ]
     .filter(inside)
     .toSorted((a, b) => stackOrder(b) - stackOrder(a))[0];
   if (!found) return undefined;
   const r = found.getBoundingClientRect();
   const at = { x: (x - r.left) / r.width, y: (y - r.top) / r.height };
-  if (found.hasAttribute("data-new-page")) {
-    // the "+" is drawn on each half; the new spread's position counts across both
-    const half = Number(found.dataset.face ?? 0) % 2;
-    return { kind: "page", pageId: null, x: (half + at.x) / 2, y: at.y };
-  }
   const pageId = found.closest<HTMLElement>("[data-spread]")?.dataset.spread || null;
   return { kind: "page", pageId, ...at };
 }

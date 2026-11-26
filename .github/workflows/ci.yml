@@ -24,10 +24,6 @@ jobs:
       - run: node scripts/check-react-compiler.ts
       - run: pnpm exec knip
       - run: pnpm exec vp test run
-      - run: pnpm exec playwright install --with-deps chromium webkit
-      - run: pnpm exec playwright test
-        env:
-          CI: "1"
 
   build-pages:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'

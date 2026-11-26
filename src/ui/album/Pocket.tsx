@@ -30,7 +30,7 @@ type Pull = {
 export function Pocket({ dark, stickers, highlight, onOpen }: Props) {
   const pull = useRef<Pull | null>(null);
   const pulled = useRef(false);
-  if (stickers.length === 0) return null;
+  // an empty pocket stays, so a sticker can always be put back into it
   const hit = highlight && stickers.some((s) => s.id === highlight.stickerId) ? highlight : null;
 
   const onPointerDown = (e: PointerEvent<HTMLButtonElement>) => {
@@ -97,7 +97,7 @@ export function Pocket({ dark, stickers, highlight, onOpen }: Props) {
       e.preventDefault();
       return;
     }
-    onOpen();
+    if (stickers.length > 0) onOpen();
   };
 
   return (
@@ -133,9 +133,11 @@ export function Pocket({ dark, stickers, highlight, onOpen }: Props) {
         ))}
         <span className={styles.film} />
       </span>
-      <span className={styles.count} aria-hidden="true">
-        {stickers.length}
-      </span>
+      {stickers.length > 0 && (
+        <span className={styles.count} aria-hidden="true">
+          {stickers.length}
+        </span>
+      )}
     </button>
   );
 }

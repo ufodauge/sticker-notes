@@ -1,5 +1,6 @@
 import { ArrowLeft } from "lucide-react";
 import { useReducer, useRef, type CSSProperties, type PointerEvent } from "react";
+import { slotCenter } from "../../core/album.ts";
 import { snsDisplay } from "../../core/sns.ts";
 import { stickerStore, type StoredSticker } from "../../data/sticker-store.ts";
 import common from "../common.module.css";
@@ -92,7 +93,12 @@ function Hand({
   const stickNear = async () => {
     paperSound.wake();
     paperSound.peel();
-    await stickerStore.place(sticker.id, { near: pageIds[pagePosition.spread()] });
+    // on the blank spread after the last page, it starts a new page there
+    const open = pageIds[pagePosition.spread()];
+    await stickerStore.place(
+      sticker.id,
+      open === undefined ? { pageId: "", change: slotCenter(0) } : { near: open },
+    );
     feedback.landed(sticker.id, "lifted", null);
     close();
   };

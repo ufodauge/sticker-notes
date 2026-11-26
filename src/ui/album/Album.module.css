@@ -202,25 +202,6 @@
   }
 }
 
-.newPage {
-  display: grid;
-  place-items: center;
-  inline-size: 100%;
-  block-size: 100%;
-  border: 1.5px dashed var(--ink-soft);
-  border-radius: 4px;
-  background: var(--paper);
-  color: var(--ink-soft);
-  cursor: pointer;
-  transition:
-    border-color var(--t-fast) ease-out,
-    color var(--t-fast) ease-out;
-}
-
-.newPage:hover {
-  color: var(--ink);
-}
-
 .removePage {
   position: absolute;
   inset-block-start: var(--space-2);

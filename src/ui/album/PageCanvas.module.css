@@ -58,9 +58,10 @@
   visibility: hidden;
 }
 
+/* the outline grown by the grace dots, on a box grown to match */
 .touch {
   position: absolute;
-  inset: 0;
+  inset: calc(var(--grace) / 36 * -100%);
   pointer-events: auto;
   cursor: pointer;
 }

@@ -18,7 +18,7 @@ test("a link drops into the pocket, survives reload, and is stuck from there", a
   await expect(page.getByRole("dialog")).toContainText("2026");
   await page.getByRole("button", { name: "はがしてページに貼る" }).click();
   await expect(page.getByRole("button", { name: SLIME, exact: true })).toHaveCount(1);
-  await expect(pocketButton(page)).toHaveCount(0);
+  await expect(pocketButton(page)).toHaveAccessibleName("ポケット(0枚)");
   await expect.poll(async () => (await savedPositions(page)).length).toBe(1);
   await page.reload();
   await expect(page.getByRole("button", { name: SLIME, exact: true })).toBeVisible();

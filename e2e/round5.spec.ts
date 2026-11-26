@@ -1,13 +1,22 @@
 /// <reference lib="dom" />
 import { expect, test } from "@playwright/test";
-import { carrySticker, receive, savedPositions, settledBox, turnPage } from "./helpers.ts";
+import {
+  carrySticker,
+  receive,
+  receiveToPocket,
+  savedPositions,
+  settledBox,
+  stickFromPocket,
+  turnPage,
+} from "./helpers.ts";
 
 const SLIME = "X @sticker_fan2026";
 
 test("the page indicator follows the album and jumps on tap", async ({ page }) => {
   await receive(page, "slime", SLIME);
   await turnPage(page, 1);
-  await page.getByRole("button", { name: "ページを足す" }).click();
+  await receiveToPocket(page, "discord");
+  await stickFromPocket(page, "Discord @pixel.trader");
   await expect(page.getByText("2 / 2")).toBeVisible();
   const track = page.getByRole("button", { name: "ページへ移る" });
   const box = await track.boundingBox();

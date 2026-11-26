@@ -135,23 +135,3 @@ export function bringToFront(placements: readonly Placement[], p: Placement): Pl
   const alone = placements.filter((q) => q.pageId === p.pageId && q.z === top).length === 1;
   return p.z === top && alone ? p : { ...p, z: top + 1 };
 }
-
-// Albums made before pages were spreads: every two pages, in order, become one spread, the first
-// on its left half and the second on its right. Stickers keep their size (a dot was 1/300 of a
-// page and is 1/600 of a spread).
-export function spreadsFromPages(
-  pages: readonly Page[],
-  placements: readonly Placement[],
-): { readonly pages: readonly Page[]; readonly placements: readonly Placement[] } {
-  const sorted = sortedPages(pages);
-  const where = new Map(
-    sorted.map((p, i) => [p.id, { spread: sorted[i - (i % 2)]?.id ?? p.id, half: i % 2 }]),
-  );
-  return {
-    pages: sorted.filter((_, i) => i % 2 === 0).map((p, i) => ({ id: p.id, order: i })),
-    placements: placements.flatMap((p) => {
-      const at = where.get(p.pageId);
-      return at ? [{ ...p, pageId: at.spread, x: p.x / 2 + at.half / 2 }] : [];
-    }),
-  };
-}

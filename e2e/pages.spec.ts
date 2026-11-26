@@ -1,6 +1,16 @@
 /// <reference lib="dom" />
 import { expect, test, type Page } from "@playwright/test";
-import { carrySticker, edgeOf, receive, savedPositions, settledBox, turnPage } from "./helpers.ts";
+import {
+  carrySticker,
+  edgeOf,
+  pocketButton,
+  receive,
+  receiveToPocket,
+  savedPositions,
+  settledBox,
+  stickFromPocket,
+  turnPage,
+} from "./helpers.ts";
 
 const SLIME = "X @sticker_fan2026";
 
@@ -20,18 +30,43 @@ async function onScreen(page: Page, label: string) {
   });
 }
 
-test("the + after the last page adds a page; an empty page can be removed", async ({ page }) => {
+test("the blank spread after the last page becomes a page when a sticker is stuck on it", async ({
+  page,
+}) => {
   await receive(page, "slime", SLIME);
   await expect(page.locator("[data-page]")).toHaveCount(1);
   await turnPage(page, 1);
-  await page.getByRole("button", { name: "ページを足す" }).click();
+  await receiveToPocket(page, "discord");
+  await stickFromPocket(page, "Discord @pixel.trader");
   await expect(page.locator("[data-page]")).toHaveCount(2);
+  await expect(page.getByText("2 / 2")).toBeVisible();
+});
+
+test("an emptied page can be removed", async ({ page }) => {
+  await receive(page, "slime", SLIME);
+  await turnPage(page, 1);
+  await receiveToPocket(page, "discord");
+  await stickFromPocket(page, "Discord @pixel.trader");
+  const pocket = await pocketButton(page)
+    .boundingBox()
+    .catch(() => null);
+  const target = pocket ?? { x: 340, y: 20, width: 40, height: 40 };
+  await carrySticker(
+    page,
+    page.getByRole("button", { name: "Discord @pixel.trader", exact: true }),
+    {
+      x: target.x + target.width / 2,
+      y: target.y + target.height / 2,
+    },
+  );
   await page.getByRole("button", { name: "2ページ目を消す" }).click();
   await expect(page.locator("[data-page]")).toHaveCount(1);
   await expect(page.getByRole("button", { name: /ページ目を消す/ })).toHaveCount(0);
 });
 
-test("a sticker held at the edge turns the page and can be dropped on the +", async ({ page }) => {
+test("a sticker held at the edge turns the page and can start a page on the blank spread", async ({
+  page,
+}) => {
   await receive(page, "slime", SLIME);
   await receive(page, "discord", "Discord @pixel.trader");
   const vw = page.viewportSize()?.width ?? 400;
@@ -131,9 +166,6 @@ test("the album print matches the screen: same size and place on the page", asyn
 
 test("Ctrl+P prints the album as it is, one A4 per page", async ({ page, browserName }) => {
   await receive(page, "slime", SLIME);
-  await turnPage(page, 1);
-  await page.getByRole("button", { name: "ページを足す" }).click();
-  await expect(page.locator("[data-page]")).toHaveCount(2);
   await expect(page.locator(".printOnly")).toHaveCount(0);
   await page.evaluate(() => window.dispatchEvent(new Event("beforeprint")));
   const copy = page.locator(".printOnly svg[viewBox='0 0 210 297']");
