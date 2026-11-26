@@ -50,6 +50,18 @@
   transition: none;
 }
 
+/* the album lies on the desk: the book takes touches (and a margin around it, where a page is
+   taken hold of just off its edge); the rest of its box lets them through to the desk */
+.book {
+  pointer-events: auto;
+}
+
+.reach {
+  position: absolute;
+  inset: calc(var(--page-w) * -0.12);
+  z-index: -1;
+}
+
 /*
  * It reads as a book: the pages lie on a board a little larger than they are, and under each
  * side lies the block of pages already there, its edges showing below and outside the open page

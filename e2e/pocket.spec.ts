@@ -37,7 +37,7 @@ test("peeling a sticker off its backing and dropping it on the page sticks it th
   await expect(pocketButton(page)).toHaveAccessibleName("ポケット(0枚)");
 });
 
-test("let go away from the album, the peeled sticker goes back into the hand", async ({ page }) => {
+test("let go over the toolbar, the peeled sticker goes back into the hand", async ({ page }) => {
   await receiveToPocket(page, "slime");
   await pocketButton(page).click();
   await page.getByRole("button", { name: `${SLIME} を手に取る` }).click();
@@ -47,7 +47,9 @@ test("let go away from the album, the peeled sticker goes back into the hand", a
   await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
   await page.mouse.down();
   await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2 - 90, { steps: 6 });
-  await page.mouse.move(2, 2, { steps: 4 });
+  const bar = await page.getByRole("navigation").boundingBox();
+  if (!bar) throw new Error("no toolbar");
+  await page.mouse.move(bar.x + 4, bar.y + bar.height / 2, { steps: 4 });
   await page.mouse.up();
   await expect(page.locator("dialog[data-carrying]")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "はがしてページに貼る" })).toBeVisible();

@@ -65,11 +65,15 @@
 }
 
 .mat {
-  inline-size: 140px;
-  aspect-ratio: 5 / 4;
-  border-radius: 10px;
-  background: var(--felt);
-  box-shadow: inset 0 0 0 5px rgb(var(--felt-stitch) / 0.55);
+  inline-size: 110px;
+  aspect-ratio: 3 / 4;
+  border-radius: 3px 6px 6px 3px;
+  background:
+    linear-gradient(90deg, rgb(0 0 0 / 0.28), rgb(0 0 0 / 0.08) 7%, transparent 9%),
+    var(--notebook-cover);
+  box-shadow:
+    2px 2px 0 var(--page-edge),
+    3px 3px 0 var(--page-edge-shade);
 }
 
 .laptop {

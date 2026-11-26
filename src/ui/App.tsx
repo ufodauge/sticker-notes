@@ -26,7 +26,7 @@ import { DEBUG_BUILD } from "./debug-build.ts";
 import { daylight } from "./scene/clock.ts";
 import { lightStyle } from "./scene/light-style.ts";
 import { DaylightLayer, Desk } from "./scene/Room.tsx";
-import { DeskSurfaces } from "./scene/DeskSurfaces.tsx";
+import { DeskPlane, Things } from "./scene/DeskTop.tsx";
 import { PeopleDialog } from "./dialogs/people/PeopleDialog.tsx";
 import { PrinterCopy } from "./dialogs/print/Sheets.tsx";
 import { feedback } from "./feedback.ts";
@@ -39,6 +39,17 @@ const hasImage = (dt: DataTransfer) =>
   Array.from(dt.items).some(
     (i) => i.kind === "file" && (i.type === "" || i.type.startsWith("image/")),
   );
+
+// The desk can be larger than the screen; it opens with the album in the middle of the view.
+// (A ref callback: it runs once, when the desk is first laid out.)
+function centreOnce(el: HTMLElement | null): void {
+  if (!el || el.dataset.centred) return;
+  el.dataset.centred = "";
+  el.scrollTo({
+    left: (el.scrollWidth - el.clientWidth) / 2,
+    top: (el.scrollHeight - el.clientHeight) / 2,
+  });
+}
 
 export function App() {
   const snap = useSyncExternalStore(stickerStore.subscribe, stickerStore.getSnapshot);
@@ -158,28 +169,37 @@ export function App() {
           dispatch({ type: "open", overlay: { kind: "create", file } });
         }}
       >
-        <Desk />
-        <div className={styles.room}>
-          <div className={styles.book}>
+        <div className={styles.scroller} ref={centreOnce} data-desk-view="">
+          <div className={styles.table}>
+            <Desk />
             {ready && (
-              <Album
+              <DeskPlane
                 snap={ready}
                 selected={state.selected}
-                highlight={highlight}
-                leaving={state.leaving?.placementId ?? null}
                 onSelect={(placementId) => dispatch({ type: "select", placementId })}
-                onLeft={onLeft}
-                onCreate={() => dispatch({ type: "open", overlay: { kind: "create" } })}
+              />
+            )}
+            <div className={styles.album}>
+              {ready && (
+                <Album
+                  snap={ready}
+                  selected={state.selected}
+                  highlight={highlight}
+                  leaving={state.leaving?.placementId ?? null}
+                  onSelect={(placementId) => dispatch({ type: "select", placementId })}
+                  onLeft={onLeft}
+                  onCreate={() => dispatch({ type: "open", overlay: { kind: "create" } })}
+                />
+              )}
+            </div>
+            {ready && (
+              <Things
+                snap={ready}
+                selected={state.selected}
+                onSelect={(placementId) => dispatch({ type: "select", placementId })}
               />
             )}
           </div>
-          {ready && (
-            <DeskSurfaces
-              snap={ready}
-              selected={state.selected}
-              onSelect={(placementId) => dispatch({ type: "select", placementId })}
-            />
-          )}
         </div>
         {ready && stickers.length > 0 && (
           <Pocket

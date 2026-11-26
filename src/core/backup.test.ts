@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vite-plus/test";
 import type { Page, Placement } from "./album.ts";
 import { parseBackup, planMerge, serializeBackup, type BackupData } from "./backup.ts";
+import { SURFACES } from "./surface.ts";
 import { encodeBody, stickerIdOf } from "./payload.ts";
 import { FIXTURES } from "./testing/fixtures.ts";
 
@@ -225,29 +226,31 @@ describe("planMerge details", () => {
     expect(planMerge(none, incoming).placements.map((p) => p.id)).toEqual(["a"]);
   });
 
-  test("stickers on the desk need no page, and a surface takes only as many as it holds", () => {
+  test("stickers off the album need no page, and a surface takes only as many as it holds", () => {
+    const cap = SURFACES.notebook.capacity;
     const current: BackupData = {
       ...none,
-      placements: [pl("d1", "s1", "surface:desk"), pl("d2", "s2", "surface:desk")],
+      placements: Array.from({ length: cap - 2 }, (_, i) =>
+        pl(`n${i}`, `s${i}`, "surface:notebook"),
+      ),
     };
     const incoming: BackupData = {
       ...none,
       placements: [
-        pl("d3", "s3", "surface:desk"),
-        pl("d4", "s4", "surface:desk"),
-        pl("d5", "s5", "surface:desk"),
-        pl("l1", "s6", "surface:laptop"),
+        pl("a", "t1", "surface:notebook"),
+        pl("b", "t2", "surface:notebook"),
+        pl("c", "t3", "surface:notebook"),
+        pl("d", "t4", "surface:desk"),
       ],
     };
-    expect(planMerge(current, incoming).placements.map((p) => p.id)).toEqual(["d3", "d4", "l1"]);
+    expect(planMerge(current, incoming).placements.map((p) => p.id)).toEqual(["a", "b", "d"]);
   });
 });
 
 describe("surfaces in a backup", () => {
-  test("a sticker on the desk or the laptop is kept, up to what each surface holds", async () => {
+  test("a sticker on the desk or a thing on it is kept, up to what each surface holds", async () => {
     const data = await sample();
-    const [a, b, c, d, e] = data.stickers;
-    if (!a || !b || !c || !d || !e) throw new Error("fixtures");
+    const ids = data.stickers.map((st) => st.id);
     const at = (id: string, stickerId: string, pageId: string): Placement => ({
       id,
       pageId,
@@ -259,14 +262,12 @@ describe("surfaces in a backup", () => {
       z: 1,
     });
     const placements = [
-      at("d1", a.id, "surface:desk"),
-      at("d2", b.id, "surface:desk"),
-      at("d3", c.id, "surface:desk"),
-      at("d4", d.id, "surface:desk"),
-      at("d5", e.id, "surface:desk"),
+      at("d1", ids[0] ?? "", "surface:desk"),
+      at("l1", ids[1] ?? "", "surface:laptop"),
+      at("x1", ids[2] ?? "", "surface:nowhere"),
     ];
     const r = await parseBackup(serializeBackup({ ...data, placements }, new Date()));
-    expect(r.ok && r.data.placements.map((p) => p.id)).toEqual(["d1", "d2", "d3", "d4"]);
+    expect(r.ok && r.data.placements.map((p) => p.id)).toEqual(["d1", "l1"]);
     expect(r.ok && r.skipped).toBe(1);
     expect(r.ok && r.data.pages).toEqual(data.pages);
   });

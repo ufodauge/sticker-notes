@@ -10,7 +10,7 @@ import { StickerView } from "../StickerView.tsx";
 import styles from "./Samples.module.css";
 
 // Debug builds only (`?samples`): the scene's look laid out on one page for a design review, with
-// nothing to set up: the desk at four hours, every material under each light, and the felt mat
+// nothing to set up: the desk at four hours, every material under each light, and a notebook
 // and the laptop with stickers on them. Values come from src/styles/scene.css as in the app.
 
 const HOURS = [7, 12, 17.5, 21] as const;

@@ -1,0 +1,157 @@
+/*
+ * The top of the desk (part of the scene, not the wireframe UI). Sizes are in pages: --pw is a
+ * page of the album as it is shown (set on the table in App.module.css).
+ */
+
+/* the bare desk: stickers can lie anywhere on the wood */
+.plane {
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-start: 50%;
+  inline-size: calc(var(--pw) * 9);
+  block-size: calc(var(--pw) * 7);
+  translate: -50% -50%;
+  container-type: size;
+}
+
+/* a thing lying on the desk: its centre in pages from the desk's middle, turned */
+.thing {
+  position: absolute;
+  inset-block-start: calc(50% + var(--y) * var(--pw));
+  inset-inline-start: calc(50% + var(--x) * var(--pw));
+  inline-size: calc(var(--w) * var(--pw));
+  block-size: calc(var(--h) * var(--pw));
+  transform: translate(-50%, -50%) rotate(var(--r));
+  container-type: size;
+  cursor: grab;
+  touch-action: none;
+}
+
+.thing[data-handling] {
+  z-index: 1;
+  cursor: grabbing;
+}
+
+/* a closed notebook: a cloth cover, its spine down the left, the page block at its edges */
+.thing[data-kind="notebook"] {
+  border-radius: 3px 6px 6px 3px;
+  background:
+    linear-gradient(90deg, rgb(0 0 0 / 0.28), rgb(0 0 0 / 0.08) 7%, transparent 9%),
+    radial-gradient(ellipse at 30% 20%, rgb(255 255 255 / 0.1), transparent 60%),
+    var(--notebook-cover);
+  box-shadow:
+    1px 1px 0 var(--page-edge),
+    2px 2px 0 var(--page-edge-shade),
+    3px 3px 0 var(--page-edge),
+    0 6px 12px rgb(var(--desk-shadow) / 0.32);
+}
+
+/* a closed laptop seen from above: the aluminium lid, the dark hinge along its back edge, the
+   notch at its front, and the maker's mark pressed into the middle */
+.thing[data-kind="laptop"] {
+  border-radius: 4% / 6%;
+  background:
+    radial-gradient(
+      circle at 50% 50%,
+      rgb(255 255 255 / 0.45) 0 5%,
+      rgb(0 0 0 / 0.08) 5.5% 6%,
+      transparent 6.5%
+    ),
+    linear-gradient(170deg, rgb(255 255 255 / 0.45), transparent 35%),
+    linear-gradient(180deg, var(--laptop-light), var(--laptop));
+  box-shadow:
+    inset 0 calc(var(--pw) * 0.025) 0 var(--laptop-hinge),
+    inset 0 -1px 0 rgb(0 0 0 / 0.15),
+    0 1px 0 rgb(255 255 255 / 0.6) inset,
+    0 8px 14px rgb(var(--desk-shadow) / 0.35);
+}
+
+.thing[data-kind="laptop"]::after {
+  content: "";
+  position: absolute;
+  inset-block-end: 0;
+  inset-inline-start: 50%;
+  inline-size: 14%;
+  block-size: 2.5%;
+  translate: -50% 0;
+  border-radius: 6px 6px 0 0;
+  background: rgb(0 0 0 / 0.14);
+  pointer-events: none;
+}
+
+/* tapped, a thing shows the handle that turns it */
+.thing[data-chosen] {
+  outline: 2px dashed rgb(255 255 255 / 0.75);
+  outline-offset: 4px;
+}
+
+.turn {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-end: 0;
+  inline-size: var(--tap);
+  block-size: var(--tap);
+  translate: 50% -50%;
+  border: 2px solid rgb(255 255 255 / 0.9);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, rgb(255 255 255 / 0.95) 0 22%, transparent 24%), rgb(0 0 0 / 0.35);
+  cursor: grab;
+  touch-action: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .thing[data-arriving] {
+    animation: arrive 900ms var(--ease-out) both;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .thing[data-arriving] {
+    animation: arrive 1ms both;
+  }
+}
+
+/* slid in across the desk */
+@keyframes arrive {
+  from {
+    translate: 60vw 0;
+  }
+}
+
+/* a sticker on a surface: --dot is the surface's width over its width in dots */
+.placed {
+  --dot: calc(100cqw / var(--dots));
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  transform: translate(calc(var(--px) * 100cqw), calc(var(--py) * 100cqh)) translate(-50%, -50%)
+    rotate(var(--pr));
+}
+
+.placed[data-carried] {
+  visibility: hidden;
+}
+
+.grab {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: grab;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.grab canvas {
+  display: block;
+  inline-size: calc(var(--dot) * 36 * var(--s));
+  block-size: calc(var(--dot) * 36 * var(--s));
+  image-rendering: pixelated;
+  filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.3));
+}
+
+.grab[aria-pressed="true"] canvas {
+  scale: 1.06;
+  filter: drop-shadow(0 6px 6px rgb(0 0 0 / 0.25));
+}

@@ -84,14 +84,24 @@ test("a sticker held at the edge turns the page and can start a page on the blan
   ).toHaveCount(1);
 });
 
-test("a sticker let go off the paper goes back where it was", async ({ page }) => {
+test("a sticker let go off the paper lies on the desk; over the toolbar it goes back", async ({
+  page,
+}) => {
   await receive(page, "slime", SLIME);
   const sticker = page.getByRole("button", { name: SLIME, exact: true });
   const before = (await savedPositions(page))[0];
-  await carrySticker(page, sticker, { x: 4, y: 4 });
+  const bar = await page.getByRole("navigation").boundingBox();
+  if (!bar) throw new Error("no toolbar");
+  await carrySticker(page, sticker, { x: bar.x + 4, y: bar.y + bar.height / 2 });
   await expect(sticker).toBeVisible();
   await page.waitForTimeout(300);
   expect((await savedPositions(page))[0]).toEqual(before);
+  const book = await page.locator("[data-open]").boundingBox();
+  if (!book) throw new Error("no book");
+  await carrySticker(page, sticker, { x: 30, y: Math.max(20, book.y - 30) });
+  await expect(
+    page.locator('[data-surface="surface:desk"]').getByRole("button", { name: SLIME, exact: true }),
+  ).toBeVisible();
 });
 
 test("a sticker pulled from its middle stays stuck: only its edge lifts", async ({ page }) => {
@@ -186,11 +196,13 @@ test("on a phone the first spread slides to its right half and back", async ({ p
   await receive(page, "slime", SLIME);
   const book = page.locator("[data-open]");
   const v = await page.locator("[data-album]").boundingBox();
-  if (!v) throw new Error("no album");
+  const b = await book.boundingBox();
+  if (!v || !b) throw new Error("no album");
+  // across the top edge of the pages
   const drag = async (from: number, to: number) => {
-    await page.mouse.move(v.x + v.width * from, v.y + 6);
+    await page.mouse.move(v.x + v.width * from, b.y + 6);
     await page.mouse.down();
-    await page.mouse.move(v.x + v.width * to, v.y + 6, { steps: 10 });
+    await page.mouse.move(v.x + v.width * to, b.y + 6, { steps: 10 });
     await page.mouse.up();
   };
   await expect(book).toHaveAttribute("data-side", "left");

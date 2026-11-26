@@ -18,13 +18,15 @@
   --cover: #34475f;
   --desk-shadow: 40 20 0;
 
-  /* the felt mat (a few special stickers) and its stitched edge */
-  --felt: #3e5a4c;
-  --felt-stitch: 236 226 200;
+  /* a closed notebook on the desk: its cloth cover, and the edges of its pages */
+  --notebook-cover: #a24f3f;
+  --page-edge: #f4f0e6;
+  --page-edge-shade: #d9d3c4;
 
   /* the laptop's aluminium lid */
   --laptop-light: #d4d7dc;
   --laptop: #b9bdc4;
+  --laptop-hinge: #4a4d52;
 
   /* the light: how strong each part gets at its fullest (0..1) and its colour */
   --sun-light: 255 246 222;

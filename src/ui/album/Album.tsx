@@ -297,6 +297,7 @@ export function Album(props: Props) {
         data-open={pos.flipped}
         data-moved={pagePosition.moved() || undefined}
       >
+        <div className={styles.reach} aria-hidden="true" />
         {(["left", "right"] as const).map((s) => {
           // the share of the leaves lying on this side (the left also holds the cover)
           const share =

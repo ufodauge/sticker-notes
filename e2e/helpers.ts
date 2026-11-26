@@ -124,18 +124,23 @@ export function savedPositions(page: Page): Promise<{ x: number; y: number }[]> 
 
 const openSpread = (page: Page) => page.locator("[data-open]").getAttribute("data-open");
 
-// Opens the next (or previous) spread by dragging across the strip above the pages: on a narrow
-// screen the first drag may only slide to the other half of the spread, so it drags again.
+// Opens the next (or previous) spread by dragging across the top edge of the pages (the album lies
+// on the desk: only the book and a margin around it take a page): on a narrow screen the first
+// drag may only slide to the other half of the spread, so it drags again.
 export async function turnPage(page: Page, direction: 1 | -1): Promise<void> {
-  const v = await page.locator("[data-album]").boundingBox();
-  if (!v) throw new Error("no album");
   const before = await openSpread(page);
-  const y = v.y + 6;
-  const [from, to] = direction > 0 ? [0.85, 0.1] : [0.1, 0.85];
   for (let tries = 0; tries < 2 && (await openSpread(page)) === before; tries++) {
-    await page.mouse.move(v.x + v.width * from, y);
+    const b = await page.locator("[data-open]").boundingBox();
+    const vw = page.viewportSize()?.width ?? 400;
+    if (!b) throw new Error("no book");
+    const right = Math.min(b.x + b.width, vw) - 6;
+    const left = Math.max(b.x, 0) + 6;
+    const span = right - left;
+    const y = b.y + 6;
+    const [from, to] = direction > 0 ? [right, left + span * 0.1] : [left, right - span * 0.1];
+    await page.mouse.move(from, y);
     await page.mouse.down();
-    await page.mouse.move(v.x + v.width * to, y, { steps: 10 });
+    await page.mouse.move(to, y, { steps: 10 });
     await page.mouse.up();
     await page.waitForTimeout(800);
   }

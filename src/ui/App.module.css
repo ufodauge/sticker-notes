@@ -71,29 +71,49 @@
   outline-offset: -8px;
 }
 
-/* the album and the desk beside it: the desk below the book on a tall screen, beside it on a
-   wide one */
-.room {
-  display: grid;
-  grid-template-rows: minmax(0, 1fr) clamp(120px, 24cqh, 210px);
-  block-size: 100%;
+/* The desk under the album: larger than the screen where the screen is small, scrolled by dragging
+   the bare wood. Sizes on it are in pages (--pw, a page of the album as it is shown: the same
+   rule as Album.module.css, less the room kept for the pocket on a tall screen). */
+.scroller {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  container-type: size;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
 }
 
-.book {
+.scroller::-webkit-scrollbar {
+  display: none;
+}
+
+.table {
+  --pw: min(86cqw, calc((100cqh - 84px - var(--space-2) - 64px) * 3 / 4), 560px);
   position: relative;
-  min-block-size: 0;
-  min-inline-size: 0;
+  inline-size: max(100cqw, calc(var(--pw) * 9));
+  block-size: max(100cqh, calc(var(--pw) * 7));
+}
+
+/* the album lies in the middle of the desk, in a box the size of the screen; only the book itself
+   takes touches, so the desk around it can be reached */
+.album {
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-start: 50%;
+  inline-size: 100cqw;
+  block-size: 100cqh;
+  translate: -50% -50%;
   /* on a tall screen the pocket sits above the book, not over its top edge */
   padding-block-start: calc(84px + var(--space-2));
+  pointer-events: none;
 }
 
-@media (orientation: landscape) {
-  .book {
-    padding-block-start: 0;
+@media (min-aspect-ratio: 23 / 20) and (min-width: 700px) {
+  .table {
+    --pw: min(46cqw, calc((100cqh - 64px) * 3 / 4), 560px);
   }
 
-  .room {
-    grid-template-rows: none;
-    grid-template-columns: minmax(0, 1fr) clamp(170px, 22cqw, 300px);
+  .album {
+    padding-block-start: 0;
   }
 }

@@ -1,6 +1,7 @@
 import type { Sticker } from "../../core/payload.ts";
-import { hasRoom, surfaceOf } from "../../core/surface.ts";
+import { hasRoom, localOf, surfaceOf } from "../../core/surface.ts";
 import { stickerStore } from "../../data/sticker-store.ts";
+import { frameOf } from "../scene/frame.ts";
 
 // A sticker held in the hand: peeled off a page or pulled out of the pocket, it leaves its place
 // and follows the finger above everything until it is put down. Held at a screen edge for a
@@ -121,26 +122,36 @@ export type DropTarget =
     }
   | { readonly kind: "pocket" };
 
-// What lies under a point: a page (null for the blank spread after the last page, which a
-// sticker put on it makes into a page), a surface on the desk (as a page with the surface's ID;
-// a full one takes nothing more), or the pocket. By
-// geometry rather than hit testing, so it also works while a modal dialog makes the album inert.
-// Where leaves overlap, the one on top of its stack wins.
+// What lies under a point: the pocket, a thing on the desk (the one on top), a page (null for
+// the blank spread after the last page, which a sticker put on it makes into a page), or else the
+// bare desk around them all. A surface is given as a page with the surface's ID, the point where
+// it lies on it unturned; a full surface takes nothing more. By geometry rather than hit testing,
+// so it also works while a modal dialog makes the album inert.
 export function dropTarget(x: number, y: number): DropTarget | undefined {
   const inside = (el: Element) => {
     const r = el.getBoundingClientRect();
     return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
   };
   if ([...document.querySelectorAll("[data-pocket]")].some(inside)) return { kind: "pocket" };
-  const surface = [...document.querySelectorAll<HTMLElement>("[data-surface]")].find(inside);
-  if (surface) {
-    const id = surface.dataset.surface ?? "";
+  // the desk is larger than the screen: it takes only what lands where it is in view
+  const view = document.querySelector("[data-desk-view]");
+  const onDesk = !view || inside(view);
+  const onSurface = (el: HTMLElement): DropTarget | undefined | null => {
+    const id = el.dataset.surface ?? "";
     const kind = surfaceOf(id);
+    const { u, v } = localOf(frameOf(el), x, y);
+    if (!kind || u < 0 || u > 1 || v < 0 || v > 1) return null;
     const snap = stickerStore.getSnapshot();
     const placements = snap.status === "ready" ? snap.placements : [];
-    if (!kind || !hasRoom(kind, placements, state.held?.stickerId)) return undefined;
-    const r = surface.getBoundingClientRect();
-    return { kind: "page", pageId: id, x: (x - r.left) / r.width, y: (y - r.top) / r.height };
+    if (!hasRoom(kind, placements, state.held?.stickerId)) return undefined;
+    return { kind: "page", pageId: id, x: u, y: v };
+  };
+  // the things lie above the album, the last drawn on top
+  for (const el of onDesk
+    ? [...document.querySelectorAll<HTMLElement>("[data-thing]")].toReversed()
+    : []) {
+    const hit = onSurface(el);
+    if (hit !== null) return hit;
   }
   const stackOrder = (el: Element) =>
     Number(getComputedStyle(el.closest("[data-leaf]") ?? el).zIndex) || 0;
@@ -149,11 +160,14 @@ export function dropTarget(x: number, y: number): DropTarget | undefined {
   ]
     .filter(inside)
     .toSorted((a, b) => stackOrder(b) - stackOrder(a))[0];
-  if (!found) return undefined;
-  const r = found.getBoundingClientRect();
-  const at = { x: (x - r.left) / r.width, y: (y - r.top) / r.height };
-  const pageId = found.closest<HTMLElement>("[data-spread]")?.dataset.spread || null;
-  return { kind: "page", pageId, ...at };
+  if (found) {
+    const r = found.getBoundingClientRect();
+    const at = { x: (x - r.left) / r.width, y: (y - r.top) / r.height };
+    const pageId = found.closest<HTMLElement>("[data-spread]")?.dataset.spread || null;
+    return { kind: "page", pageId, ...at };
+  }
+  const desk = onDesk ? document.querySelector<HTMLElement>("[data-desk-top]") : null;
+  return desk ? (onSurface(desk) ?? undefined) : undefined;
 }
 
 // The size a sticker of the given scale has on a page as it is shown now.

@@ -1,9 +1,10 @@
-import { clampSpot, type DeskShape, type Spot, type SurfaceKind } from "../../core/surface.ts";
+import { clampSpot, type DeskShape, type Spot, type ThingKind } from "../../core/surface.ts";
 import { settings } from "../../data/sticker-store.ts";
 
-// Where the things on the desk have been put (each is moved by hand, and stays there).
+// Where the things on the desk have been put and how they are turned (each is moved and turned by
+// hand, and stays so).
 
-type Layout = Readonly<Partial<Record<DeskShape, Partial<Record<SurfaceKind, Spot>>>>>;
+type Layout = Readonly<Partial<Record<DeskShape, Partial<Record<ThingKind, Spot>>>>>;
 type Listener = () => void;
 
 const state: { layout: Layout; listeners: Set<Listener> } = { layout: {}, listeners: new Set() };
@@ -26,7 +27,7 @@ export const deskLayout = {
     return () => state.listeners.delete(l);
   },
   get: (): Layout => state.layout,
-  put: (shape: DeskShape, kind: SurfaceKind, spot: Spot): void => {
+  put: (shape: DeskShape, kind: ThingKind, spot: Spot): void => {
     const layout = {
       ...state.layout,
       [shape]: { ...state.layout[shape], [kind]: clampSpot(spot) },
