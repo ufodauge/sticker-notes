@@ -90,9 +90,9 @@ test("a sticker let go off the paper lies on the desk; over the toolbar it goes 
   await receive(page, "slime", SLIME);
   const sticker = page.getByRole("button", { name: SLIME, exact: true });
   const before = (await savedPositions(page))[0];
-  const bar = await page.getByRole("navigation").boundingBox();
+  const bar = await page.getByRole("button", { name: "メニュー" }).boundingBox();
   if (!bar) throw new Error("no toolbar");
-  await carrySticker(page, sticker, { x: bar.x + 4, y: bar.y + bar.height / 2 });
+  await carrySticker(page, sticker, { x: bar.x + bar.width / 2, y: bar.y + bar.height / 2 });
   await expect(sticker).toBeVisible();
   await page.waitForTimeout(300);
   expect((await savedPositions(page))[0]).toEqual(before);

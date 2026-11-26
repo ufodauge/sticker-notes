@@ -133,6 +133,8 @@ export function dropTarget(x: number, y: number): DropTarget | undefined {
     return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
   };
   if ([...document.querySelectorAll("[data-pocket]")].some(inside)) return { kind: "pocket" };
+  // the toolbar's things lie on the desk too, but nothing sticks to them
+  if ([...document.querySelectorAll("[data-toolbar] > *")].some(inside)) return undefined;
   // the desk is larger than the screen: it takes only what lands where it is in view
   const view = document.querySelector("[data-desk-view]");
   const onDesk = !view || inside(view);

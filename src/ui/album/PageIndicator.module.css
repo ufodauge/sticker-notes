@@ -4,7 +4,11 @@
   gap: var(--space-2);
   min-inline-size: 0;
   margin-inline-end: auto;
-  padding-inline: var(--space-2);
+  padding-inline: var(--space-3) var(--space-2);
+  /* a paper tag on the desk, so it reads on the wood */
+  border-radius: 999px;
+  background: var(--paper);
+  box-shadow: 0 2px 5px rgb(0 0 0 / 0.18);
   color: var(--ink-soft);
   font-size: var(--text-small);
   font-variant-numeric: tabular-nums;

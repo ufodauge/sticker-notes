@@ -1,4 +1,3 @@
-import { Bug, Ellipsis, ImagePlus, Printer } from "lucide-react";
 import { useReducer, useSyncExternalStore } from "react";
 import { isIos, isStandalone } from "../data/platform.ts";
 import { sortedPages } from "../core/album.ts";
@@ -32,6 +31,7 @@ import { PrinterCopy } from "./dialogs/print/Sheets.tsx";
 import { feedback } from "./feedback.ts";
 import { debugText, t } from "./messages.ts";
 import { printMode } from "./print-mode.ts";
+import { PixelIcon } from "./PixelIcon.tsx";
 import { Stamp } from "./Stamp.tsx";
 import { Tutorial } from "./tutorial/Tutorial.tsx";
 import { tutorial } from "./tutorial/tutorial-store.ts";
@@ -109,7 +109,7 @@ export function App() {
   const close = () => dispatch({ type: "close", opened });
   return (
     <div className={styles.shell}>
-      <nav className={styles.toolbar} aria-label={t.app.toolbar}>
+      <nav className={styles.toolbar} aria-label={t.app.toolbar} data-toolbar="">
         <PageIndicator count={Math.max(1, ready?.pages.length ?? 0)} />
         <button
           type="button"
@@ -120,7 +120,7 @@ export function App() {
           data-dot={newMaterial || undefined}
           onClick={() => openCreate()}
         >
-          <ImagePlus aria-hidden="true" size={22} strokeWidth={1.5} />
+          <PixelIcon name="create" />
           {mine.length === 0 && t.app.create.text}
         </button>
         {stickers.length > 0 && (
@@ -131,7 +131,7 @@ export function App() {
             title={t.app.print}
             onClick={() => dispatch({ type: "open", overlay: { kind: "print" } })}
           >
-            <Printer aria-hidden="true" size={22} strokeWidth={1.5} />
+            <PixelIcon name="print" />
           </button>
         )}
         {DEBUG_BUILD && debugOn && (
@@ -142,7 +142,7 @@ export function App() {
             title={debugText.open}
             onClick={() => dispatch({ type: "open", overlay: { kind: "debug" } })}
           >
-            <Bug aria-hidden="true" size={22} strokeWidth={1.5} />
+            <PixelIcon name="debug" />
           </button>
         )}
         <button
@@ -153,7 +153,7 @@ export function App() {
           data-dot={menuDot || undefined}
           onClick={() => dispatch({ type: "open", overlay: { kind: "menu" } })}
         >
-          <Ellipsis aria-hidden="true" size={22} strokeWidth={1.5} />
+          <PixelIcon name="menu" />
         </button>
       </nav>
 

@@ -152,3 +152,10 @@
     transform: rotate(-3deg);
   }
 }
+
+/* on a wide screen the toolbar lies along the top: the pocket sits below it */
+@container (min-width: 641px) {
+  .pocket {
+    inset-block-start: calc(var(--tap) + var(--space-4));
+  }
+}

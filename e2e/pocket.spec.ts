@@ -47,9 +47,9 @@ test("let go over the toolbar, the peeled sticker goes back into the hand", asyn
   await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
   await page.mouse.down();
   await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2 - 90, { steps: 6 });
-  const bar = await page.getByRole("navigation").boundingBox();
+  const bar = await page.getByRole("button", { name: "メニュー" }).boundingBox();
   if (!bar) throw new Error("no toolbar");
-  await page.mouse.move(bar.x + 4, bar.y + bar.height / 2, { steps: 4 });
+  await page.mouse.move(bar.x + bar.width / 2, bar.y + bar.height / 2, { steps: 4 });
   await page.mouse.up();
   await expect(page.locator("dialog[data-carrying]")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "はがしてページに貼る" })).toBeVisible();

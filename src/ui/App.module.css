@@ -8,28 +8,44 @@
   grid-template-rows: auto minmax(0, 1fr);
 }
 
+/* The toolbar lies on the desk too: no bar of its own, its buttons pixel-art stickers. */
 .toolbar {
+  position: relative;
+  z-index: 100004;
+  grid-row: 1;
+  grid-column: 1;
+  align-self: start;
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 2px;
   padding: max(var(--space-2), env(safe-area-inset-top))
     max(var(--space-2), env(safe-area-inset-right)) 0 var(--space-2);
+  pointer-events: none;
 }
 
+.toolbar > * {
+  pointer-events: auto;
+}
+
+/* the desk runs under the toolbar */
 .main {
   position: relative;
   isolation: isolate;
   overflow: hidden;
   container-type: size;
+  grid-row: 1 / -1;
+  grid-column: 1;
   min-block-size: 0;
   min-inline-size: 0;
-  padding-block-end: max(var(--space-6), env(safe-area-inset-bottom));
 }
 
+/* with its word, the create button is a paper tag on the desk */
 .labeled {
-  border-color: var(--ink);
+  border-color: var(--line);
   border-radius: 999px;
+  background: var(--paper);
+  box-shadow: 0 2px 5px rgb(0 0 0 / 0.18);
 }
 
 .menu {
@@ -41,10 +57,11 @@
   position: absolute;
   inset-block-start: 10px;
   inset-inline-end: 10px;
-  inline-size: 6px;
-  block-size: 6px;
+  inline-size: 9px;
+  block-size: 9px;
+  border: 2px solid #ffffff;
   border-radius: 50%;
-  background: var(--ink);
+  background: rgb(var(--stamp-ink));
 }
 
 .error {
@@ -52,17 +69,12 @@
 }
 
 @container (max-width: 640px) {
+  /* on a phone the toolbar lies along the bottom of the desk */
   .toolbar {
-    grid-row: 3;
+    grid-row: 1 / -1;
+    align-self: end;
     padding: var(--space-1) max(var(--space-2), env(safe-area-inset-right))
       max(var(--space-1), env(safe-area-inset-bottom)) var(--space-2);
-    border-block-start: 1px solid var(--line);
-    background: var(--paper);
-  }
-
-  .main {
-    grid-row: 2;
-    padding-block-end: var(--space-2);
   }
 }
 
@@ -88,7 +100,7 @@
 }
 
 .table {
-  --pw: min(86cqw, calc((100cqh - 84px - var(--space-2) - 64px) * 3 / 4), 560px);
+  --pw: min(86cqw, calc((100cqh - 84px - var(--space-2) - 128px) * 3 / 4), 560px);
   position: relative;
   inline-size: max(100cqw, calc(var(--pw) * 9));
   block-size: max(100cqh, calc(var(--pw) * 7));
@@ -110,7 +122,7 @@
 
 @media (min-aspect-ratio: 23 / 20) and (min-width: 700px) {
   .table {
-    --pw: min(46cqw, calc((100cqh - 64px) * 3 / 4), 560px);
+    --pw: min(46cqw, calc((100cqh - 128px) * 3 / 4), 560px);
   }
 
   .album {

@@ -1,0 +1,16 @@
+/* a pixel-art sticker icon: drawn at twice its pixels, with a sticker's shadow on the desk */
+.icon {
+  display: block;
+  inline-size: 36px;
+  block-size: 36px;
+  filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.35)) drop-shadow(0 3px 4px rgb(0 0 0 / 0.18));
+  transition: translate var(--t-fast) var(--ease-out);
+}
+
+button:hover > .icon {
+  translate: 0 -1px;
+}
+
+button:active > .icon {
+  translate: 0 1px;
+}

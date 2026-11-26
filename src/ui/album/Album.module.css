@@ -4,7 +4,7 @@
  * peeking at the edge, and slides across the spine between them.
  */
 .viewport {
-  --page-w: min(86cqw, calc((100cqh - 64px) * 3 / 4), 560px);
+  --page-w: min(86cqw, calc((100cqh - 128px) * 3 / 4), 560px);
   --wide: 0;
   position: relative;
   container-type: size;
@@ -17,7 +17,7 @@
 
 @media (min-aspect-ratio: 23 / 20) and (min-width: 700px) {
   .viewport {
-    --page-w: min(46cqw, calc((100cqh - 64px) * 3 / 4), 560px);
+    --page-w: min(46cqw, calc((100cqh - 128px) * 3 / 4), 560px);
     --wide: 1;
   }
 }
