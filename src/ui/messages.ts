@@ -47,6 +47,8 @@ export const t = {
     open: "デバッグ",
     dialog: "デバッグ",
     unlockAll: "素材をすべて使えるようにする",
+    simulate: "交換をためす",
+    simulateHint: "知らない誰かのシールが届く",
     off: "デバッグをやめる",
   },
 
@@ -106,7 +108,6 @@ export const t = {
       glitter: "ラメ",
       clear: "クリア",
       foil: "箔",
-      glow: "蓄光",
     } satisfies Readonly<Record<MaterialKind, string>>,
     materialNew: (name: string) => `${name}(新しく使えるようになった)`,
     foilTone: "箔にする色",

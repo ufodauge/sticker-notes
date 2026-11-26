@@ -3,8 +3,6 @@ import type { CropRect, Rgba } from "../../../core/quantize.ts";
 import type { MaterialKind } from "../../../core/material.ts";
 import type { SnsKind } from "../../../core/sns.ts";
 
-type Point = { readonly x: number; readonly y: number };
-
 export type Source = {
   readonly file: Blob;
   readonly url: string;
@@ -17,8 +15,6 @@ export type Source = {
 export type EditState = {
   readonly step: "edit";
   readonly source: Source;
-  readonly cropPos: Point;
-  readonly zoom: number;
   readonly crop: CropRect;
   readonly paletteId: number | null;
   readonly transparentOn: boolean | null;
@@ -46,8 +42,6 @@ export type CreateAction =
       readonly source: Source;
       readonly sns: { readonly kind: SnsKind; readonly id: string } | null;
     }
-  | { readonly type: "crop-move"; readonly pos: Point }
-  | { readonly type: "zoom"; readonly zoom: number }
   | { readonly type: "crop-commit"; readonly crop: CropRect }
   | { readonly type: "palette"; readonly paletteId: number }
   | { readonly type: "dither"; readonly on: boolean }
@@ -81,8 +75,6 @@ export function createReducer(state: CreateState, action: CreateAction): CreateS
         return {
           step: "edit",
           source: action.source,
-          cropPos: { x: 0, y: 0 },
-          zoom: 1,
           crop: defaultCrop(action.source.rgba.width, action.source.rgba.height),
           paletteId: null,
           transparentOn: null,
@@ -101,10 +93,6 @@ export function createReducer(state: CreateState, action: CreateAction): CreateS
     }
   }
   switch (action.type) {
-    case "crop-move":
-      return { ...state, cropPos: action.pos };
-    case "zoom":
-      return { ...state, zoom: action.zoom };
     case "crop-commit":
       return { ...state, crop: action.crop };
     case "palette":

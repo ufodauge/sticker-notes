@@ -35,7 +35,7 @@ type Props = {
   // the half of the spread this side of the leaf shows (the whole spread is drawn, the side shows
   // its half; a sticker over the spine is drawn on both and belongs to the half its centre is on)
   readonly half: 0 | 1;
-  // lights out: the page is dim but for glow-in-the-dark stickers
+  // lights out: the page is dim
   readonly dark: boolean;
   readonly pageId: string;
   readonly placements: readonly Placement[];
@@ -74,8 +74,9 @@ const varsOf = (p: Placement): CSSProperties =>
 
 const NUDGE = 0.01;
 const TAP_SLOP = 6;
-// how far (in sticker sizes) the finger pulls the rolled edge before the sticker comes off
-const PEEL_DISTANCE = 1.05;
+// how much of the sticker is lifted before it comes off (an edge pulled straight back across the
+// whole sticker gets this far)
+const PEEL_SHARE = 0.65;
 const KEY_CHANGES: Readonly<
   Record<string, (p: Placement) => Parameters<typeof stickerStore.update>[1]>
 > = {
@@ -291,8 +292,8 @@ export function PageCanvas(props: Props) {
       cur.els.forEach((el) => el.setAttribute("data-peeling", ""));
       hold.current = { ...cur, view: view ?? null };
     }
-    const peeled = view?.show(finger) ?? PEEL_DISTANCE;
-    if (peeled < PEEL_DISTANCE) return;
+    const peeled = view?.show(finger) ?? PEEL_SHARE;
+    if (peeled < PEEL_SHARE) return;
     const tipped = view?.direction();
     view?.clear();
     cur.els.forEach((el) => {
@@ -449,13 +450,7 @@ export function PageCanvas(props: Props) {
           const hl = highlight?.stickerId === p.stickerId ? highlight : null;
           const shape = touchShape(s);
           return (
-            <div
-              key={p.id}
-              className={styles.placed}
-              style={varsOf(p)}
-              data-move={p.id}
-              data-glow={(dark && s.sticker.material?.kind === "glow") || undefined}
-            >
+            <div key={p.id} className={styles.placed} style={varsOf(p)} data-move={p.id}>
               <button
                 type="button"
                 className={styles.grab}

@@ -47,23 +47,37 @@ function materialOf(s: EditState, used: readonly number[]): Material | undefined
   return tone === undefined ? undefined : { kind: "foil", tone };
 }
 
-function baseImage(s: EditState): Rgba {
-  const { rgba, art } = s.source;
-  if (art) return art.image;
-  if (rgba.width === 32 && rgba.height === 32) return rgba;
-  return resizeTo32(rgba, s.crop, "area");
+// The image itself, shrunk to the sticker and measured against every palette: the costly part,
+// which depends only on the picture and its crop (not on the choices made after).
+export type Analysis = {
+  readonly base: Rgba;
+  readonly exactMatch: ReturnType<typeof exactPaletteMatch>;
+  readonly ranked: readonly PaletteCandidate[];
+  readonly imageHasAlpha: boolean;
+};
+
+export function analyze(source: EditState["source"], crop: EditState["crop"]): Analysis {
+  const { rgba, art } = source;
+  const base = art
+    ? art.image
+    : rgba.width === 32 && rgba.height === 32
+      ? rgba
+      : resizeTo32(rgba, crop, "area");
+  return {
+    base,
+    exactMatch: exactPaletteMatch(base),
+    ranked: rankPalettes(base),
+    imageHasAlpha: hasTransparency(base),
+  };
 }
 
-export function derive(s: EditState): Derived {
-  const base = baseImage(s);
-  const exactMatch = exactPaletteMatch(base);
-  const ranked = rankPalettes(base);
+export function derive(s: EditState, image: Analysis): Derived {
+  const { base, exactMatch, ranked, imageHasAlpha } = image;
   const paletteId = s.paletteId ?? exactMatch?.paletteId ?? ranked[0]?.paletteId ?? 0;
   const palette = PALETTES[paletteId] ?? PALETTES[0];
   if (!palette) throw new Error("no palettes");
   const candidate = ranked.find((c) => c.paletteId === paletteId);
 
-  const imageHasAlpha = hasTransparency(base);
   const transparentOn = s.transparentOn ?? imageHasAlpha;
   const transparentIndex = !transparentOn
     ? null

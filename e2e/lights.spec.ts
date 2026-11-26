@@ -3,12 +3,12 @@ import { serializeBackup } from "../src/core/backup.ts";
 import { encodeBody, stickerIdOf, type Sticker } from "../src/core/payload.ts";
 import { FIXTURES } from "../src/core/testing/fixtures.ts";
 
-async function glowAndPlain(): Promise<string> {
+async function twoStickers(): Promise<string> {
   const slime = FIXTURES.slime as Sticker;
   const made = await Promise.all(
     [
-      { ...slime, snsId: "glow_one", material: { kind: "glow" as const, tone: 0 } },
-      { ...slime, snsId: "plain_one" },
+      { ...slime, snsId: "one" },
+      { ...slime, snsId: "two" },
     ].map(async (s, i) => {
       const body = encodeBody(s);
       return { id: await stickerIdOf(body), body, i };
@@ -38,15 +38,13 @@ async function glowAndPlain(): Promise<string> {
   );
 }
 
-test("lights out: the page goes dark and only the glow sticker rises above it", async ({
-  page,
-}) => {
+test("lights out: the page goes dark and comes back", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "メニュー" }).click();
   await page.getByLabel("読み込む").setInputFiles({
     name: "b.json",
     mimeType: "application/json",
-    buffer: Buffer.from(await glowAndPlain()),
+    buffer: Buffer.from(await twoStickers()),
   });
   await expect(page.getByRole("status")).toContainText("2枚を読み込んだ");
   await page.keyboard.press("Escape");
@@ -57,10 +55,6 @@ test("lights out: the page goes dark and only the glow sticker rises above it", 
   await expect(swtch).toHaveAttribute("aria-pressed", "true");
   // the spread is drawn on both of its halves
   await expect(page.locator("[data-near] [data-facing] [data-paper][data-dark]")).toHaveCount(2);
-  await expect(page.locator("[data-glow]")).toHaveCount(2);
-  await expect(
-    page.locator("[data-glow]").getByRole("button", { name: "X @glow_one", exact: true }),
-  ).toBeVisible();
 
   await swtch.click();
   await expect(page.locator("[data-paper][data-dark]")).toHaveCount(0);

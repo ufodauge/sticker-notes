@@ -1,7 +1,12 @@
+import { Shuffle } from "lucide-react";
 import { useSyncExternalStore } from "react";
+import { madeUpSticker } from "../../../core/made-up.ts";
+import { encodeBody, encodeFragment } from "../../../core/payload.ts";
+import { hashStore } from "../../../data/location-hash.ts";
 import common from "../../common.module.css";
 import { debug } from "../../debug.ts";
 import { Dialog } from "../../Dialog.tsx";
+import { useCloseDialog } from "../../dialog-context.ts";
 import { t } from "../../messages.ts";
 import styles from "./DebugDialog.module.css";
 
@@ -10,6 +15,7 @@ export function DebugDialog({ onClose }: { readonly onClose: () => void }) {
   return (
     <Dialog label={t.debug.dialog} onClose={onClose}>
       <div className={styles.body}>
+        <Simulate />
         <label className={styles.switch}>
           <span>{t.debug.unlockAll}</span>
           <input
@@ -24,5 +30,28 @@ export function DebugDialog({ onClose }: { readonly onClose: () => void }) {
         </button>
       </div>
     </Dialog>
+  );
+}
+
+// Someone else's sticker arrives, as by a link: the whole receiving side of an exchange plays,
+// and the giver counts as a new person.
+function Simulate() {
+  const close = useCloseDialog();
+  return (
+    <div className={styles.simulate}>
+      <button
+        type="button"
+        className={common.primary}
+        onClick={() => {
+          close();
+          const seed = Math.floor(Math.random() * 2 ** 31);
+          hashStore.open(encodeFragment(encodeBody(madeUpSticker(seed))));
+        }}
+      >
+        <Shuffle aria-hidden="true" size={18} strokeWidth={1.5} />
+        {t.debug.simulate}
+      </button>
+      <p className={common.muted}>{t.debug.simulateHint}</p>
+    </div>
   );
 }

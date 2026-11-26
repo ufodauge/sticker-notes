@@ -32,7 +32,7 @@ import {
   type EditState,
   type Source,
 } from "./create-state.ts";
-import { derive, type Derived } from "./derive.ts";
+import { analyze, derive, type Derived } from "./derive.ts";
 import { availableMaterials, materialsSeen } from "./materials-seen.ts";
 
 type LastSns = SettingValue<"lastSns"> | null;
@@ -174,7 +174,9 @@ async function saveSticker(d: Derived): Promise<{ id: string; result: AddResult 
 
 function Editor({ state, dispatch, onSaved }: EditorProps) {
   const close = useCloseDialog();
-  const d = derive(state);
+  // React Compiler keeps the analysis until the picture or its crop changes
+  const image = analyze(state.source, state.crop);
+  const d = derive(state, image);
 
   const save = async () => {
     dispatch({ type: "saving" });
@@ -229,10 +231,20 @@ function Editor({ state, dispatch, onSaved }: EditorProps) {
   );
 }
 
+type View = { readonly x: number; readonly y: number; readonly zoom: number };
+
+// The crop follows the finger here alone; the sticker is made again from it only once the finger
+// lets go (a pinch reports a new crop on every step, and each one would remake the sticker).
 function CropField({ state, dispatch }: Pick<EditorProps, "state" | "dispatch">) {
   const url = state.source.url;
   const k = state.source.rgba.width / state.source.naturalWidth;
-  const commit = (_: Area, px: Area) =>
+  const [view, setView] = useReducer((v: View, next: Partial<View>): View => ({ ...v, ...next }), {
+    x: 0,
+    y: 0,
+    zoom: 1,
+  });
+  const held = useRef<{ active: boolean; area: Area | null }>({ active: false, area: null });
+  const commit = (px: Area) =>
     dispatch({
       type: "crop-commit",
       crop: { x: px.x * k, y: px.y * k, size: Math.max(1, Math.min(px.width, px.height) * k) },
@@ -243,15 +255,26 @@ function CropField({ state, dispatch }: Pick<EditorProps, "state" | "dispatch">)
       {url && (
         <Cropper
           image={url}
-          crop={state.cropPos}
-          zoom={state.zoom}
+          crop={view}
+          zoom={view.zoom}
           minZoom={1}
           maxZoom={8}
           aspect={1}
           objectFit="contain"
-          onCropChange={(pos) => dispatch({ type: "crop-move", pos })}
-          onZoomChange={(zoom) => dispatch({ type: "zoom", zoom })}
-          onCropComplete={commit}
+          onCropChange={({ x, y }) => setView({ x, y })}
+          onZoomChange={(zoom) => setView({ zoom })}
+          onInteractionStart={() => {
+            held.current = { active: true, area: null };
+          }}
+          onInteractionEnd={() => {
+            const { area } = held.current;
+            held.current = { active: false, area: null };
+            if (area) commit(area);
+          }}
+          onCropComplete={(_, px) => {
+            if (held.current.active) held.current = { active: true, area: px };
+            else commit(px);
+          }}
         />
       )}
     </div>

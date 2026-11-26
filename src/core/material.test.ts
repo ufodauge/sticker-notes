@@ -14,7 +14,8 @@ describe("materials", () => {
     expect(peopleToUnlock("matte", 0)).toBe(0);
     expect(peopleToUnlock("holo", 0)).toBe(0);
     expect(peopleToUnlock("puffy", 0)).toBe(1);
-    expect(peopleToUnlock("glow", 3)).toBe(5);
-    expect(peopleToUnlock("glow", 20)).toBe(0);
+    expect(peopleToUnlock("foil", 3)).toBe(2);
+    expect(peopleToUnlock("foil", 20)).toBe(0);
+    expect(materialOfCode(6)).toBeUndefined();
   });
 });

@@ -112,13 +112,6 @@
   --metal-light: #ffffff;
 }
 
-/* glow: pale by day; it shines when the lights go out */
-.finish[data-material="glow"] {
-  background: #c9ffd5;
-  mix-blend-mode: multiply;
-  opacity: 0.45;
-}
-
 /* clear: a film with a glint */
 .finish[data-material="clear"] {
   background: linear-gradient(

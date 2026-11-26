@@ -181,3 +181,22 @@ test("Ctrl+P prints the album as it is, one A4 per page", async ({ page, browser
   await page.evaluate(() => window.dispatchEvent(new Event("afterprint")));
   await expect(page.locator(".printOnly")).toHaveCount(0);
 });
+
+test("on a phone the first spread slides to its right half and back", async ({ page }) => {
+  await receive(page, "slime", SLIME);
+  const book = page.locator("[data-open]");
+  const v = await page.locator("[data-album]").boundingBox();
+  if (!v) throw new Error("no album");
+  const drag = async (from: number, to: number) => {
+    await page.mouse.move(v.x + v.width * from, v.y + 6);
+    await page.mouse.down();
+    await page.mouse.move(v.x + v.width * to, v.y + 6, { steps: 10 });
+    await page.mouse.up();
+  };
+  await expect(book).toHaveAttribute("data-side", "left");
+  await drag(0.85, 0.1);
+  await expect(book).toHaveAttribute("data-side", "right");
+  await drag(0.1, 0.85);
+  await expect(book).toHaveAttribute("data-side", "left");
+  await expect(book).toHaveAttribute("data-open", "0");
+});

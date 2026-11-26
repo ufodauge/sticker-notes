@@ -12,3 +12,9 @@
   min-block-size: var(--tap);
   cursor: pointer;
 }
+
+.simulate {
+  display: grid;
+  gap: var(--space-1);
+  justify-items: start;
+}

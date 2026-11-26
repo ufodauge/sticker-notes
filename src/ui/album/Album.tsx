@@ -107,8 +107,9 @@ export function Album(props: Props) {
       const turning = beginCurl({ book, canvas: curlCanvas, busy }, dark, 1, at);
       return turning ? { kind: "flip", turning, direction: 1 } : { kind: "none" };
     }
-    if (flipped === 0) return { kind: "none" };
+    // on a narrow screen the first spread's right half slides back to its left half
     if (!wide && side === "right") return { kind: "slide", direction: -1 };
+    if (flipped === 0) return { kind: "none" };
     const turning = beginCurl({ book, canvas: curlCanvas, busy }, dark, -1, at);
     return turning ? { kind: "flip", turning, direction: -1 } : { kind: "none" };
   };

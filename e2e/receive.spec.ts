@@ -153,3 +153,18 @@ test("with none of one's own yet, the one made from the invitation is given back
   await expect(dialog).toContainText(`${SLIME} にお返し`);
   expect((await readQr(page))?.snsId).toBe("mine_1");
 });
+
+test("the debug menu tries an exchange: someone's sticker arrives as by a link", async ({
+  page,
+}) => {
+  await page.goto("/?debug");
+  await page.getByRole("button", { name: "デバッグ" }).click();
+  await page.getByRole("button", { name: "交換をためす" }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.getByRole("status")).toContainText("がポケットに入った");
+  await expect(pocketButton(page)).toHaveAccessibleName("ポケット(1枚)");
+  await expect.poll(() => new URL(page.url()).hash).toBe("");
+  await page.getByRole("button", { name: "デバッグ" }).click();
+  await page.getByRole("button", { name: "交換をためす" }).click();
+  await expect(pocketButton(page)).toHaveAccessibleName("ポケット(2枚)");
+});

@@ -282,7 +282,7 @@ describe("material byte", () => {
   if (!slime) throw new Error("fixture");
   const withMaterial = (material: Sticker["material"]): Sticker => ({ ...slime, material });
 
-  test.each(["holo", "puffy", "glitter", "clear", "glow"] as const)("%s round-trips", (kind) => {
+  test.each(["holo", "puffy", "glitter", "clear"] as const)("%s round-trips", (kind) => {
     const s = withMaterial({ kind, tone: 0 });
     const body = encodeBody(s);
     expect(body.length).toBe(encodeBody(slime).length + 1);

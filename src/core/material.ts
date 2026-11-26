@@ -8,7 +8,6 @@ export const MATERIALS = {
   glitter: { code: 3, people: 2 },
   clear: { code: 4, people: 3 },
   foil: { code: 5, people: 5 },
-  glow: { code: 6, people: 8 },
 } as const satisfies Record<string, { readonly code: number; readonly people: number }>;
 
 export type MaterialKind = keyof typeof MATERIALS;

@@ -213,30 +213,35 @@ describe("stripMatrix", () => {
 describe("peelPull", () => {
   const S = 100;
   const corner = { x: S, y: S };
+  // the part rolled up: the roll's axis lies (pull + π·r) / 2 back from the held edge
+  const straight = (pull: number) => (pull + Math.PI * Math.min(pull * 0.12, S * 0.08)) / 2 / S;
 
-  test("pulled back over the sticker, the edge follows the finger and peels as far", () => {
-    const toward = { x: S - 60, y: S - 60 };
-    const r = peelPull(corner, toward, S);
-    expect(r.finger).toEqual(toward);
-    expect(r.peeled).toBeCloseTo(Math.hypot(60, 60) / S);
+  test("pulled straight back over the sticker, the edge follows the finger and lifts what it passes", () => {
     const edge = peelPull({ x: S, y: S / 2 }, { x: S - 80, y: S / 2 }, S);
-    expect(edge.peeled).toBeCloseTo(0.8);
+    expect(edge.finger).toEqual({ x: S - 80, y: S / 2 });
+    expect(edge.peeled).toBeCloseTo(straight(80));
+    const across = peelPull({ x: S, y: S / 2 }, { x: S - 105, y: S / 2 }, S);
+    expect(across.peeled).toBeCloseTo(straight(105));
+    expect(across.peeled).toBeGreaterThan(0.65);
   });
 
-  test("pulled outward, away from the sticker, nothing lifts and nothing peels", () => {
+  test("pulled outward, away from the sticker, nothing lifts", () => {
     const r = peelPull(corner, { x: S + 70, y: S + 70 }, S);
     expect(r.peeled).toBe(0);
     expect(r.finger.x).toBeCloseTo(corner.x);
     expect(r.finger.y).toBeCloseTo(corner.y);
     const edge = peelPull({ x: S, y: S / 2 }, { x: S + 300, y: S / 2 }, S);
     expect(edge.peeled).toBe(0);
-    expect(edge.finger.x).toBeCloseTo(S);
   });
 
-  test("pulled along the edge, the sideways part is kept but does not count as peeling", () => {
-    const r = peelPull({ x: S, y: S / 2 }, { x: S + 20, y: S / 2 - 40 }, S);
-    expect(r.peeled).toBe(0);
-    expect(r.finger.x).toBeCloseTo(S);
-    expect(r.finger.y).toBeCloseTo(S / 2 - 40);
+  test("a corner lifted a little and then pulled aside comes up as far as it is seen to", () => {
+    const lifted = peelPull(corner, { x: S - 20, y: S - 20 }, S).peeled;
+    expect(lifted).toBeLessThan(0.65);
+    // then drawn down to the left, or up to the right: the roll sweeps across the sticker
+    const left = peelPull(corner, { x: S - 140, y: S + 40 }, S);
+    const up = peelPull(corner, { x: S + 40, y: S - 140 }, S);
+    expect(left.peeled).toBeGreaterThan(0.65);
+    expect(up.peeled).toBeGreaterThan(0.65);
+    expect(left.peeled).toBeCloseTo(up.peeled);
   });
 });
