@@ -1,0 +1,110 @@
+/* the debug flow view: a panel down the side, over the album (UI, not the scene) */
+.panel {
+  position: fixed;
+  inset-block: var(--space-2);
+  inset-inline-start: var(--space-2);
+  z-index: 100005;
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+  inline-size: min(100% - var(--space-4), 420px);
+  overflow: auto;
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: var(--text-small);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.25);
+  user-select: text;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.title,
+.flowTitle {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.flowTitle {
+  font-size: var(--text-small);
+}
+
+.note {
+  color: var(--ink-soft);
+  font-weight: normal;
+}
+
+.states {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  margin: var(--space-1) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.state {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.box {
+  display: grid;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.box:disabled {
+  cursor: default;
+}
+
+.box[data-current] {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.box[data-current] .note {
+  color: inherit;
+}
+
+.stateId {
+  font-weight: 700;
+}
+
+.arrow {
+  color: var(--ink-soft);
+  font-size: 0.75rem;
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-block-start: var(--space-1);
+}
+
+.log {
+  display: grid;
+  gap: 2px;
+  margin: var(--space-1) 0 0;
+  padding-inline-start: var(--space-6);
+}
+
+.time {
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}

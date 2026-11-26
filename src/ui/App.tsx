@@ -1,4 +1,4 @@
-import { useReducer, useSyncExternalStore } from "react";
+import { lazy, Suspense, useReducer, useSyncExternalStore } from "react";
 import { isIos, isStandalone } from "../data/platform.ts";
 import { sortedPages } from "../core/album.ts";
 import { layoutAlbum } from "../core/print.ts";
@@ -34,6 +34,7 @@ import { printMode } from "./print-mode.ts";
 import { PixelIcon } from "./PixelIcon.tsx";
 import { Stamp } from "./Stamp.tsx";
 import { Tutorial } from "./tutorial/Tutorial.tsx";
+import { flowPanel } from "./flows/flow-panel.ts";
 import { events } from "../data/events.ts";
 import { Toast } from "./Toast.tsx";
 import { discardSticker, undo } from "./undo.ts";
@@ -42,6 +43,13 @@ const hasImage = (dt: DataTransfer) =>
   Array.from(dt.items).some(
     (i) => i.kind === "file" && (i.type === "" || i.type.startsWith("image/")),
   );
+
+// Debug builds only: the flow view (the build flag is written out here so that a production
+// build leaves the panel's chunk out, as main.tsx does for the sample page).
+const FlowPanel =
+  import.meta.env.DEV || import.meta.env.VITE_DEBUG === "1"
+    ? lazy(() => import("./flows/FlowPanel.tsx").then((m) => ({ default: m.FlowPanel })))
+    : null;
 
 // The desk can be larger than the screen; it opens with the album in the middle of the view.
 // (A ref callback: it runs once, when the desk is first laid out.)
@@ -62,6 +70,7 @@ export function App() {
   const [state, dispatch] = useReducer(reducer, initialState);
   const debugOn = useSyncExternalStore(debug.subscribe, () => debug.get().on);
   const day = useSyncExternalStore(daylight.subscribe, daylight.get);
+  const flowsOpen = useSyncExternalStore(flowPanel.subscribe, flowPanel.open);
   const seenMaterials = useSyncExternalStore(materialsSeen.subscribe, materialsSeen.get);
   useSyncExternalStore(debug.subscribe, debug.get);
 
@@ -234,6 +243,11 @@ export function App() {
       )}
       <CarryLayer />
       <Tutorial />
+      {FlowPanel && flowsOpen && (
+        <Suspense fallback={null}>
+          <FlowPanel />
+        </Suspense>
+      )}
       {stamp && <Stamp key={stamp.id} stamp={stamp} onDone={() => feedback.unstamp(stamp.id)} />}
       {toast && (
         <Toast

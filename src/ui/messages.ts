@@ -225,5 +225,9 @@ export const debugText = {
   hourClock: "端末の時計",
   hourAt: (h: number) => `${h}時`,
   samples: "見本(場面と素材)",
+  flows: "流れを見る",
+  flowsClose: "流れを閉じる",
+  flowsFire: "出来事を起こす",
+  flowsLog: "出来事の記録",
   samplesAt: (h: number, m: number) => `${h}:${String(m).padStart(2, "0")}`,
 } as const;

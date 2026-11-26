@@ -4,6 +4,7 @@ import { madeUpSticker } from "../../../core/made-up.ts";
 import { encodeBody, encodeFragment } from "../../../core/payload.ts";
 import { hashStore } from "../../../data/location-hash.ts";
 import { daylight } from "../../scene/clock.ts";
+import { flowPanel } from "../../flows/flow-panel.ts";
 import common from "../../common.module.css";
 import { debug } from "../../debug.ts";
 import { Dialog } from "../../Dialog.tsx";
@@ -17,6 +18,7 @@ export function DebugDialog({ onClose }: { readonly onClose: () => void }) {
     <Dialog label={debugText.dialog} onClose={onClose}>
       <div className={styles.body}>
         <Simulate />
+        <OpenFlows />
         <Hour />
         <label className={styles.switch}>
           <span>{debugText.unlockAll}</span>
@@ -79,5 +81,22 @@ function Hour() {
         ))}
       </select>
     </label>
+  );
+}
+
+// The album's flows, their states and events, over the running app.
+function OpenFlows() {
+  const close = useCloseDialog();
+  return (
+    <button
+      type="button"
+      className={common.button}
+      onClick={() => {
+        flowPanel.toggle(true);
+        close();
+      }}
+    >
+      {debugText.flows}
+    </button>
   );
 }

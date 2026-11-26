@@ -21,3 +21,30 @@ test("?debug shows the debug menu, which can open every material", async ({ page
   await page.keyboard.press("Escape");
   await expect(page.getByRole("button", { name: "デバッグ", exact: true })).toHaveCount(0);
 });
+
+test("the debug flow view draws the flows, follows them, and makes events happen", async ({
+  page,
+}) => {
+  await page.goto("/?debug");
+  await page.getByRole("button", { name: "デバッグ", exact: true }).click();
+  await page.getByRole("button", { name: "流れを見る" }).click();
+  const panel = page.getByRole("complementary", { name: "流れを見る" });
+  await expect(panel).toBeVisible();
+  const exchange = panel.locator('[data-flow="exchange"]');
+  await expect(exchange.locator("[data-current]")).toContainText("waiting");
+  // someone's sticker arrives: the exchange moves on, the event is logged, the stamp is pressed
+  await panel.getByRole("button", { name: "sticker.received" }).click();
+  await expect(exchange.locator("[data-current]")).toContainText("received");
+  await expect(
+    panel.locator("ol[reversed] li").filter({ hasText: "sticker.received" }),
+  ).toHaveCount(1);
+  await expect(page.locator('[class*="stamp"]').first()).toBeVisible();
+  // a tutorial is put at a state by clicking it
+  await panel.locator('[data-flow="tutorial.start"]').getByRole("button", { name: /turn/ }).click();
+  await expect(page.locator("[data-tutorial]")).toHaveAttribute(
+    "data-tutorial",
+    "tutorial.start:turn",
+  );
+  await panel.getByRole("button", { name: "流れを閉じる" }).click();
+  await expect(panel).toHaveCount(0);
+});
