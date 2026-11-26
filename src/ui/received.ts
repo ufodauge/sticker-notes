@@ -30,13 +30,14 @@ async function announceAdded(r: Exclude<Received, { kind: "invalid" }>): Promise
     ownCount,
     invitationShown: ownCount > 0 || (await invitationShown()),
   });
+  // saved before it shows: a reload right after must not invite again
+  if (plan.persistent) await markInvitationShown();
   feedback.landed(r.stickerId, "pocket", {
     text: t.feedback.receivedAdded(snsDisplay(r.sticker.snsKind, r.sticker.snsId)),
     undo: { kind: "unreceive", stickerId: r.stickerId },
     action: { kind: plan.invite ? "create" : "return", from: r.stickerId },
     persistent: plan.persistent,
   });
-  if (plan.persistent) await markInvitationShown();
 }
 
 export function reportReceived(r: Received): void {
