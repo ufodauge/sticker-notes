@@ -48,41 +48,6 @@
   color: var(--sheet-ink);
 }
 
-.surfaces {
-  display: flex;
-  gap: var(--space-4);
-  align-items: center;
-  justify-content: center;
-}
-
-.mat,
-.laptop {
-  display: flex;
-  gap: var(--space-2);
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-3);
-}
-
-.mat {
-  inline-size: 110px;
-  aspect-ratio: 3 / 4;
-  border-radius: 3px 6px 6px 3px;
-  background:
-    linear-gradient(90deg, rgb(0 0 0 / 0.28), rgb(0 0 0 / 0.08) 7%, transparent 9%),
-    var(--notebook-cover);
-  box-shadow:
-    2px 2px 0 var(--page-edge),
-    3px 3px 0 var(--page-edge-shade);
-}
-
-.laptop {
-  inline-size: 180px;
-  aspect-ratio: 3 / 2;
-  border-radius: 12px;
-  background: linear-gradient(180deg, var(--laptop-light), var(--laptop));
-}
-
 .hour {
   position: relative;
   z-index: 100001;

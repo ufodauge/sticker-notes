@@ -118,6 +118,11 @@ export type AllData = {
   readonly placements: readonly Placement[];
 };
 
+export async function forgetPlacements(db: Db, ids: readonly string[]): Promise<void> {
+  const tx = db.transaction("placements", "readwrite");
+  await Promise.all([...ids.map((id) => tx.store.delete(id)), tx.done]);
+}
+
 export async function readAll(db: Db): Promise<AllData> {
   const tx = db.transaction(ALBUM, "readonly");
   const [stickers, pages, placements] = await Promise.all([

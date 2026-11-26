@@ -31,12 +31,7 @@ export const t = {
     handle: { label: "回転と大きさ(ドラッグ)", tooltip: "回転と大きさ" },
   },
 
-  desk: {
-    desk: "机",
-    notebook: "ノート",
-    laptop: "ノートPC",
-    turn: "回す(ドラッグ)",
-  } satisfies Readonly<Record<SurfaceKind, string>> & { readonly turn: string },
+  desk: { desk: "机" } satisfies Readonly<Record<SurfaceKind, string>>,
 
   pocket: {
     open: (n: number) => `ポケット(${n}枚)`,

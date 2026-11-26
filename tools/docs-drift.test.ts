@@ -15,6 +15,9 @@ const RETIRED = [
   "照度センサー",
   "jar3d",
   "AmbientLightSensor",
+  "ノート PC",
+  "ノートPC",
+  "机のマット",
 ];
 const SAYS_REMOVED = /削除|廃止|やめた|消した/;
 

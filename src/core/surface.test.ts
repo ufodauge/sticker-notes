@@ -1,18 +1,6 @@
 import { describe, expect, test } from "vite-plus/test";
 import type { Placement } from "./album.ts";
-import {
-  SURFACES,
-  clampSpot,
-  hasRoom,
-  isSurface,
-  spotOf,
-  surfaceOf,
-  surfacesFor,
-  THING_KINDS,
-  dotsOf,
-  localOf,
-  screenOf,
-} from "./surface.ts";
+import { SURFACES, dotsOf, hasRoom, isSurface, localOf, screenOf, surfaceOf } from "./surface.ts";
 
 const on = (pageId: string, stickerId: string): Placement => ({
   id: `p-${stickerId}`,
@@ -25,51 +13,27 @@ const on = (pageId: string, stickerId: string): Placement => ({
   z: 1,
 });
 
-describe("surfaces", () => {
-  test("a surface is known by its ID; a page's ID is not one", () => {
+describe("the desk", () => {
+  test("is known by its ID; a page's ID is not a surface", () => {
     expect(surfaceOf("surface:desk")).toBe("desk");
-    expect(surfaceOf("surface:notebook")).toBe("notebook");
-    expect(surfaceOf("surface:laptop")).toBe("laptop");
     expect(isSurface("surface:desk")).toBe(true);
+    expect(surfaceOf("surface:laptop")).toBeUndefined();
     expect(isSurface(crypto.randomUUID())).toBe(false);
     expect(isSurface("")).toBe(false);
   });
 
-  test("the desk and a notebook are there from the start; the laptop arrives with the third person", () => {
-    expect(surfacesFor(0)).toEqual(["desk", "notebook"]);
-    expect(surfacesFor(2)).toEqual(["desk", "notebook"]);
-    expect(surfacesFor(3)).toEqual(["desk", "notebook", "laptop"]);
-    expect(THING_KINDS).toEqual(["notebook", "laptop"]);
-  });
-
-  test("a sticker keeps its size: dots are 300 to a page, whatever it is stuck on", () => {
-    expect(dotsOf("notebook")).toBe(300);
+  test("a sticker keeps its size on it: dots are 300 to a page", () => {
     expect(dotsOf("desk")).toBe(SURFACES.desk.w * 300);
-    expect(dotsOf("laptop")).toBeCloseTo(615);
   });
 
-  test("a surface holds only so many; one already there can still move about on it", () => {
-    const full = Array.from({ length: SURFACES.notebook.capacity }, (_, i) =>
-      on("surface:notebook", `s${i}`),
+  test("holds only so many; one already there can still move about on it", () => {
+    const full = Array.from({ length: SURFACES.desk.capacity }, (_, i) =>
+      on("surface:desk", `s${i}`),
     );
-    expect(hasRoom("notebook", full.slice(1))).toBe(true);
-    expect(hasRoom("notebook", full)).toBe(false);
-    expect(hasRoom("notebook", full, "s0")).toBe(true);
-    expect(hasRoom("laptop", full)).toBe(true);
-  });
-
-  test("each thing lies where it was put, turned as it was; unmoved, it starts from the shape's layout", () => {
-    const saved = { laptop: { x: 1, y: -1, r: 30 } };
-    expect(spotOf(saved, "tall", "laptop")).toEqual({ x: 1, y: -1, r: 30 });
-    expect(spotOf(saved, "tall", "notebook")).toEqual(spotOf(undefined, "tall", "notebook"));
-    expect(spotOf(undefined, "wide", "laptop").x).toBeGreaterThan(1);
-  });
-
-  test("a thing stays on the desk, and its turn is kept within a half turn either way", () => {
-    expect(clampSpot({ x: -30, y: 30, r: 0 })).toEqual({ x: -4.1, y: 3.1, r: 0 });
-    expect(clampSpot({ x: 0, y: 0, r: 200 }).r).toBeCloseTo(-160);
-    expect(clampSpot({ x: 0, y: 0, r: -190 }).r).toBeCloseTo(170);
-    expect(clampSpot({ x: 0, y: 0, r: 360 }).r).toBe(0);
+    expect(hasRoom("desk", full.slice(1))).toBe(true);
+    expect(hasRoom("desk", full)).toBe(false);
+    expect(hasRoom("desk", full, "s0")).toBe(true);
+    expect(hasRoom("desk", [on("page-1", "x")])).toBe(true);
   });
 });
 

@@ -227,28 +227,27 @@ describe("planMerge details", () => {
   });
 
   test("stickers off the album need no page, and a surface takes only as many as it holds", () => {
-    const cap = SURFACES.notebook.capacity;
+    const cap = SURFACES.desk.capacity;
     const current: BackupData = {
       ...none,
-      placements: Array.from({ length: cap - 2 }, (_, i) =>
-        pl(`n${i}`, `s${i}`, "surface:notebook"),
-      ),
+      placements: Array.from({ length: cap - 2 }, (_, i) => pl(`n${i}`, `s${i}`, "surface:desk")),
     };
     const incoming: BackupData = {
       ...none,
       placements: [
-        pl("a", "t1", "surface:notebook"),
-        pl("b", "t2", "surface:notebook"),
-        pl("c", "t3", "surface:notebook"),
-        pl("d", "t4", "surface:desk"),
+        pl("a", "t1", "surface:desk"),
+        pl("b", "t2", "surface:desk"),
+        pl("c", "t3", "surface:desk"),
+        pl("d", "t4", "p1"),
       ],
     };
-    expect(planMerge(current, incoming).placements.map((p) => p.id)).toEqual(["a", "b", "d"]);
+    const plan = planMerge({ ...current, pages: [{ id: "p1", order: 0 }] }, incoming);
+    expect(plan.placements.map((p) => p.id)).toEqual(["a", "b", "d"]);
   });
 });
 
 describe("surfaces in a backup", () => {
-  test("a sticker on the desk or a thing on it is kept, up to what each surface holds", async () => {
+  test("a sticker on the desk is kept; one on a surface that is no more is skipped", async () => {
     const data = await sample();
     const ids = data.stickers.map((st) => st.id);
     const at = (id: string, stickerId: string, pageId: string): Placement => ({
@@ -263,8 +262,8 @@ describe("surfaces in a backup", () => {
     });
     const placements = [
       at("d1", ids[0] ?? "", "surface:desk"),
-      at("l1", ids[1] ?? "", "surface:laptop"),
-      at("x1", ids[2] ?? "", "surface:nowhere"),
+      at("l1", ids[1] ?? "", "surface:desk"),
+      at("x1", ids[2] ?? "", "surface:laptop"),
     ];
     const r = await parseBackup(serializeBackup({ ...data, placements }, new Date()));
     expect(r.ok && r.data.placements.map((p) => p.id)).toEqual(["d1", "l1"]);

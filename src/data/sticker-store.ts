@@ -17,6 +17,7 @@ import {
   discard,
   openStickerDb,
   deleteEmptyPage,
+  forgetPlacements,
   readAll,
   restore,
   savePlacement,
@@ -70,7 +71,16 @@ async function refresh(): Promise<void> {
       const d = decodeBody(r.body);
       return d.ok ? [{ ...r, sticker: d.sticker }] : [];
     });
-    publish({ status: "ready", stickers, pages: all.pages, placements: all.placements });
+    // a sticker placed somewhere that is no more (a page or surface gone) is back in the pocket
+    const pageIds = new Set(all.pages.map((p) => p.id));
+    const lost = all.placements.filter((p) => !pageIds.has(p.pageId) && !isSurface(p.pageId));
+    const placements = all.placements.filter((p) => !lost.includes(p));
+    publish({ status: "ready", stickers, pages: all.pages, placements });
+    if (lost.length > 0)
+      await forgetPlacements(
+        await dbPromise(),
+        lost.map((p) => p.id),
+      );
   } catch {
     publish({ status: "error" });
   }
@@ -125,7 +135,7 @@ export const stickerStore = {
       "near" in at ? at.near : at.pageId,
     );
     const atPoint = (pageId: string, change: PlacementChange) => {
-      // a surface off the album (the desk, a laptop) is no page: none is made for it
+      // a surface off the album (the desk) is no page: none is made for it
       const existing = isSurface(pageId) ? pageId : snap.pages.find((p) => p.id === pageId)?.id;
       const target = existing ?? ids.page;
       return {

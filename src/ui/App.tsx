@@ -26,7 +26,7 @@ import { DEBUG_BUILD } from "./debug-build.ts";
 import { daylight } from "./scene/clock.ts";
 import { lightStyle } from "./scene/light-style.ts";
 import { DaylightLayer, Desk } from "./scene/Room.tsx";
-import { DeskPlane, Things } from "./scene/DeskTop.tsx";
+import { DeskPlane } from "./scene/DeskTop.tsx";
 import { PeopleDialog } from "./dialogs/people/PeopleDialog.tsx";
 import { PrinterCopy } from "./dialogs/print/Sheets.tsx";
 import { feedback } from "./feedback.ts";
@@ -192,13 +192,6 @@ export function App() {
                 />
               )}
             </div>
-            {ready && (
-              <Things
-                snap={ready}
-                selected={state.selected}
-                onSelect={(placementId) => dispatch({ type: "select", placementId })}
-              />
-            )}
           </div>
         </div>
         {ready && stickers.length > 0 && (

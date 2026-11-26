@@ -10,8 +10,7 @@ import { StickerView } from "../StickerView.tsx";
 import styles from "./Samples.module.css";
 
 // Debug builds only (`?samples`): the scene's look laid out on one page for a design review, with
-// nothing to set up: the desk at four hours, every material under each light, and a notebook
-// and the laptop with stickers on them. Values come from src/styles/scene.css as in the app.
+// nothing to set up: the desk at four hours, every material under each light. Values come from src/styles/scene.css as in the app.
 
 const HOURS = [7, 12, 17.5, 21] as const;
 
@@ -56,30 +55,6 @@ export function Samples() {
                     <span className={styles.caption}>{t.create.materials[kind]}</span>
                   </span>
                 ))}
-              </div>
-              <div className={styles.surfaces}>
-                <div className={styles.mat}>
-                  {[3, 5].map((seed) => (
-                    <StickerView
-                      key={seed}
-                      sticker={madeUpSticker(seed)}
-                      scale={1}
-                      label=""
-                      decorative
-                    />
-                  ))}
-                </div>
-                <div className={styles.laptop}>
-                  {[8, 13, 21].map((seed) => (
-                    <StickerView
-                      key={seed}
-                      sticker={madeUpSticker(seed)}
-                      scale={1}
-                      label=""
-                      decorative
-                    />
-                  ))}
-                </div>
               </div>
               <DaylightLayer light={light} />
               <figcaption className={styles.hour}>
