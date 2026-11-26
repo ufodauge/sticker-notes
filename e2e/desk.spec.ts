@@ -114,3 +114,30 @@ test("a sticker on the mat is lifted by its edge and carried back onto a page", 
   ).toBeVisible();
   await expect.poll(async () => (await savedPositions(page)).length).toBe(1);
 });
+
+test("the laptop is moved about the desk by its base and stays where it is put", async ({
+  page,
+}) => {
+  await restore(page, await pocketBackup(3), 3);
+  await expect(laptop(page)).not.toHaveAttribute("data-arriving");
+  await pullFromPocketTo(page, await centreOf(laptop(page)));
+  await expect(laptop(page).getByRole("button")).toHaveCount(1);
+  const before = await laptop(page).boundingBox();
+  const sticker = await laptop(page).getByRole("button").boundingBox();
+  if (!before || !sticker) throw new Error("no laptop");
+  // by its base: a corner where no sticker lies
+  const base = { x: before.x + 8, y: before.y + 8 };
+  await page.mouse.move(base.x, base.y);
+  await page.mouse.down();
+  await page.mouse.move(base.x - 40, base.y - 10, { steps: 8 });
+  await page.mouse.up();
+  const after = await laptop(page).boundingBox();
+  expect(after?.x).toBeCloseTo(before.x - 40, -1);
+  // the stickers on it go with it
+  const moved = await laptop(page).getByRole("button").boundingBox();
+  expect(moved?.x).toBeCloseTo(sticker.x - 40, -1);
+  await page.waitForTimeout(300);
+  await page.reload();
+  const reloaded = await laptop(page).boundingBox();
+  expect(reloaded?.x).toBeCloseTo(before.x - 40, -1);
+});

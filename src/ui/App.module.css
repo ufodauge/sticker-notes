@@ -87,7 +87,7 @@
   padding-block-start: calc(84px + var(--space-2));
 }
 
-@container (aspect-ratio > 1) {
+@media (orientation: landscape) {
   .book {
     padding-block-start: 0;
   }

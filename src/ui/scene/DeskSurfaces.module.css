@@ -3,24 +3,33 @@
  * that have arrived on the desk. Below the book on a tall screen, beside it on a wide one.
  */
 .band {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: clamp(12px, 4cqw, 32px);
+  position: relative;
   min-block-size: 0;
   min-inline-size: 0;
-  padding: var(--space-2) var(--space-4);
 }
 
+/* each thing lies where it was put (its centre, in the band's box); moved by its base */
 .surface {
-  position: relative;
+  position: absolute;
+  inset-block-start: calc(var(--at-y, var(--y0)) * 100%);
+  inset-inline-start: calc(var(--at-x, var(--x0)) * 100%);
+  translate: -50% -50%;
   container-type: size;
-  flex: none;
+  cursor: grab;
+  touch-action: none;
+}
+
+.surface[data-moving] {
+  z-index: 1;
+  cursor: grabbing;
+  scale: 1.02;
+  filter: drop-shadow(0 8px 10px rgb(var(--desk-shadow) / 0.3));
 }
 
 /* a felt desk mat with a stitched edge: the few special ones */
 .surface[data-kind="desk"] {
-  block-size: min(78%, 150px);
+  inline-size: min(40%, 190px);
+  max-block-size: 86%;
   aspect-ratio: 5 / 4;
   border-radius: 10px;
   background:
@@ -33,7 +42,8 @@
 
 /* a closed laptop lying on the desk, seen from above */
 .surface[data-kind="laptop"] {
-  block-size: min(92%, 190px);
+  inline-size: min(52%, 280px);
+  max-block-size: 92%;
   aspect-ratio: 3 / 2;
   border-radius: 12px;
   background:
@@ -44,11 +54,7 @@
     0 4px 8px rgb(var(--desk-shadow) / 0.32);
 }
 
-@container (aspect-ratio > 1) {
-  .band {
-    flex-direction: column;
-  }
-
+@media (orientation: landscape) {
   .surface[data-kind="desk"] {
     block-size: auto;
     inline-size: min(86%, 190px);

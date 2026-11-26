@@ -12,6 +12,15 @@ export const SETTINGS = {
   debug: v.object({ on: v.boolean(), unlockAll: v.boolean() }),
   materialsSeen: v.array(v.picklist(MATERIAL_KINDS)),
   surfacesSeen: v.array(v.picklist(SURFACE_KINDS)),
+  // where the things on the desk lie, for a tall screen and a wide one
+  deskLayout: v.object({
+    tall: v.optional(
+      v.record(v.picklist(SURFACE_KINDS), v.object({ x: v.number(), y: v.number() })),
+    ),
+    wide: v.optional(
+      v.record(v.picklist(SURFACE_KINDS), v.object({ x: v.number(), y: v.number() })),
+    ),
+  }),
 };
 
 export type SettingKey = keyof typeof SETTINGS;

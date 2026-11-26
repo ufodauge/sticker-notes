@@ -1,6 +1,14 @@
 import { describe, expect, test } from "vite-plus/test";
 import type { Placement } from "./album.ts";
-import { SURFACES, hasRoom, isSurface, surfaceOf, surfacesFor } from "./surface.ts";
+import {
+  SURFACES,
+  clampSpot,
+  hasRoom,
+  isSurface,
+  spotOf,
+  surfaceOf,
+  surfacesFor,
+} from "./surface.ts";
 
 const on = (pageId: string, stickerId: string): Placement => ({
   id: `p-${stickerId}`,
@@ -37,5 +45,20 @@ describe("surfaces", () => {
     expect(hasRoom("desk", full)).toBe(false);
     expect(hasRoom("desk", full, "s0")).toBe(true);
     expect(hasRoom("laptop", full)).toBe(true);
+  });
+
+  test("each thing lies where it was put; unmoved, the mat and laptop sit side by side or stacked", () => {
+    expect(spotOf(undefined, "tall", "desk").x).toBeLessThan(spotOf(undefined, "tall", "laptop").x);
+    expect(spotOf(undefined, "wide", "desk").y).toBeLessThan(spotOf(undefined, "wide", "laptop").y);
+    expect(spotOf({ laptop: { x: 0.4, y: 0.6 } }, "tall", "laptop")).toEqual({ x: 0.4, y: 0.6 });
+    expect(spotOf({ laptop: { x: 0.4, y: 0.6 } }, "tall", "desk")).toEqual(
+      spotOf(undefined, "tall", "desk"),
+    );
+  });
+
+  test("a thing may hang over the desk's edge a little, never off it", () => {
+    expect(clampSpot({ x: -3, y: 9 })).toEqual({ x: 0.08, y: 0.92 });
+    expect(clampSpot({ x: 0.5, y: 0.5 })).toEqual({ x: 0.5, y: 0.5 });
+    expect(spotOf({ desk: { x: 2, y: -1 } }, "wide", "desk")).toEqual({ x: 0.92, y: 0.08 });
   });
 });

@@ -39,3 +39,31 @@ export function hasRoom(
   const on = placements.filter((p) => p.pageId === id && p.stickerId !== moving).length;
   return on < SURFACES[kind].capacity;
 }
+
+// Where each surface lies on the desk, as its centre in the desk's own box (0..1 each way). The
+// desk is a band below the book on a tall screen and a column beside it on a wide one, so each
+// shape keeps its own layout.
+export type Spot = { readonly x: number; readonly y: number };
+export type DeskShape = "tall" | "wide";
+
+const DEFAULT_SPOTS: Readonly<Record<DeskShape, Readonly<Record<SurfaceKind, Spot>>>> = {
+  tall: { desk: { x: 0.24, y: 0.5 }, laptop: { x: 0.72, y: 0.5 } },
+  wide: { desk: { x: 0.5, y: 0.3 }, laptop: { x: 0.5, y: 0.72 } },
+};
+
+// a surface is kept this far inside the desk's edges (it may hang over them a little, as on a
+// real desk, but never be lost)
+const MARGIN = 0.08;
+
+export const clampSpot = (s: Spot): Spot => ({
+  x: Math.min(1 - MARGIN, Math.max(MARGIN, s.x)),
+  y: Math.min(1 - MARGIN, Math.max(MARGIN, s.y)),
+});
+
+export function spotOf(
+  saved: Partial<Record<SurfaceKind, Spot>> | undefined,
+  shape: DeskShape,
+  kind: SurfaceKind,
+): Spot {
+  return clampSpot(saved?.[kind] ?? DEFAULT_SPOTS[shape][kind]);
+}
