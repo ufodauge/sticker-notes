@@ -4,7 +4,10 @@ import { MATERIAL_KINDS } from "../core/material.ts";
 import { SNS_KINDS } from "../core/sns.ts";
 
 const TutorialSchema = v.union([
-  v.object({ flow: v.picklist(["start", "received"]), step: v.pipe(v.number(), v.integer()) }),
+  v.object({
+    flow: v.picklist(["tutorial.start", "tutorial.received"]),
+    at: v.pipe(v.number(), v.integer(), v.minValue(0)),
+  }),
   v.object({ done: v.literal(true) }),
 ]);
 

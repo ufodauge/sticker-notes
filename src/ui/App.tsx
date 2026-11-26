@@ -34,7 +34,7 @@ import { printMode } from "./print-mode.ts";
 import { PixelIcon } from "./PixelIcon.tsx";
 import { Stamp } from "./Stamp.tsx";
 import { Tutorial } from "./tutorial/Tutorial.tsx";
-import { tutorial } from "./tutorial/tutorial-store.ts";
+import { events } from "../data/events.ts";
 import { Toast } from "./Toast.tsx";
 import { discardSticker, undo } from "./undo.ts";
 
@@ -68,12 +68,12 @@ export function App() {
   const [dropping, setDropping] = useReducer((_: boolean, next: boolean) => next, false);
 
   const openCreate = (with_: { readonly file?: File; readonly returnTo?: string } = {}) => {
-    tutorial.event("create");
+    events.emit({ type: "create.opened" });
     dispatch({ type: "open", overlay: { kind: "create", ...with_ } });
   };
 
   const onSaved = (stickerId: string, result: AddResult) => {
-    tutorial.event("created");
+    events.emit({ type: "sticker.created", stickerId });
     feedback.landed(stickerId, result.kind === "added" ? "pocket" : "wiggle", null);
     // made to give back for one just received: its QR comes up at once
     const returnTo = state.overlay.kind === "create" ? state.overlay.returnTo : undefined;
@@ -270,7 +270,10 @@ export function App() {
           initial={qrSticker}
           mine={overlay.returnTo ? mine : []}
           to={stickers.find((s) => s.id === overlay.returnTo)?.sticker}
-          onClose={close}
+          onClose={() => {
+            events.emit({ type: "qr.closed" });
+            close();
+          }}
         />
       )}
       {ready && overlay.kind === "print" && (

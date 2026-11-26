@@ -9,6 +9,7 @@ import { listenForShine } from "./ui/shine.ts";
 import { startDebug } from "./ui/debug.ts";
 import { followClock } from "./ui/scene/clock.ts";
 import { startTutorial } from "./ui/tutorial/tutorial-store.ts";
+import { react } from "./ui/reactions.ts";
 import { FRAGMENT_PREFIX } from "./core/payload.ts";
 import { DEBUG_BUILD } from "./ui/debug-build.ts";
 import { reportReceived } from "./ui/received.ts";
@@ -21,7 +22,8 @@ listenForStickerLinks(reportReceived, links.signal);
 listenForPrint(links.signal);
 listenForShine(links.signal);
 followClock(links.signal);
-startTutorial(arrivedByLink, links.signal);
+startTutorial(arrivedByLink);
+react(links.signal);
 if (DEBUG_BUILD) void startDebug();
 import.meta.hot?.dispose(() => links.abort());
 

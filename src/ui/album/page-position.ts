@@ -1,3 +1,5 @@
+import { events } from "../../data/events.ts";
+
 // Where the notebook is open: `flipped` leaves have been turned, so spread number `flipped` lies
 // open (its left half on the back of the last leaf turned, or the inside of the cover; its right
 // half on the next leaf). A wide screen shows the whole spread; a narrow one shows one half of it
@@ -40,9 +42,11 @@ function set(pos: BookPos): void {
   const flipped = Math.max(0, Math.min(lastSpread(), pos.flipped));
   const side = pos.side;
   if (flipped === state.pos.flipped && side === state.pos.side) return;
+  const turned = flipped !== state.pos.flipped;
   state.pos = { flipped, side };
   state.moved = true;
   state.listeners.forEach((l) => l());
+  if (turned) events.emit({ type: "page.turned", spread: flipped });
 }
 
 export const pagePosition = {

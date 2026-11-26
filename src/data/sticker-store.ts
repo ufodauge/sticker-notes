@@ -27,6 +27,7 @@ import {
   type StickerOrigin,
   type StickerRecord,
 } from "./db.ts";
+import { events } from "./events.ts";
 import { requestPersist } from "./platform.ts";
 import { SETTINGS, type SettingKey, type SettingValue } from "./settings.ts";
 import { isSurface } from "../core/surface.ts";
@@ -166,6 +167,7 @@ export const stickerStore = {
       pages: newPage ? [...snap.pages, newPage] : snap.pages,
       placements: [...snap.placements, placement],
     });
+    events.emit({ type: "sticker.placed", stickerId });
     await savePlacement(await dbPromise(), placement, newPage);
   },
 
@@ -213,6 +215,7 @@ export const stickerStore = {
       pages: newPage ? [...snap.pages, newPage] : snap.pages,
       placements: snap.placements.map((p) => (p.id === placementId ? next : p)),
     });
+    events.emit({ type: "sticker.placed", stickerId: current.stickerId });
     await savePlacement(await dbPromise(), next, newPage);
   },
 
@@ -220,7 +223,9 @@ export const stickerStore = {
   unplace: async (placementId: string): Promise<void> => {
     const snap = ready();
     if (!snap) return;
+    const gone = snap.placements.find((p) => p.id === placementId);
     publish({ ...snap, placements: snap.placements.filter((p) => p.id !== placementId) });
+    if (gone) events.emit({ type: "sticker.pocketed", stickerId: gone.stickerId });
     await (await dbPromise()).delete("placements", placementId);
   },
 

@@ -7,6 +7,7 @@ import {
   Share,
   ShieldCheck,
   Smartphone,
+  GraduationCap,
   Upload,
   Users,
   Volume2,
@@ -38,6 +39,7 @@ import { Dialog } from "../../Dialog.tsx";
 import { t } from "../../messages.ts";
 import { backupMarkCache } from "./backup-mark.ts";
 import { soundPref } from "../../sound-pref.ts";
+import { tutorial } from "../../tutorial/tutorial-store.ts";
 import styles from "./MenuDialog.module.css";
 
 type Props = { readonly onClose: () => void; readonly onPeople: () => void };
@@ -66,6 +68,18 @@ export function MenuDialog({ onClose, onPeople }: Props) {
         <Row icon={<Users aria-hidden="true" size={20} strokeWidth={1.5} />}>
           <button type="button" className={common.button} onClick={onPeople}>
             {t.people.open}
+          </button>
+        </Row>
+        <Row icon={<GraduationCap aria-hidden="true" size={20} strokeWidth={1.5} />}>
+          <button
+            type="button"
+            className={common.button}
+            onClick={() => {
+              tutorial.replay();
+              onClose();
+            }}
+          >
+            {t.tutorial.replay}
           </button>
         </Row>
         {isIos() && !isStandalone() && (

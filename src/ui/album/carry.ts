@@ -1,5 +1,6 @@
 import type { Sticker } from "../../core/payload.ts";
 import { hasRoom, localOf, surfaceOf } from "../../core/surface.ts";
+import { events } from "../../data/events.ts";
 import { stickerStore } from "../../data/sticker-store.ts";
 import { frameOf } from "../scene/frame.ts";
 
@@ -77,6 +78,7 @@ export const carry = {
     state.held = held;
     place(x, y);
     publish();
+    events.emit({ type: "sticker.peeled", stickerId: held.stickerId });
   },
   move: (x: number, y: number): void => {
     if (!state.held) return;

@@ -32,18 +32,46 @@ export const t = {
   },
 
   tutorial: {
-    start: {
-      peeled: "端をつまんで剥がす",
-      placed: "好きな所に貼る",
-      turned: "ページの端でめくる",
-      create: "自分のも作ってみる",
+    "tutorial.start": {
+      intro: {
+        title: "ようこそ",
+        text: "見本のシールを 3 枚貼っておいた\n剥がして、貼って、めくってみよう",
+        go: "はじめる",
+      },
+      steps: {
+        peel: "端をつまんで剥がす",
+        place: "好きな所に貼る",
+        turn: "ページの端でめくる",
+        create: "自分のも作ってみる",
+      },
+      outro: {
+        title: "これで準備ばっちり",
+        text: "作ったシールは QR で交換できる\n友だちに読んでもらおう",
+        go: "はじめよう",
+      },
     },
-    received: {
-      placed: "ポケットから引き出す",
-      created: "お返しを作る",
+    "tutorial.received": {
+      intro: {
+        title: "シールが届いた",
+        text: "ポケットに入っている\n貼って、お返しを作ろう",
+        go: "はじめる",
+      },
+      steps: {
+        place: "ポケットから引き出す",
+        create: "お返しを作る",
+        give: "お返しの QR を見せる",
+      },
+      outro: {
+        title: "交換できた",
+        text: "もらったシールはシール帳に\nあなたのシールは相手のポケットに",
+        go: "閉じる",
+      },
     },
     count: (i: number, n: number) => `${i}/${n}`,
+    done: "できた",
+    later: "あとで",
     close: "チュートリアルを閉じる",
+    replay: "使い方をもう一度",
   },
 
   desk: { desk: "机" } satisfies Readonly<Record<SurfaceKind, string>>,

@@ -3,6 +3,7 @@ import { planReceiveToast } from "../core/receive-toast.ts";
 import { snsDisplay } from "../core/sns.ts";
 import { vibrateReceived } from "../data/platform.ts";
 import type { Received } from "../data/receive.ts";
+import { events } from "../data/events.ts";
 import { settings, stickerStore } from "../data/sticker-store.ts";
 import { feedback } from "./feedback.ts";
 import { t } from "./messages.ts";
@@ -36,7 +37,11 @@ function newPerson(stickerId: string): number | undefined {
 async function announceAdded(r: Exclude<Received, { kind: "invalid" }>): Promise<void> {
   vibrateReceived();
   const met = newPerson(r.stickerId);
-  if (met !== undefined) feedback.stamp(met);
+  events.emit({
+    type: "sticker.received",
+    stickerId: r.stickerId,
+    ...(met === undefined ? {} : { met }),
+  });
   const ownCount = ownStickerCount();
   const plan = planReceiveToast({
     outcome: "added",

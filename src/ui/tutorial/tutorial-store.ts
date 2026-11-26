@@ -1,19 +1,12 @@
-import {
-  DONE,
-  advance,
-  chooseFlow,
-  sampleStickers,
-  type TutorialEvent,
-  type TutorialState,
-} from "../../core/tutorial.ts";
+import { stateOf, step } from "../../core/flows.ts";
+import { DONE, chooseFlow, sampleStickers, type TutorialState } from "../../core/tutorial.ts";
+import { events } from "../../data/events.ts";
 import { settings, stickerStore, type Ready } from "../../data/sticker-store.ts";
 import { testFlag } from "../../data/test-flags.ts";
-import { carry } from "../album/carry.ts";
-import { pagePosition } from "../album/page-position.ts";
 import { DEBUG_BUILD } from "../debug-build.ts";
 
-// The first time through: which way (and how far) it has got, moved on by what is done in the
-// album as it is done.
+// The first time through: which flow (core/flows.ts) and how far it has got. It moves on by the
+// album's own events (data/events.ts), as each thing is done.
 
 type Listener = () => void;
 const state: { value: TutorialState | null; listeners: Set<Listener> } = {
@@ -35,11 +28,24 @@ export const tutorial = {
   },
   // null until it is known whether there is one
   get: (): TutorialState | null => state.value,
-  event: (e: TutorialEvent): void => {
-    if (state.value) publish(advance(state.value, e));
-  },
+  // the intro's and the outro's buttons
+  begin: (): void => events.emit({ type: "tutorial.begin" }),
+  finish: (): void => events.emit({ type: "tutorial.finish" }),
   close: (): void => publish(DONE),
+  // from the menu: the first visit's way through, on the stickers there are
+  replay: (): void => publish({ flow: "tutorial.start", at: 0 }),
+  // debug only (the flow view): put a flow at a state
+  jump: (next: TutorialState): void => publish(next),
 };
+
+// each event moves the flow on when it is the one waited for; at its end, it is done
+events.on((e) => {
+  const s = state.value;
+  if (!s || "done" in s) return;
+  const next = step(s, e.type);
+  if (next === s) return;
+  publish(stateOf(next)?.on === undefined ? DONE : { ...s, at: next.at });
+});
 
 const readyStore = (): Promise<Ready> =>
   new Promise((resolve) => {
@@ -55,11 +61,7 @@ const readyStore = (): Promise<Ready> =>
     });
   });
 
-// where every sticker lies: a change is a sticker put down somewhere
-const layoutOf = (snap: Ready) =>
-  snap.placements.map((p) => `${p.id}:${p.pageId}:${p.x.toFixed(3)}:${p.y.toFixed(3)}`).join("|");
-
-export function startTutorial(arrivedByLink: boolean, signal: AbortSignal): void {
+export function startTutorial(arrivedByLink: boolean): void {
   if (DEBUG_BUILD && testFlag("skip-tutorial")) {
     publish(DONE, false);
     return;
@@ -67,50 +69,10 @@ export function startTutorial(arrivedByLink: boolean, signal: AbortSignal): void
   void Promise.all([settings.get("tutorial").catch(() => null), readyStore()]).then(
     async ([saved, snap]) => {
       const first = chooseFlow({ saved, stickers: snap.stickers.length, arrivedByLink });
-      if (!saved && "flow" in first && first.flow === "start") {
+      if (!saved && "flow" in first && first.flow === "tutorial.start") {
         await stickerStore.seedSamples(sampleStickers());
       }
       publish(first);
-      if ("done" in first || signal.aborted) return;
-      follow(signal);
     },
   );
-}
-
-function follow(signal: AbortSignal): void {
-  const last = {
-    held: carry.held() !== null,
-    flipped: pagePosition.get().flipped,
-    layout: (() => {
-      const snap = stickerStore.getSnapshot();
-      return snap.status === "ready" ? layoutOf(snap) : "";
-    })(),
-  };
-  const stops = [
-    carry.subscribe(() => {
-      const held = carry.held() !== null;
-      if (held && !last.held) tutorial.event("peeled");
-      last.held = held;
-    }),
-    pagePosition.subscribe(() => {
-      const { flipped } = pagePosition.get();
-      if (flipped !== last.flipped) tutorial.event("turned");
-      last.flipped = flipped;
-    }),
-    stickerStore.subscribe(() => {
-      const snap = stickerStore.getSnapshot();
-      if (snap.status !== "ready") return;
-      const layout = layoutOf(snap);
-      if (layout !== last.layout) tutorial.event("placed");
-      last.layout = layout;
-    }),
-  ];
-  const stopAll = () => stops.forEach((stop) => stop());
-  signal.addEventListener("abort", stopAll, { once: true });
-  const done = tutorial.subscribe(() => {
-    if (state.value && "done" in state.value) {
-      stopAll();
-      done();
-    }
-  });
 }
