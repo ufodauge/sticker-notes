@@ -33,7 +33,7 @@ async function announceAdded(r: Exclude<Received, { kind: "invalid" }>): Promise
   feedback.landed(r.stickerId, "pocket", {
     text: t.feedback.receivedAdded(snsDisplay(r.sticker.snsKind, r.sticker.snsId)),
     undo: { kind: "unreceive", stickerId: r.stickerId },
-    action: plan.invite ? { kind: "create" } : undefined,
+    action: { kind: plan.invite ? "create" : "return", from: r.stickerId },
     persistent: plan.persistent,
   });
   if (plan.persistent) await markInvitationShown();

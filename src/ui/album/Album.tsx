@@ -113,7 +113,6 @@ export function Album(props: Props) {
   };
 
   const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
-    torch(e);
     if (track.current || carry.held()) return;
     if (e.pointerType === "mouse" && e.button !== 0) return;
     track.current = {
@@ -126,18 +125,7 @@ export function Album(props: Props) {
     };
   };
 
-  // one torch for the whole spread: each open page is lit where the pointer is, on it or not
-  const torch = (e: PointerEvent<HTMLDivElement>) => {
-    if (!dark) return;
-    e.currentTarget.querySelectorAll<HTMLElement>("[data-facing] [data-paper]").forEach((el) => {
-      const r = el.getBoundingClientRect();
-      el.style.setProperty("--torch-x", `${((e.clientX - r.left) / r.width) * 100}%`);
-      el.style.setProperty("--torch-y", `${((e.clientY - r.top) / r.height) * 100}%`);
-    });
-  };
-
   const onPointerMove = (e: PointerEvent<HTMLDivElement>) => {
-    torch(e);
     const cur = track.current;
     if (!cur || cur.pointer !== e.pointerId) return;
     const dx = e.clientX - cur.x0;

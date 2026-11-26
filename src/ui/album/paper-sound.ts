@@ -1,4 +1,4 @@
-import { soundPref } from "../jar/jar-prefs.ts";
+import { soundPref } from "../sound-pref.ts";
 
 // Peeling a sticker off its backing paper and pressing it onto the page, synthesized with Web
 // Audio. The context starts from the first gesture that needs it and pauses with the page.

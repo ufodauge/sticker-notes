@@ -35,7 +35,7 @@ type Props = {
   // the half of the spread this side of the leaf shows (the whole spread is drawn, the side shows
   // its half; a sticker over the spine is drawn on both and belongs to the half its centre is on)
   readonly half: 0 | 1;
-  // lights out: the page is dim but for a torch under the finger and glow-in-the-dark stickers
+  // lights out: the page is dim but for glow-in-the-dark stickers
   readonly dark: boolean;
   readonly pageId: string;
   readonly placements: readonly Placement[];

@@ -299,18 +299,12 @@
   }
 }
 
-/* Lights out: night over the page, a torch where the finger last was, and glow stickers above it. */
+/* Lights out: dusk over the page, and glow stickers shining above it. */
 .dark {
   position: absolute;
   inset: 0;
   z-index: 99990;
-  background: rgb(10 14 32 / 0.62);
-  mask-image: radial-gradient(
-    circle at var(--torch-x, 50%) var(--torch-y, 45%),
-    transparent 0 10%,
-    rgb(0 0 0 / 0.6) 22%,
-    black 36%
-  );
+  background: rgb(10 14 32 / 0.5);
   pointer-events: none;
 }
 

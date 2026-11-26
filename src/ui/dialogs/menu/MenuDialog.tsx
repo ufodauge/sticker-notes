@@ -9,6 +9,7 @@ import {
   Smartphone,
   Upload,
   Users,
+  Volume2,
 } from "lucide-react";
 import {
   Suspense,
@@ -36,9 +37,27 @@ import common from "../../common.module.css";
 import { Dialog } from "../../Dialog.tsx";
 import { t } from "../../messages.ts";
 import { backupMarkCache } from "./backup-mark.ts";
+import { soundPref } from "../../sound-pref.ts";
 import styles from "./MenuDialog.module.css";
 
 type Props = { readonly onClose: () => void; readonly onPeople: () => void };
+
+function Sound() {
+  const on = useSyncExternalStore(soundPref.subscribe, soundPref.get);
+  return (
+    <Row icon={<Volume2 aria-hidden="true" size={20} strokeWidth={1.5} />}>
+      <label className={styles.switch}>
+        <span>{t.menu.sound}</span>
+        <input
+          type="checkbox"
+          role="switch"
+          checked={on}
+          onChange={(e) => soundPref.set(e.currentTarget.checked)}
+        />
+      </label>
+    </Row>
+  );
+}
 
 export function MenuDialog({ onClose, onPeople }: Props) {
   return (
@@ -54,6 +73,7 @@ export function MenuDialog({ onClose, onPeople }: Props) {
             <p className={`${common.warn} ${styles.pre}`}>{t.menu.iosInstall}</p>
           </Row>
         )}
+        <Sound />
         <Backup />
         <Suspense fallback={<StorageSwitch state="denied" />}>
           <Storage initial={initialPersist()} />

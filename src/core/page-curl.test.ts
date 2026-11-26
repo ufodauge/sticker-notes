@@ -1,5 +1,14 @@
 import { describe, expect, test } from "vite-plus/test";
-import { apply, reach, roll, settle, stripMatrix, stripPolygon, type Pt } from "./page-curl.ts";
+import {
+  apply,
+  peelPull,
+  reach,
+  roll,
+  settle,
+  stripMatrix,
+  stripPolygon,
+  type Pt,
+} from "./page-curl.ts";
 
 const W = 300;
 const H = 400;
@@ -198,5 +207,36 @@ describe("stripMatrix", () => {
     expect(mq.y - mp.y).toBeCloseTo(tangent.y * 50);
     const across = (mp.x - r.at.x) * r.normal.x + (mp.y - r.at.y) * r.normal.y;
     expect(across).toBeCloseTo(s.x0);
+  });
+});
+
+describe("peelPull", () => {
+  const S = 100;
+  const corner = { x: S, y: S };
+
+  test("pulled back over the sticker, the edge follows the finger and peels as far", () => {
+    const toward = { x: S - 60, y: S - 60 };
+    const r = peelPull(corner, toward, S);
+    expect(r.finger).toEqual(toward);
+    expect(r.peeled).toBeCloseTo(Math.hypot(60, 60) / S);
+    const edge = peelPull({ x: S, y: S / 2 }, { x: S - 80, y: S / 2 }, S);
+    expect(edge.peeled).toBeCloseTo(0.8);
+  });
+
+  test("pulled outward, away from the sticker, nothing lifts and nothing peels", () => {
+    const r = peelPull(corner, { x: S + 70, y: S + 70 }, S);
+    expect(r.peeled).toBe(0);
+    expect(r.finger.x).toBeCloseTo(corner.x);
+    expect(r.finger.y).toBeCloseTo(corner.y);
+    const edge = peelPull({ x: S, y: S / 2 }, { x: S + 300, y: S / 2 }, S);
+    expect(edge.peeled).toBe(0);
+    expect(edge.finger.x).toBeCloseTo(S);
+  });
+
+  test("pulled along the edge, the sideways part is kept but does not count as peeling", () => {
+    const r = peelPull({ x: S, y: S / 2 }, { x: S + 20, y: S / 2 - 40 }, S);
+    expect(r.peeled).toBe(0);
+    expect(r.finger.x).toBeCloseTo(S);
+    expect(r.finger.y).toBeCloseTo(S / 2 - 40);
   });
 });

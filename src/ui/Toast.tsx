@@ -1,4 +1,4 @@
-import { ImagePlus, Undo2, X } from "lucide-react";
+import { ImagePlus, QrCode, Undo2, X } from "lucide-react";
 import common from "./common.module.css";
 import type { Toast as ToastData } from "./feedback.ts";
 import { t } from "./messages.ts";
@@ -23,8 +23,12 @@ export function Toast({ toast, onUndo, onAction, onDismiss }: Props) {
       )}
       {toast.action && (
         <button type="button" className={`${common.primary} ${styles.undo}`} onClick={onAction}>
-          <ImagePlus aria-hidden="true" size={16} strokeWidth={1.5} />
-          {t.feedback.inviteCreate}
+          {toast.action.kind === "create" ? (
+            <ImagePlus aria-hidden="true" size={16} strokeWidth={1.5} />
+          ) : (
+            <QrCode aria-hidden="true" size={16} strokeWidth={1.5} />
+          )}
+          {toast.action.kind === "create" ? t.feedback.inviteCreate : t.feedback.giveBack}
         </button>
       )}
       {toast.persistent && (

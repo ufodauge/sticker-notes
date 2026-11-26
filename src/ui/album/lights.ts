@@ -1,7 +1,7 @@
 import { watchAmbientLight } from "../../data/ambient-light.ts";
 
 // The album's light switch. Lights out, the album goes dark and only glow-in-the-dark stickers
-// shine; a torch follows the finger. Where the browser can measure the room, the lights follow
+// shine. Where the browser can measure the room, the lights follow
 // it until the switch is touched by hand.
 
 type Listener = () => void;

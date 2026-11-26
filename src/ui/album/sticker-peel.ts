@@ -1,4 +1,4 @@
-import type { Pt } from "../../core/page-curl.ts";
+import { peelPull, type Pt } from "../../core/page-curl.ts";
 import type { Sticker } from "../../core/payload.ts";
 import { carry } from "./carry.ts";
 import { drawRoll } from "./curl.ts";
@@ -71,9 +71,10 @@ export function startPeel(
   draw();
   return {
     show: (finger) => {
-      state.finger = local(finger);
+      const pull = peelPull(held, local(finger), size);
+      state.finger = pull.finger;
       if (!state.frame) state.frame = requestAnimationFrame(draw);
-      return Math.hypot(state.finger.x - held.x, state.finger.y - held.y) / size;
+      return pull.peeled;
     },
     direction: () => {
       const dx = held.x - state.finger.x;

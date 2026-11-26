@@ -20,28 +20,7 @@ export const t = {
     newMaterial: "新しい素材が使えるようになった",
     print: "印刷",
     menu: "メニュー",
-    viewJar: "瓶で見る",
-    viewAlbum: "シール帳で見る",
     lightsOut: "電気を消す",
-  },
-
-  jar: {
-    label: "瓶",
-    list: "瓶の中のステッカー",
-    shake: "振る",
-    reset: "瓶を立て直す",
-    lid: "ふた",
-    tilt: "傾きで動かす",
-    sound: "音",
-    shuffle: "シャッフル",
-    pick: "選ぶ",
-  },
-
-  jarPick: {
-    dialog: "瓶に入れるステッカー",
-    counter: (n: number, max: number) => `${n} / ${max}`,
-    apply: "瓶に入れる",
-    random: "ランダムに戻す",
   },
 
   album: {
@@ -97,10 +76,13 @@ export const t = {
     receivedAdded: (who: string) => `${who} がポケットに入った`,
     receivedDuplicate: "もう持ってる",
     inviteCreate: "自分のも作る",
+    giveBack: "お返しのQR",
   },
 
   qr: {
     dialog: "交換用のQR",
+    giveBackTo: (who: string) => `${who} にお返し`,
+    pick: "QRにするステッカー",
     code: (who: string) => `${who} のQRコード`,
     fullscreen: "全画面",
     share: "リンクを共有",
@@ -142,6 +124,7 @@ export const t = {
 
   menu: {
     dialog: "メニュー",
+    sound: "音",
     iosInstall: "共有からホーム画面に追加\n追加しないと、しばらく開かないときに消えることがある",
     backup: "バックアップ",
     restore: "読み込む",

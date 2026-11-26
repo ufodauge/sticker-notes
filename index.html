@@ -8,13 +8,6 @@
     <link rel="icon" type="image/png" href="icons/favicon-64.png" />
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
     <title>ステッカー帳</title>
-    <script>
-      // the jar is always dark: paint it so from the first frame (see src/data/view-hint.ts)
-      try {
-        if (localStorage.getItem("view-hint") === "jar")
-          document.documentElement.dataset.view = "jar";
-      } catch (e) {}
-    </script>
   </head>
   <body>
     <div id="root"></div>

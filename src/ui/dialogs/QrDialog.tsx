@@ -1,4 +1,4 @@
-import { Check, Copy, Maximize, Share2 } from "lucide-react";
+import { ArrowRight, Check, Copy, Maximize, Share2 } from "lucide-react";
 import { useReducer, useRef } from "react";
 import { encodeBody, type Sticker } from "../../core/payload.ts";
 import {
@@ -14,6 +14,7 @@ import { renderRgba } from "../../core/render.ts";
 import { snsDisplay } from "../../core/sns.ts";
 import { SnsIcon } from "../SnsIcon.tsx";
 import { appBaseUrl, copyText, enterFullscreen } from "../../data/platform.ts";
+import type { StoredSticker } from "../../data/sticker-store.ts";
 import common from "../common.module.css";
 import { Dialog } from "../Dialog.tsx";
 import { useViewport } from "../effects/useViewport.ts";
@@ -24,12 +25,48 @@ import styles from "./QrDialog.module.css";
 
 const MIN_DEVICE_PX_FOR_ROUND_DOTS_THAT_STILL_DECODE = 6;
 
-type Props = { readonly sticker: Sticker; readonly onClose: () => void };
+type Props = {
+  readonly initial: StoredSticker;
+  // one's own stickers to choose from (none: only `initial` is shown)
+  readonly mine: readonly StoredSticker[];
+  // given back for this sticker, just received
+  readonly to: Sticker | undefined;
+  readonly onClose: () => void;
+};
 
-export function QrDialog({ sticker, onClose }: Props) {
+export function QrDialog({ initial, mine, to, onClose }: Props) {
+  const [id, choose] = useReducer((_: string, next: string) => next, initial.id);
+  const shown = mine.find((s) => s.id === id) ?? initial;
   return (
     <Dialog label={t.qr.dialog} variant="full" onClose={onClose}>
-      <QrBody sticker={sticker} />
+      <div className={styles.frame}>
+        {to && (
+          <p className={styles.giveBack}>
+            <StickerView sticker={shown.sticker} scale={1} label="" decorative />
+            <ArrowRight aria-hidden="true" size={18} strokeWidth={1.5} />
+            <StickerView sticker={to} scale={1} label="" decorative />
+            <span>{t.qr.giveBackTo(snsDisplay(to.snsKind, to.snsId))}</span>
+          </p>
+        )}
+        <QrBody key={shown.id} sticker={shown.sticker} />
+        {mine.length > 1 && (
+          <div className={styles.pick} role="group" aria-label={t.qr.pick}>
+            {mine.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                className={styles.choice}
+                aria-pressed={s.id === shown.id}
+                aria-label={snsDisplay(s.sticker.snsKind, s.sticker.snsId)}
+                title={snsDisplay(s.sticker.snsKind, s.sticker.snsId)}
+                onClick={() => choose(s.id)}
+              >
+                <StickerView sticker={s.sticker} scale={1} label="" decorative />
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
     </Dialog>
   );
 }

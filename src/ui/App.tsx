@@ -1,19 +1,9 @@
-import {
-  BookOpen,
-  Bug,
-  Ellipsis,
-  FlaskRound,
-  ImagePlus,
-  Lightbulb,
-  LightbulbOff,
-  Printer,
-} from "lucide-react";
-import { Suspense, use, useReducer, useSyncExternalStore } from "react";
+import { Bug, Ellipsis, ImagePlus, Lightbulb, LightbulbOff, Printer } from "lucide-react";
+import { useReducer, useSyncExternalStore } from "react";
 import { isIos, isStandalone } from "../data/platform.ts";
-import { writeViewHint } from "../data/view-hint.ts";
 import { sortedPages } from "../core/album.ts";
 import { layoutAlbum } from "../core/print.ts";
-import { settings, stickerStore, type AddResult } from "../data/sticker-store.ts";
+import { stickerStore, type AddResult } from "../data/sticker-store.ts";
 import { ActionBar } from "./ActionBar.tsx";
 import { Album } from "./album/Album.tsx";
 import { PageIndicator } from "./album/PageIndicator.tsx";
@@ -21,18 +11,11 @@ import { CarryLayer } from "./album/CarryLayer.tsx";
 import { lights } from "./album/lights.ts";
 import { Pocket } from "./album/Pocket.tsx";
 import { PocketDialog } from "./album/PocketDialog.tsx";
-import { initialState, reducer, type View } from "./app-state.ts";
+import { initialState, reducer } from "./app-state.ts";
 import styles from "./App.module.css";
 import common from "./common.module.css";
-import { blockSelection } from "./jar/block-selection.ts";
-import { jarChrome } from "./jar/chrome.ts";
-import { startupPrefs } from "./jar/jar-prefs.ts";
-import { jarSound } from "./jar/sound.ts";
-import { JarFrame } from "./jar/JarFrame.tsx";
-import { JarView } from "./jar/jar-lazy.ts";
 import { CreateDialog } from "./dialogs/create/CreateDialog.tsx";
 import { backupDue, backupMarkCache } from "./dialogs/menu/backup-mark.ts";
-import { JarPickDialog } from "./dialogs/jar/JarPickDialog.tsx";
 import { MenuDialog } from "./dialogs/menu/MenuDialog.tsx";
 import { PrintDialog } from "./dialogs/print/PrintDialog.tsx";
 import { QrDialog } from "./dialogs/QrDialog.tsx";
@@ -54,24 +37,11 @@ const hasImage = (dt: DataTransfer) =>
   );
 
 export function App() {
-  return (
-    <Suspense fallback={null}>
-      <Booted />
-    </Suspense>
-  );
-}
-
-function Booted() {
-  return <Shell initialView={use(startupPrefs()).view} />;
-}
-
-function Shell({ initialView }: { readonly initialView: View }) {
   const snap = useSyncExternalStore(stickerStore.subscribe, stickerStore.getSnapshot);
   const mark = useSyncExternalStore(backupMarkCache.subscribe, backupMarkCache.get);
   const { toast, highlight } = useSyncExternalStore(feedback.subscribe, feedback.get);
   const printing = useSyncExternalStore(printMode.subscribe, printMode.get);
-  const [state, dispatch] = useReducer(reducer, initialView, initialState);
-  const blockId = useSyncExternalStore(blockSelection.subscribe, blockSelection.get);
+  const [state, dispatch] = useReducer(reducer, initialState);
   const lightsOut = useSyncExternalStore(lights.subscribe, lights.off);
   const debugOn = useSyncExternalStore(debug.subscribe, () => debug.get().on);
   const seenMaterials = useSyncExternalStore(materialsSeen.subscribe, materialsSeen.get);
@@ -79,8 +49,12 @@ function Shell({ initialView }: { readonly initialView: View }) {
 
   const [dropping, setDropping] = useReducer((_: boolean, next: boolean) => next, false);
 
-  const onSaved = (stickerId: string, result: AddResult) =>
+  const onSaved = (stickerId: string, result: AddResult) => {
     feedback.landed(stickerId, result.kind === "added" ? "pocket" : "wiggle", null);
+    // made to give back for one just received: its QR comes up at once
+    const returnTo = state.overlay.kind === "create" ? state.overlay.returnTo : undefined;
+    if (returnTo) dispatch({ type: "open", overlay: { kind: "qr", stickerId, returnTo } });
+  };
 
   const onLeft = () => {
     const leaving = state.leaving;
@@ -107,50 +81,14 @@ function Shell({ initialView }: { readonly initialView: View }) {
     overlay.kind === "qr" ? stickers.find((s) => s.id === overlay.stickerId) : undefined;
   const backSticker =
     overlay.kind === "back" ? stickers.find((s) => s.id === overlay.stickerId) : undefined;
-  const close = () => dispatch({ type: "close", overlay: overlay.kind });
-  const inJar = state.view === "jar" && stickers.length > 0;
-  const jarSticker =
-    inJar && overlay.kind === "none" ? stickers.find((s) => s.id === blockId) : undefined;
-  const switchView = () => {
-    const next = inJar ? "album" : "jar";
-    blockSelection.set(null);
-    // the click is the gesture that lets the jar make sound (iOS only allows it from here)
-    if (next === "jar") jarSound.unlock();
-    else jarSound.release();
-    dispatch({ type: "view", view: next });
-    writeViewHint(next);
-    void settings.set("view", next).catch(() => {});
-  };
-  // the jar is a dark room: the page's theme follows the view in the same commit (and while the
-  // stickers are still loading, so a reload in the jar never shows the album's colours first)
-  const dark = state.view === "jar" && (!ready || stickers.length > 0);
-  const albumDark = lightsOut && !inJar;
-  const room = (el: HTMLElement | null) => (el ? jarChrome(dark) : undefined);
+  const opened = state.opened;
+  const close = () => dispatch({ type: "close", opened });
+  const albumDark = lightsOut;
 
   return (
-    <div
-      className={styles.shell}
-      ref={room}
-      data-jar={dark || undefined}
-      data-dusk={albumDark || undefined}
-    >
+    <div className={styles.shell} data-dusk={albumDark || undefined}>
       <nav className={styles.toolbar} aria-label={t.app.toolbar}>
-        {!inJar && <PageIndicator count={Math.max(1, ready?.pages.length ?? 0)} />}
-        {stickers.length > 0 && (
-          <button
-            type="button"
-            className={common.icon}
-            aria-label={inJar ? t.app.viewAlbum : t.app.viewJar}
-            title={inJar ? t.app.viewAlbum : t.app.viewJar}
-            onClick={switchView}
-          >
-            {inJar ? (
-              <BookOpen aria-hidden="true" size={22} strokeWidth={1.5} />
-            ) : (
-              <FlaskRound aria-hidden="true" size={22} strokeWidth={1.5} />
-            )}
-          </button>
-        )}
+        <PageIndicator count={Math.max(1, ready?.pages.length ?? 0)} />
         <button
           type="button"
           className={`${mine.length === 0 ? `${common.button} ${styles.labeled}` : common.icon} ${styles.menu}`}
@@ -163,7 +101,7 @@ function Shell({ initialView }: { readonly initialView: View }) {
           <ImagePlus aria-hidden="true" size={22} strokeWidth={1.5} />
           {mine.length === 0 && t.app.create.text}
         </button>
-        {stickers.length > 0 && !inJar && (
+        {stickers.length > 0 && (
           <button
             type="button"
             className={common.icon}
@@ -232,12 +170,7 @@ function Shell({ initialView }: { readonly initialView: View }) {
           dispatch({ type: "open", overlay: { kind: "create", file } });
         }}
       >
-        {ready && inJar && (
-          <Suspense fallback={<JarFrame />}>
-            <JarView onPick={() => dispatch({ type: "open", overlay: { kind: "jarPick" } })} />
-          </Suspense>
-        )}
-        {ready && !inJar && (
+        {ready && (
           <Album
             dark={albumDark}
             snap={ready}
@@ -249,7 +182,7 @@ function Shell({ initialView }: { readonly initialView: View }) {
             onCreate={() => dispatch({ type: "open", overlay: { kind: "create" } })}
           />
         )}
-        {ready && !inJar && stickers.length > 0 && (
+        {ready && stickers.length > 0 && (
           <Pocket
             dark={albumDark}
             stickers={pocket}
@@ -278,20 +211,6 @@ function Shell({ initialView }: { readonly initialView: View }) {
           }
         />
       )}
-      {jarSticker && (
-        <ActionBar
-          key={jarSticker.id}
-          sticker={jarSticker}
-          onQr={() => dispatch({ type: "open", overlay: { kind: "qr", stickerId: jarSticker.id } })}
-          onBack={() =>
-            dispatch({ type: "open", overlay: { kind: "back", stickerId: jarSticker.id } })
-          }
-          onDiscard={() => {
-            blockSelection.set(null);
-            void discardSticker(jarSticker.id);
-          }}
-        />
-      )}
       <CarryLayer />
       {toast && (
         <Toast
@@ -302,8 +221,17 @@ function Shell({ initialView }: { readonly initialView: View }) {
           }}
           onAction={() => {
             feedback.dismiss(toast.id);
-            if (toast.action?.kind === "create") {
-              dispatch({ type: "open", overlay: { kind: "create" } });
+            const action = toast.action;
+            if (action?.kind === "create") {
+              dispatch({ type: "open", overlay: { kind: "create", returnTo: action.from } });
+            }
+            // one's own sticker made last is the one most likely meant to be given
+            const latest = mine.toSorted((a, b) => b.addedSeq - a.addedSeq)[0];
+            if (action?.kind === "return" && latest) {
+              dispatch({
+                type: "open",
+                overlay: { kind: "qr", stickerId: latest.id, returnTo: action.from },
+              });
             }
           }}
           onDismiss={() => feedback.dismiss(toast.id)}
@@ -311,19 +239,30 @@ function Shell({ initialView }: { readonly initialView: View }) {
       )}
 
       {overlay.kind === "create" && (
-        <CreateDialog file={overlay.file} onClose={close} onSaved={onSaved} />
+        <CreateDialog key={opened} file={overlay.file} onClose={close} onSaved={onSaved} />
       )}
-      {qrSticker && <QrDialog sticker={qrSticker.sticker} onClose={close} />}
-      {ready && overlay.kind === "print" && <PrintDialog album={ready} onClose={close} />}
-      {ready && overlay.kind === "jarPick" && <JarPickDialog stickers={stickers} onClose={close} />}
+      {qrSticker && overlay.kind === "qr" && (
+        <QrDialog
+          key={opened}
+          initial={qrSticker}
+          mine={overlay.returnTo ? mine : []}
+          to={stickers.find((s) => s.id === overlay.returnTo)?.sticker}
+          onClose={close}
+        />
+      )}
+      {ready && overlay.kind === "print" && (
+        <PrintDialog key={opened} album={ready} onClose={close} />
+      )}
       {overlay.kind === "menu" && (
         <MenuDialog
+          key={opened}
           onClose={close}
           onPeople={() => dispatch({ type: "open", overlay: { kind: "people" } })}
         />
       )}
       {backSticker && (
         <BackDialog
+          key={opened}
           sticker={backSticker}
           all={stickers}
           onPerson={(focus) => dispatch({ type: "open", overlay: { kind: "people", focus } })}
@@ -331,11 +270,12 @@ function Shell({ initialView }: { readonly initialView: View }) {
         />
       )}
       {overlay.kind === "people" && (
-        <PeopleDialog stickers={stickers} focus={overlay.focus} onClose={close} />
+        <PeopleDialog key={opened} stickers={stickers} focus={overlay.focus} onClose={close} />
       )}
-      {overlay.kind === "debug" && <DebugDialog onClose={close} />}
+      {overlay.kind === "debug" && <DebugDialog key={opened} onClose={close} />}
       {ready && overlay.kind === "pocket" && (
         <PocketDialog
+          key={opened}
           stickers={pocket}
           pageIds={sortedPages(ready.pages).map((p) => p.id)}
           onClose={close}

@@ -63,18 +63,12 @@
   }
 }
 
-/* in the jar the room runs behind the toolbar too */
-.shell[data-jar] .toolbar {
-  background: transparent;
-  border-block-start-color: transparent;
-}
-
 .main[data-dropping] {
   outline: 2px dashed var(--ink);
   outline-offset: -8px;
 }
 
-/* lights out in the album: a dim evening room, not the jar's black */
+/* lights out: a dim evening room */
 .shell[data-dusk] {
   color-scheme: dark;
   --paper: #262a3c;

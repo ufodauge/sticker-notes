@@ -13,7 +13,7 @@ export default defineConfig({
     include: ["src/**/*.test.ts", "tools/**/*.test.ts"],
   },
   fmt: {
-    ignorePatterns: ["docs/**", "AGENTS.md", "test/vectors/**", "src/ui/jar3d/models/**"],
+    ignorePatterns: ["docs/**", "AGENTS.md", "test/vectors/**"],
   },
   lint: {
     plugins: ["react", "typescript", "oxc"],
@@ -100,14 +100,6 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ["**/*.{js,css,html,png,webmanifest}"],
-        globIgnores: ["assets/Jar-*.js"],
-        runtimeCaching: [
-          {
-            urlPattern: /\/assets\/(Jar-[^/]+\.js|jolt-physics[^/]*\.wasm)$/,
-            handler: "CacheFirst",
-            options: { cacheName: "jar-chunk", expiration: { maxEntries: 4 } },
-          },
-        ],
         navigateFallback: "index.html",
         cleanupOutdatedCaches: true,
       },

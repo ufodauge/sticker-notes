@@ -11,7 +11,9 @@ export type Undo =
   | { readonly kind: "unreceive"; readonly stickerId: string }
   | { readonly kind: "restore"; readonly discarded: Discarded };
 
-type ToastAction = { readonly kind: "create" };
+// what the toast's button opens: making one's own sticker, or one's own QR to give back (both
+// for the sticker that just came in)
+type ToastAction = { readonly kind: "create" | "return"; readonly from: string };
 
 export type Toast = {
   readonly id: number;

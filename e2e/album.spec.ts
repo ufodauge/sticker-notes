@@ -34,6 +34,33 @@ test("drag persists; discard peels off and undo puts it back", async ({ page }) 
   await expect(page.getByRole("button", { name: SLIME, exact: true })).toBeVisible();
 });
 
+test("pulled outward from its corner, a sticker stays stuck", async ({ page }) => {
+  await receive(page, "slime", SLIME);
+  const placed = page.getByRole("button", { name: SLIME, exact: true });
+  const b = await settledBox(placed);
+  const [saved] = await savedPositions(page);
+  // the first point of the sticker in from its lower right corner
+  const corner = await placed.evaluate(
+    (el, box) => {
+      for (let i = 0; i < box.width / 2; i += 1) {
+        const [x, y] = [box.x + box.width - i, box.y + box.height - i];
+        const hit = document.elementFromPoint(x, y);
+        if (hit && el.contains(hit)) return { x: x - 2, y: y - 2 };
+      }
+      return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+    },
+    { x: b.x, y: b.y, width: b.width, height: b.height },
+  );
+  await page.mouse.move(corner.x, corner.y);
+  await page.mouse.down();
+  await page.mouse.move(corner.x + 160, corner.y + 160, { steps: 12 });
+  await page.mouse.up();
+  const after = await settledBox(placed);
+  expect(after.x).toBeCloseTo(b.x, 0);
+  expect(after.y).toBeCloseTo(b.y, 0);
+  expect((await savedPositions(page))[0]).toEqual(saved);
+});
+
 test("a full spread adds the next spread of the notebook", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "メニュー" }).click();

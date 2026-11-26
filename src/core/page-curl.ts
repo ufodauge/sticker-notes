@@ -182,3 +182,21 @@ export function stripPolygon(r: Roll, s: Strip): Polygon {
   const far = { x: at.x + normal.x * s.d1, y: at.y + normal.y * s.d1 };
   return solid(cut(cut([...r.lifted], near, normal, 1), far, normal, -1));
 }
+
+// A sticker comes off only by being pulled back over itself: the part of the pull outward, away
+// from the sticker, slides the finger over the page without lifting anything. `peeled` is how far
+// (in sticker sizes, the sticker being size × size) the edge has been drawn back toward the far side.
+export function peelPull(held: Pt, finger: Pt, size: number): { finger: Pt; peeled: number } {
+  const ix = size / 2 - held.x;
+  const iy = size / 2 - held.y;
+  const il = Math.hypot(ix, iy) || 1;
+  const [ux, uy] = [ix / il, iy / il];
+  const dx = finger.x - held.x;
+  const dy = finger.y - held.y;
+  const inward = dx * ux + dy * uy;
+  const out = Math.min(0, inward);
+  return {
+    finger: { x: finger.x - out * ux, y: finger.y - out * uy },
+    peeled: Math.max(0, inward) / size,
+  };
+}

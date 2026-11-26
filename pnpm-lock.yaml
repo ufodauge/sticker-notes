@@ -184,15 +184,9 @@ importers:
       idb:
         specifier: ^8.0.4
         version: 8.0.4
-      jolt-physics:
-        specifier: ^1.1.2
-        version: 1.1.2
       lucide-react:
         specifier: 1.77.0
         version: 1.77.0(@types/react@19.3.0)(react@19.3.1)
-      matter-js:
-        specifier: ^0.20.0
-        version: 0.20.0
       qrcode:
         specifier: ^1.5.4
         version: 1.5.4
@@ -208,9 +202,6 @@ importers:
       simple-icons:
         specifier: ^16.38.1
         version: 16.38.1
-      three:
-        specifier: ^0.187.0
-        version: 0.187.0
       valibot:
         specifier: 1.5.0
         version: 1.5.0(typescript@7.1.0-beta)
@@ -230,9 +221,6 @@ importers:
       '@types/babel__core':
         specifier: ^7.20.5
         version: 7.20.5
-      '@types/matter-js':
-        specifier: ^0.20.2
-        version: 0.20.2
       '@types/node':
         specifier: ^26.6.6
         version: 26.6.6
@@ -245,9 +233,6 @@ importers:
       '@types/react-dom':
         specifier: ^19.3.0
         version: 19.3.0(@types/react@19.3.0)
-      '@types/three':
-        specifier: ^0.187.0
-        version: 0.187.0
       '@vitejs/plugin-react':
         specifier: ^6.1.2
         version: 6.3.0(@rolldown/plugin-babel@0.3.1(@babel/core@8.1.3)(@babel/runtime@7.29.15)(@voidzero-dev/vite-plus-core@8.3.8000(@types/node@26.6.6)(jiti@2.7.0)(terser@5.51.4)(typescript@7.1.0-beta)(yaml@2.9.1))(rolldown@1.3.3))(@voidzero-dev/vite-plus-core@8.3.8000(@types/node@26.6.6)(jiti@2.7.0)(terser@5.51.4)(typescript@7.1.0-beta)(yaml@2.9.1))(babel-plugin-react-compiler@1.0.0)
@@ -865,9 +850,6 @@ packages:
 
   '@blazediff/core@1.10.0':
     resolution: {integrity: sha512-AOQff0zgR7cGsZL+4E7hVkmujoPUpm0J9xzWGWZj5wCjd3gmxESXAPfKyuzs93VdpQNFhHlBhfOjrcZ+XTERtQ==}
-
-  '@dimforge/rapier3d-compat@0.12.0':
-    resolution: {integrity: sha512-uekIGetywIgopfD97oDL5PfeezkFpNhwlzlaEYNOA0N6ghdsOvh/HYjSMek5Q2O1PYvRSDFcqFVJl4r4ZBwOow==}
 
   '@emnapi/core@1.11.2':
     resolution: {integrity: sha512-TC8MkTuZUtcTSiFeuC0ksCh9QIJ5+F21MvZ4Wn4ORfYaFJ/0dsiudv5tVkejgwZlwQ39jL9WWDe2lz8x0WglOA==}
@@ -2134,9 +2116,6 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@tweenjs/tween.js@23.1.3':
-    resolution: {integrity: sha512-vJmvvwFxYuGnF2axRtPYocag6Clbb5YS7kLL+SO/TeVFzHqDIWrNKYtcsPMibjDx9O+bu+psAy9NKfWklassUA==}
-
   '@tybys/wasm-util@0.10.5':
     resolution: {integrity: sha512-dOGOPxlaNV+G046mZzN+9C0dAcQZeSKcXiVaM0TYy/LM4ttTmgSBDxYfovcYI8Em3+eAbiAYpvWLOv8+ZVRJKA==}
 
@@ -2173,9 +2152,6 @@ packages:
   '@types/jsesc@2.5.1':
     resolution: {integrity: sha512-9VN+6yxLOPLOav+7PwjZbxiID2bVaeq0ED4qSQmdQTdjnXJSaCVKTR58t15oqH1H5t8Ng2ZX1SabJVoN9Q34bw==}
 
-  '@types/matter-js@0.20.2':
-    resolution: {integrity: sha512-3PPKy3QxvZ89h9+wdBV2488I1JLVs7DEpIkPvgO8JC1mUdiVSO37ZIvVctOTD7hIq8OAL2gJ3ugGSuUip6DhCw==}
-
   '@types/node@26.6.6':
     resolution: {integrity: sha512-MzQj+8Kx3XI40OmUAE6Qoh58ZMNstNNMwn2nfd3qWsfe7nDNSqJNzes4njhz6AHwrSHOffSLwXU6yb474Q4aog==}
 
@@ -2193,17 +2169,8 @@ packages:
   '@types/resolve@1.20.2':
     resolution: {integrity: sha512-60BCwRFOZCQhDncwQdxxeOEEkbc5dIMccYLwbxsS4TUNeVECQ/pBJ0j09mrHOl/JJvpRPGwO9SvE4nR2Nb/a4Q==}
 
-  '@types/stats.js@0.17.4':
-    resolution: {integrity: sha512-jIBvWWShCvlBqBNIZt0KAshWpvSjhkwkEu4ZUcASoAvhmrgAUI2t1dXrjSL4xXVLB4FznPrIsX3nKXFl/Dt4vA==}
-
-  '@types/three@0.187.0':
-    resolution: {integrity: sha512-v+vKNarUtk4n2QRZ4+CN5ygMM0ARUjXjIQl0R/unMUfmStFeVqGbgqarbrpoGTXRZoulSH16ePrVJVxPJEbMUA==}
-
   '@types/trusted-types@2.0.7':
     resolution: {integrity: sha512-ScaPdn1dQczgbl0QFTeTOmVHFULt394XJgOQNoyVhZ6r2vLnMLJfBPd53SB52T/3G36VI1/g2MZaX0cwDuXsfw==}
-
-  '@types/webxr@0.5.24':
-    resolution: {integrity: sha512-h8fgEd/DpoS9CBrjEQXR+dIDraopAEfu4wYVNY2tEPwk60stPWhvZMf4Foo5FakuQ7HFZoa8WceaWFervK2Ovg==}
 
   '@typescript/typescript-aix-ppc64@7.1.0-beta':
     resolution: {integrity: sha512-DXDG+jIWxBHGdoO70tcHON33rCnSzsEZj9P13oyf/r/KEGIo6awsdSNVNjAw0uMwEpqRu75IrgCcW58YcVkZHg==}
@@ -3148,9 +3115,6 @@ packages:
     resolution: {integrity: sha512-AC/7JofJvZGrrneWNaEnJeOLUx+JlGt7tNa0wZiRPT4MY1wmfKjt2+6O2p2uz2+skll8OZZmJMNqeke7kKbNgQ==}
     hasBin: true
 
-  jolt-physics@1.1.2:
-    resolution: {integrity: sha512-rkwIYyagu1O7Kl4LbeUcfoYDKAHXcBl6KuJEXjGLcPWTrWO81sCB5IOMnMkiIjpgr+HnVqcAySAKnYlVW5mKXg==}
-
   js-tokens@10.0.1:
     resolution: {integrity: sha512-XMt+uh+yEs6srFvEb/pEe4IMvbtoXVdNxF7lZFU+I9sdWI641L97L+gXQMTGm1x3RjPUVizNVjHueclXr0U7sw==}
 
@@ -3299,12 +3263,6 @@ packages:
   math-intrinsics@1.1.0:
     resolution: {integrity: sha512-/IXtbwEk5HTPyEwyKX6hGkYXxM9nbj64B+ilVJnC/R6B0pH5G4V3b0pVbL7DBj4tkhBAppbQUlf6F6Xl9LHu1g==}
     engines: {node: '>= 0.4'}
-
-  matter-js@0.20.0:
-    resolution: {integrity: sha512-iC9fYR7zVT3HppNnsFsp9XOoQdQN2tUyfaKg4CHLH8bN+j6GT4Gw7IH2rP0tflAebrHFw730RR3DkVSZRX8hwA==}
-
-  meshoptimizer@1.1.1:
-    resolution: {integrity: sha512-oRFNWJRDA/WTrVj7NWvqa5HqE1t9MYDj2VaWirQCzCCrAd2GHrqR/sQezCxiWATPNlKTcRaPRHPJwIRoPBAp5g==}
 
   minimatch@10.2.6:
     resolution: {integrity: sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A==}
@@ -3866,9 +3824,6 @@ packages:
     resolution: {integrity: sha512-VPi1CkDvCWLGUVIToctNBG+NdHbSXwOPjHJnQ3pdB0XknaldnI76wSkAFOGxV2ZdkzOP5d6gpQ5c58XvDghRvw==}
     engines: {node: '>=10'}
     hasBin: true
-
-  three@0.187.0:
-    resolution: {integrity: sha512-Qiu7R+Cmh8CstZsY1uJOSWnVlfo7ZtNLV7mF8Jltk3LB3AtDu9cRZlcnRKkAk8Y4z6KKw35z7Y7Urd7jWY8etA==}
 
   tinybench@6.2.4:
     resolution: {integrity: sha512-SQ52jEncXxbMCzJuY2A/jGIbbAu6NYsBWW7grz2pNE+EnzQdoGaoBfpk4qC/opE7qiUcGmGgaGIz5EoHdS1O9w==}
@@ -4945,8 +4900,6 @@ snapshots:
 
   '@blazediff/core@1.10.0': {}
 
-  '@dimforge/rapier3d-compat@0.12.0': {}
-
   '@emnapi/core@1.11.2':
     dependencies:
       '@emnapi/wasi-threads': 1.2.2
@@ -5736,8 +5689,6 @@ snapshots:
   '@tsrs/win32-x64@7.1.0-beta.tsrs2':
     optional: true
 
-  '@tweenjs/tween.js@23.1.3': {}
-
   '@tybys/wasm-util@0.10.5':
     dependencies:
       tslib: 2.9.1
@@ -5781,8 +5732,6 @@ snapshots:
 
   '@types/jsesc@2.5.1': {}
 
-  '@types/matter-js@0.20.2': {}
-
   '@types/node@26.6.6':
     dependencies:
       undici-types: 8.9.0
@@ -5801,20 +5750,7 @@ snapshots:
 
   '@types/resolve@1.20.2': {}
 
-  '@types/stats.js@0.17.4': {}
-
-  '@types/three@0.187.0':
-    dependencies:
-      '@dimforge/rapier3d-compat': 0.12.0
-      '@tweenjs/tween.js': 23.1.3
-      '@types/stats.js': 0.17.4
-      '@types/webxr': 0.5.24
-      fflate: 0.8.3
-      meshoptimizer: 1.1.1
-
   '@types/trusted-types@2.0.7': {}
-
-  '@types/webxr@0.5.24': {}
 
   '@typescript/typescript-aix-ppc64@7.1.0-beta':
     optional: true
@@ -6659,8 +6595,6 @@ snapshots:
 
   jiti@2.7.0: {}
 
-  jolt-physics@1.1.2: {}
-
   js-tokens@10.0.1: {}
 
   js-tokens@4.0.0: {}
@@ -6775,10 +6709,6 @@ snapshots:
       '@jridgewell/sourcemap-codec': 1.6.0
 
   math-intrinsics@1.1.0: {}
-
-  matter-js@0.20.0: {}
-
-  meshoptimizer@1.1.1: {}
 
   minimatch@10.2.6:
     dependencies:
@@ -7363,8 +7293,6 @@ snapshots:
       acorn: 8.19.0
       commander: 2.20.3
       source-map-support: 0.5.21
-
-  three@0.187.0: {}
 
   tinybench@6.2.4: {}
 

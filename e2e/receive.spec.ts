@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { fragmentOf, pocketButton, receiveToPocket, savedPositions } from "./helpers.ts";
+import { fragmentOf, pocketButton, readQr, receiveToPocket, savedPositions } from "./helpers.ts";
 
 const SLIME = "X @sticker_fan2026";
 
@@ -105,4 +105,51 @@ test("the labelled create button and the persistent toast fit 320px", async ({ p
   expect(
     toast && dismiss && dismiss.x >= toast.x && dismiss.x + dismiss.width <= toast.x + toast.width,
   ).toBe(true);
+});
+
+async function makeOwn(page: Page, id: string): Promise<void> {
+  await createButton(page).click();
+  await page.locator('input[type="file"]').setInputFiles("test/fixtures/sample.png");
+  await expect(page.getByRole("img", { name: "作成中のステッカー" })).toBeVisible();
+  await page.getByLabel("ID", { exact: true }).fill(id);
+  await page.getByRole("button", { name: "ポケットに入れる" }).click();
+}
+
+test("a sticker received gets one given back: the toast opens one's own QR for them", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await makeOwn(page, "mine_1");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await makeOwn(page, "mine_2");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.goto(`/${fragmentOf("slime")}`);
+  await page.getByRole("button", { name: "お返しのQR" }).click();
+  const dialog = page.getByRole("dialog", { name: "交換用のQR" });
+  await expect(dialog).toContainText(`${SLIME} にお返し`);
+  // the one made last comes first; the others can be chosen instead
+  expect((await readQr(page))?.snsId).toBe("mine_2");
+  await dialog
+    .getByRole("group", { name: "QRにするステッカー" })
+    .getByRole("button", { name: "X @mine_1" })
+    .click();
+  await expect(dialog.getByRole("button", { name: "X @mine_1" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  expect((await readQr(page))?.snsId).toBe("mine_1");
+});
+
+test("with none of one's own yet, the one made from the invitation is given back at once", async ({
+  page,
+}) => {
+  await receiveToPocket(page, "slime");
+  await invitation(page).click();
+  await page.locator('input[type="file"]').setInputFiles("test/fixtures/sample.png");
+  await expect(page.getByRole("img", { name: "作成中のステッカー" })).toBeVisible();
+  await page.getByLabel("ID", { exact: true }).fill("mine_1");
+  await page.getByRole("button", { name: "ポケットに入れる" }).click();
+  const dialog = page.getByRole("dialog", { name: "交換用のQR" });
+  await expect(dialog).toContainText(`${SLIME} にお返し`);
+  expect((await readQr(page))?.snsId).toBe("mine_1");
 });
