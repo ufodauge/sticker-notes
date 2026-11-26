@@ -228,7 +228,9 @@ export const settings = {
     const r = v.safeParse(SETTINGS[key], raw);
     return r.success ? (r.output as SettingValue<K>) : null;
   },
+  // resolves once the write is committed (not just requested), so a reload right after keeps it
   set: async <K extends SettingKey>(key: K, value: SettingValue<K>): Promise<void> => {
-    await (await dbPromise()).put("settings", { key, value });
+    const tx = (await dbPromise()).transaction("settings", "readwrite");
+    await Promise.all([tx.store.put({ key, value }), tx.done]);
   },
 };

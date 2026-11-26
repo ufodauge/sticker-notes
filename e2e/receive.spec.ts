@@ -68,6 +68,8 @@ test("the persistent toast can be dismissed", async ({ page }) => {
 
 test("a later receive shows the usual short toast", async ({ page }) => {
   await receiveToPocket(page, "slime");
+  // the invitation is saved as shown just before it appears
+  await expect(page.getByRole("button", { name: "案内を閉じる" })).toBeVisible();
   await page.reload();
   await page.goto(`/${fragmentOf("noise")}`);
   await expect(page.getByRole("status")).toContainText("がポケットに入った");
