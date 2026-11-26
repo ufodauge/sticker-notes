@@ -170,3 +170,13 @@ test("the debug menu tries an exchange: someone's sticker arrives as by a link",
   await page.getByRole("button", { name: "交換をためす" }).click();
   await expect(pocketButton(page)).toHaveAccessibleName("ポケット(2枚)");
 });
+
+test("someone new is met with a stamp: the nth person met", async ({ page }) => {
+  await receiveToPocket(page, "slime");
+  await expect(page.getByRole("status")).toContainText("・1人目");
+  await page.goto(`/${fragmentOf("discord")}`);
+  await expect(page.getByRole("status")).toContainText("・2人目");
+  await expect(page.locator('[class*="stamp"]').first()).toHaveText("2人目");
+  await page.goto(`/${fragmentOf("noise")}`);
+  await expect(page.getByRole("status")).toContainText("・3人目");
+});

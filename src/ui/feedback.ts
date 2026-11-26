@@ -23,7 +23,14 @@ export type Toast = {
   readonly persistent?: boolean;
 };
 
-export type Feedback = { readonly toast: Toast | null; readonly highlight: Highlight | null };
+// a stamp pressed over the desk when a sticker comes from someone new: the nth person met
+export type Stamp = { readonly n: number; readonly id: number };
+
+export type Feedback = {
+  readonly toast: Toast | null;
+  readonly highlight: Highlight | null;
+  readonly stamp: Stamp | null;
+};
 
 const SHOW_MS = 6000;
 
@@ -34,7 +41,7 @@ const state: {
   timer: ReturnType<typeof setTimeout> | undefined;
   listeners: Set<Listener>;
 } = {
-  value: { toast: null, highlight: null },
+  value: { toast: null, highlight: null, stamp: null },
   seq: 0,
   timer: undefined,
   listeners: new Set(),
@@ -64,9 +71,16 @@ export const feedback = {
 
   landed: (stickerId: string, effect: Highlight["effect"], t: Omit<Toast, "id"> | null): void =>
     publish({
+      ...state.value,
       highlight: { stickerId, effect, nonce: ++state.seq },
       toast: t ? showToast(t) : state.value.toast,
     }),
+
+  stamp: (n: number): void => publish({ ...state.value, stamp: { n, id: ++state.seq } }),
+  // the stamp has faded away
+  unstamp: (id: number): void => {
+    if (state.value.stamp?.id === id) publish({ ...state.value, stamp: null });
+  },
 
   dismiss: (id: number): void => {
     if (state.value.toast?.id === id) publish({ ...state.value, toast: null });

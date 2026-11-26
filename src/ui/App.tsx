@@ -32,6 +32,7 @@ import { PrinterCopy } from "./dialogs/print/Sheets.tsx";
 import { feedback } from "./feedback.ts";
 import { debugText, t } from "./messages.ts";
 import { printMode } from "./print-mode.ts";
+import { Stamp } from "./Stamp.tsx";
 import { Toast } from "./Toast.tsx";
 import { discardSticker, undo } from "./undo.ts";
 
@@ -54,7 +55,7 @@ function centreOnce(el: HTMLElement | null): void {
 export function App() {
   const snap = useSyncExternalStore(stickerStore.subscribe, stickerStore.getSnapshot);
   const mark = useSyncExternalStore(backupMarkCache.subscribe, backupMarkCache.get);
-  const { toast, highlight } = useSyncExternalStore(feedback.subscribe, feedback.get);
+  const { toast, highlight, stamp } = useSyncExternalStore(feedback.subscribe, feedback.get);
   const printing = useSyncExternalStore(printMode.subscribe, printMode.get);
   const [state, dispatch] = useReducer(reducer, initialState);
   const debugOn = useSyncExternalStore(debug.subscribe, () => debug.get().on);
@@ -224,6 +225,7 @@ export function App() {
         />
       )}
       <CarryLayer />
+      {stamp && <Stamp key={stamp.id} stamp={stamp} onDone={() => feedback.unstamp(stamp.id)} />}
       {toast && (
         <Toast
           key={toast.id}

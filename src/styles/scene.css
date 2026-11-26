@@ -31,6 +31,8 @@
   --night-strength: 1.15;
   --leaf-shadow: 24 36 26;
   --leaf-strength: 0.3;
+  /* the ink of the stamp pressed when someone new is met */
+  --stamp-ink: 196 40 48;
   /* where the desk lamp stands, as a point on the screen */
   --lamp-at: 24% 20%;
 

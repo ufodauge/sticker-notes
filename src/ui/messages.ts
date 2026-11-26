@@ -70,6 +70,7 @@ export const t = {
     receivedInvalid: "読み込めないステッカー",
     receivedAdded: (who: string) => `${who} がポケットに入った`,
     receivedDuplicate: "もう持ってる",
+    nthPerson: (n: number) => `${n}人目`,
     inviteCreate: "自分のも作る",
     giveBack: "お返しのQR",
   },
