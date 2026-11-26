@@ -1,0 +1,104 @@
+/* The tutorial is UI: paper and ink and a thin line, over everything but the dialogs. */
+.layer {
+  position: fixed;
+  inset: 0;
+  z-index: 100003;
+  pointer-events: none;
+}
+
+.caption {
+  position: absolute;
+  inset-block-start: max(var(--space-3), env(safe-area-inset-top));
+  /* at the top left, clear of the pocket at the top right */
+  inset-inline-start: var(--space-4);
+  inline-size: fit-content;
+  max-inline-size: calc(100% - var(--space-4) - 128px);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.12);
+  word-break: keep-all;
+  pointer-events: auto;
+}
+
+.count {
+  color: var(--ink-soft);
+  font-size: var(--text-small);
+  font-variant-numeric: tabular-nums;
+}
+
+.close {
+  flex: none;
+}
+
+/* the ghostly finger, doing the step on the real thing, again and again */
+.finger {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  display: grid;
+  place-items: center;
+  inline-size: 52px;
+  block-size: 52px;
+  margin: -6px 0 0 -14px;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.55);
+  box-shadow:
+    0 0 0 2px rgb(255 255 255 / 0.8),
+    0 4px 10px rgb(0 0 0 / 0.2);
+  color: var(--sheet-ink-strong);
+  translate: var(--x0) var(--y0);
+}
+
+.finger[hidden] {
+  display: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .finger {
+    animation: demo 2.2s var(--ease-out) infinite;
+  }
+
+  .finger[data-tap] {
+    animation: tap 1.4s ease-in-out infinite;
+  }
+}
+
+@keyframes demo {
+  0%,
+  12% {
+    translate: var(--x0) var(--y0);
+    scale: 1;
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+    scale: 0.88;
+  }
+  70% {
+    translate: var(--x1) var(--y1);
+    scale: 0.88;
+    opacity: 1;
+  }
+  85%,
+  100% {
+    translate: var(--x1) var(--y1);
+    scale: 1;
+    opacity: 0;
+  }
+}
+
+@keyframes tap {
+  0%,
+  100% {
+    scale: 1;
+  }
+  45% {
+    scale: 0.82;
+  }
+}

@@ -10,7 +10,7 @@ import {
   type PlacementChange,
 } from "../core/album.ts";
 import { parseBackup, planMerge, serializeBackup, type BackupError } from "../core/backup.ts";
-import { decodeBody, type Sticker } from "../core/payload.ts";
+import { decodeBody, encodeBody, stickerIdOf, type Sticker } from "../core/payload.ts";
 import {
   addToPocket,
   applyMerge,
@@ -114,6 +114,16 @@ export const stickerStore = {
     await refresh();
     if (result.kind === "added") void requestPersist().catch(() => undefined);
     return result;
+  },
+
+  // The stickers the album starts with, stuck one after another on its first page.
+  seedSamples: async (samples: readonly Sticker[]): Promise<void> => {
+    for (const sticker of samples) {
+      const body = encodeBody(sticker);
+      const id = await stickerIdOf(body);
+      await stickerStore.add(id, body, "sample");
+      await stickerStore.place(id, { near: undefined });
+    }
   },
 
   // Out of the pocket and onto a page: at a point on a page (a page that does not exist yet is

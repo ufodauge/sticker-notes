@@ -7,7 +7,8 @@ const BACKUP_FORMAT = "sticker-notes-backup";
 const BACKUP_VERSION = 2;
 const MAX_BACKUP_BYTES = 20 * 1024 * 1024;
 
-const StickerOriginSchema = v.picklist(["mine", "received"]);
+// sample: one of the stickers the album starts with, to learn on (no one gave it)
+const StickerOriginSchema = v.picklist(["mine", "received", "sample"]);
 export type StickerOrigin = v.InferOutput<typeof StickerOriginSchema>;
 
 export const LocalDateSchema = v.pipe(v.string(), v.regex(/^\d{4}-\d{2}-\d{2}$/));

@@ -33,6 +33,8 @@ import { feedback } from "./feedback.ts";
 import { debugText, t } from "./messages.ts";
 import { printMode } from "./print-mode.ts";
 import { Stamp } from "./Stamp.tsx";
+import { Tutorial } from "./tutorial/Tutorial.tsx";
+import { tutorial } from "./tutorial/tutorial-store.ts";
 import { Toast } from "./Toast.tsx";
 import { discardSticker, undo } from "./undo.ts";
 
@@ -65,7 +67,13 @@ export function App() {
 
   const [dropping, setDropping] = useReducer((_: boolean, next: boolean) => next, false);
 
+  const openCreate = (with_: { readonly file?: File; readonly returnTo?: string } = {}) => {
+    tutorial.event("create");
+    dispatch({ type: "open", overlay: { kind: "create", ...with_ } });
+  };
+
   const onSaved = (stickerId: string, result: AddResult) => {
+    tutorial.event("created");
     feedback.landed(stickerId, result.kind === "added" ? "pocket" : "wiggle", null);
     // made to give back for one just received: its QR comes up at once
     const returnTo = state.overlay.kind === "create" ? state.overlay.returnTo : undefined;
@@ -110,7 +118,7 @@ export function App() {
           aria-description={newMaterial ? t.app.newMaterial : undefined}
           title={newMaterial ? t.app.newMaterial : t.app.create.tooltip}
           data-dot={newMaterial || undefined}
-          onClick={() => dispatch({ type: "open", overlay: { kind: "create" } })}
+          onClick={() => openCreate()}
         >
           <ImagePlus aria-hidden="true" size={22} strokeWidth={1.5} />
           {mine.length === 0 && t.app.create.text}
@@ -167,7 +175,7 @@ export function App() {
           const file = Array.from(e.dataTransfer.files).find((f) => f.type.startsWith("image/"));
           if (!file) return;
           e.preventDefault();
-          dispatch({ type: "open", overlay: { kind: "create", file } });
+          openCreate({ file });
         }}
       >
         <div className={styles.scroller} ref={centreOnce} data-desk-view="">
@@ -189,7 +197,7 @@ export function App() {
                   leaving={state.leaving?.placementId ?? null}
                   onSelect={(placementId) => dispatch({ type: "select", placementId })}
                   onLeft={onLeft}
-                  onCreate={() => dispatch({ type: "open", overlay: { kind: "create" } })}
+                  onCreate={() => openCreate()}
                 />
               )}
             </div>
@@ -225,6 +233,7 @@ export function App() {
         />
       )}
       <CarryLayer />
+      <Tutorial />
       {stamp && <Stamp key={stamp.id} stamp={stamp} onDone={() => feedback.unstamp(stamp.id)} />}
       {toast && (
         <Toast
@@ -237,7 +246,7 @@ export function App() {
             feedback.dismiss(toast.id);
             const action = toast.action;
             if (action?.kind === "create") {
-              dispatch({ type: "open", overlay: { kind: "create", returnTo: action.from } });
+              openCreate({ returnTo: action.from });
             }
             // one's own sticker made last is the one most likely meant to be given
             const latest = mine.toSorted((a, b) => b.addedSeq - a.addedSeq)[0];

@@ -6,7 +6,19 @@ export default defineConfig({
   testDir: "e2e",
   fullyParallel: true,
   reporter: "list",
-  use: { baseURL: `http://localhost:${PORT}/` },
+  use: {
+    baseURL: `http://localhost:${PORT}/`,
+    // the first-visit tutorial (and its sample stickers) is left out; e2e/tutorial.spec.ts has it
+    storageState: {
+      cookies: [],
+      origins: [
+        {
+          origin: `http://localhost:${PORT}`,
+          localStorage: [{ name: "sticker-notes:skip-tutorial", value: "1" }],
+        },
+      ],
+    },
+  },
   projects: [
     { name: "chromium", use: { ...devices["Pixel 7"] } },
     { name: "webkit", use: { ...devices["iPhone 15"] } },

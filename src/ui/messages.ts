@@ -31,9 +31,25 @@ export const t = {
     handle: { label: "回転と大きさ(ドラッグ)", tooltip: "回転と大きさ" },
   },
 
+  tutorial: {
+    start: {
+      peeled: "端をつまんで剥がす",
+      placed: "好きな所に貼る",
+      turned: "ページの端でめくる",
+      create: "自分のも作ってみる",
+    },
+    received: {
+      placed: "ポケットから引き出す",
+      created: "お返しを作る",
+    },
+    count: (i: number, n: number) => `${i}/${n}`,
+    close: "チュートリアルを閉じる",
+  },
+
   desk: { desk: "机" } satisfies Readonly<Record<SurfaceKind, string>>,
 
   pocket: {
+    sample: "見本",
     open: (n: number) => `ポケット(${n}枚)`,
     dialog: "ポケット",
     pick: (who: string) => `${who} を手に取る`,

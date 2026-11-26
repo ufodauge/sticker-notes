@@ -26,6 +26,8 @@ export function Backing({ sticker, small, className, children }: Props) {
       <span className={styles.note}>
         {sticker.origin === "mine" ? (
           <span>{t.pocket.made}</span>
+        ) : sticker.origin === "sample" ? (
+          <span>{t.pocket.sample}</span>
         ) : (
           <span className={styles.from}>
             <span className={styles.fromWord}>{t.pocket.from}</span>

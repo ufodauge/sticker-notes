@@ -8,15 +8,20 @@ import { listenForPrint } from "./ui/print-mode.ts";
 import { listenForShine } from "./ui/shine.ts";
 import { startDebug } from "./ui/debug.ts";
 import { followClock } from "./ui/scene/clock.ts";
+import { startTutorial } from "./ui/tutorial/tutorial-store.ts";
+import { FRAGMENT_PREFIX } from "./core/payload.ts";
 import { DEBUG_BUILD } from "./ui/debug-build.ts";
 import { reportReceived } from "./ui/received.ts";
 
+// a first visit may come by someone's shared sticker: its tutorial is another one
+const arrivedByLink = location.hash.startsWith(`#${FRAGMENT_PREFIX}`);
 const links = new AbortController();
 keepAppUpdated(links.signal);
 listenForStickerLinks(reportReceived, links.signal);
 listenForPrint(links.signal);
 listenForShine(links.signal);
 followClock(links.signal);
+startTutorial(arrivedByLink, links.signal);
 if (DEBUG_BUILD) void startDebug();
 import.meta.hot?.dispose(() => links.abort());
 
