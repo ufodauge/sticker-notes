@@ -3,7 +3,6 @@ const METRES_PER_UNIT = 0.033;
 const perCubicUnit = (kgPerCubicMetre: number) => kgPerCubicMetre * METRES_PER_UNIT ** 3;
 
 export const PHYSICS3D = {
-  metresPerUnit: METRES_PER_UNIT,
   // a little lighter than real: at true g the blocks felt too heavy on a phone
   gravity: (9.81 * 0.72) / METRES_PER_UNIT,
   acrylicDensity: perCubicUnit(1180),
@@ -28,8 +27,6 @@ export const JAR3D = {
   height: 5.2,
   cornerRadius: 0.5,
   lipOut: 0.1,
-  deskHalfWidth: 16,
-  deskHalfDepth: 9,
   deskThickness: 0.6,
   viewWidth: 6.8,
   elevationDeg: 19,

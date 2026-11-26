@@ -7,7 +7,6 @@ import {
   type ReactNode,
 } from "react";
 import { applyChange, type Placement } from "../../core/album.ts";
-import { DEFAULT_OUTLINE, edgeDepth, outlinePath } from "../../core/render.ts";
 import { snsDisplay } from "../../core/sns.ts";
 import { stickerStore, type StoredSticker } from "../../data/sticker-store.ts";
 import { feedback, type Highlight } from "../feedback.ts";
@@ -28,6 +27,7 @@ import {
 } from "./gesture.ts";
 import { showPage } from "./page-position.ts";
 import { startPeel, type PeelView } from "./sticker-peel.ts";
+import { GRACE_DOTS, onEdge, touchShape } from "./sticker-touch.ts";
 import styles from "./PageCanvas.module.css";
 import { paperSound } from "./paper-sound.ts";
 
@@ -76,39 +76,6 @@ const NUDGE = 0.01;
 const TAP_SLOP = 6;
 // how far (in sticker sizes) the finger pulls the rolled edge before the sticker comes off
 const PEEL_DISTANCE = 1.05;
-// only this close to its outline (in dots of the 36-dot sticker) can a sticker be lifted
-// (a fingertip covers more of it than a mouse pointer)
-const EDGE_DOTS = { fine: 6, coarse: 9 } as const;
-// the touchable shape reaches this many dots beyond the sticker's outline, so an edge is easy to
-// catch with a finger
-const GRACE_DOTS = 3;
-
-const depths = new Map<string, ReturnType<typeof edgeDepth>>();
-const depthOf = (s: StoredSticker) => {
-  const known = depths.get(s.id);
-  if (known) return known;
-  const d = edgeDepth(s.sticker);
-  depths.set(s.id, d);
-  return d;
-};
-
-// Whether a point on screen lies on the sticker's edge, where a fingernail can get under it.
-function onEdge(s: StoredSticker, p: Placement, box: Box, at: Pt, pointer: string): boolean {
-  const size = (box.width / 600) * 36 * p.scale;
-  const dx = at.x - (box.left + p.x * box.width);
-  const dy = at.y - (box.top + p.y * box.height);
-  const r = (-p.rotation * Math.PI) / 180;
-  const u = (dx * Math.cos(r) - dy * Math.sin(r)) / size + 0.5;
-  const v = (dx * Math.sin(r) + dy * Math.cos(r)) / size + 0.5;
-  const { size: cells, depth } = depthOf(s);
-  const cx = Math.floor(u * cells);
-  const cy = Math.floor(v * cells);
-  // just outside the outline (where the grace lets a finger land) counts as the edge
-  if (cx < 0 || cy < 0 || cx >= cells || cy >= cells) return true;
-  const d = depth[cy * cells + cx] ?? 0;
-  return d <= (pointer === "mouse" ? EDGE_DOTS.fine : EDGE_DOTS.coarse);
-}
-
 const KEY_CHANGES: Readonly<
   Record<string, (p: Placement) => Parameters<typeof stickerStore.update>[1]>
 > = {
@@ -480,7 +447,7 @@ export function PageCanvas(props: Props) {
           const s = stickers.get(p.stickerId);
           if (!s) return null;
           const hl = highlight?.stickerId === p.stickerId ? highlight : null;
-          const shape = outlinePath(s.sticker, DEFAULT_OUTLINE + GRACE_DOTS);
+          const shape = touchShape(s);
           return (
             <div
               key={p.id}

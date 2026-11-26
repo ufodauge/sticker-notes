@@ -68,8 +68,7 @@ export function serializeBackup(data: BackupData, exportedAt: Date): string {
   });
 }
 
-const BACKUP_ERRORS = ["not-json", "not-backup", "newer-version", "too-large"] as const;
-export type BackupError = (typeof BACKUP_ERRORS)[number];
+export type BackupError = "not-json" | "not-backup" | "newer-version" | "too-large";
 
 export type ParseResult =
   | { readonly ok: true; readonly data: BackupData; readonly skipped: number }

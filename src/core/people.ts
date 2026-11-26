@@ -39,9 +39,9 @@ export function peopleOf(stickers: readonly Held[]): readonly Person[] {
       });
       return map;
     }, new Map<string, Person>());
-  const order = [...byKey.values()];
-  return order.toSorted((a, b) => {
-    if (a.first === b.first) return order.indexOf(a) - order.indexOf(b);
+  // a stable sort: people first met on the same day stay in the order they came
+  return [...byKey.values()].toSorted((a, b) => {
+    if (a.first === b.first) return 0;
     if (a.first === null) return 1;
     if (b.first === null) return -1;
     return a.first < b.first ? -1 : 1;

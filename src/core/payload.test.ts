@@ -321,6 +321,22 @@ describe("material byte", () => {
     });
   });
 
+  test("encoding refuses a material the byte cannot carry", () => {
+    const bad = (material: unknown) => () =>
+      encodeBody({ ...slime, material: material as Sticker["material"] });
+    expect(bad({ kind: "chrome", tone: 0 })).toThrow();
+    expect(bad({ kind: "holo", tone: 1 })).toThrow();
+    expect(bad({ kind: "foil", tone: -1 })).toThrow();
+    expect(bad({ kind: "foil", tone: 16 })).toThrow();
+    expect(bad({ kind: "foil", tone: 1.5 })).toThrow();
+    const opaque = { ...slime, transparentIndex: null };
+    for (const tone of [0, 15]) {
+      const s = { ...opaque, material: { kind: "foil", tone } } as const;
+      const r = decodeBody(encodeBody(s));
+      expect(r.ok && r.sticker.material).toEqual({ kind: "foil", tone });
+    }
+  });
+
   test("foil cannot turn the transparent colour to metal", () => {
     const t = slime.transparentIndex ?? 0;
     expect(() =>

@@ -52,30 +52,10 @@ export function isSnsKind(n: number): n is SnsKind {
   return Object.hasOwn(SNS, n);
 }
 
-const DANGEROUS_RANGES: readonly (readonly [number, number])[] = [
-  [0x0000, 0x001f],
-  [0x007f, 0x009f],
-  [0x200b, 0x200f],
-  [0x202a, 0x202e],
-  [0x2060, 0x2069],
-  [0xfeff, 0xfeff],
-];
-
-function hasDangerousChars(s: string): boolean {
-  return Array.from(s).some((ch) => {
-    const cp = ch.codePointAt(0) ?? 0;
-    return DANGEROUS_RANGES.some(([lo, hi]) => cp >= lo && cp <= hi);
-  });
-}
-
+// Each service's pattern is plain ASCII, so control, zero-width and direction-changing characters
+// never get through (the tests check this for every service).
 const idSchema = (kind: SnsKind) =>
-  v.pipe(
-    v.string(),
-    v.check((s: string) => !hasDangerousChars(s)),
-    v.minBytes(1),
-    v.maxBytes(MAX_ID_BYTES),
-    v.regex(SNS[kind].pattern),
-  );
+  v.pipe(v.string(), v.minBytes(1), v.maxBytes(MAX_ID_BYTES), v.regex(SNS[kind].pattern));
 
 export function isValidSnsId(kind: SnsKind, id: string): boolean {
   return v.is(idSchema(kind), id);

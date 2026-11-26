@@ -233,10 +233,6 @@
   margin-block-end: var(--space-1);
 }
 
-.pre {
-  white-space: pre-line;
-}
-
 .kinds {
   display: flex;
   gap: var(--space-1);

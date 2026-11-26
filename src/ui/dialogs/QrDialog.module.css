@@ -37,16 +37,6 @@
   overflow-wrap: anywhere;
 }
 
-.pre {
-  white-space: pre-line;
-  text-align: center;
-}
-
-.inline {
-  vertical-align: -3px;
-  margin-inline-end: 4px;
-}
-
 .sns {
   display: inline-flex;
   align-items: center;

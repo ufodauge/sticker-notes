@@ -45,10 +45,15 @@ describe("isValidSnsId", () => {
     expect(isValidSnsId(kind, id)).toBe(ok);
   });
 
-  test("rejects bidi / zero width everywhere", () => {
+  test("rejects control, zero-width and direction characters everywhere", () => {
+    const dangerous = [
+      0x00, 0x0a, 0x1f, 0x7f, 0x85, 0x9f, 0x200b, 0x200d, 0x200f, 0x202a, 0x202e, 0x2060, 0x2066,
+      0x2069, 0xfeff,
+    ];
     for (const kind of [1, 2, 3, 4] as const) {
-      expect(isValidSnsId(kind, "ab‮cd")).toBe(false);
-      expect(isValidSnsId(kind, "ab‍cd")).toBe(false);
+      for (const cp of dangerous) {
+        expect(isValidSnsId(kind, `ab${String.fromCodePoint(cp)}cd`)).toBe(false);
+      }
     }
   });
 });

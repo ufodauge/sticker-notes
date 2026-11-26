@@ -33,4 +33,27 @@ describe("people", () => {
     ]);
     expect(people.map((p) => p.id)).toEqual(["early", "late", "undated1", "undated2"]);
   });
+
+  test("a person's first day is the earliest of their stickers, undated ones aside", () => {
+    const people = peopleOf([
+      held("a", 1, "x", null),
+      held("b", 1, "x", "2026-05-01"),
+      held("c", 1, "x", "2026-03-01"),
+      held("d", 1, "x", null),
+      held("e", 1, "x", "2026-04-01"),
+    ]);
+    expect(people.map((p) => [p.first, p.stickerIds])).toEqual([
+      ["2026-03-01", ["a", "b", "c", "d", "e"]],
+    ]);
+  });
+
+  test("people met on the same day stay in the order they came; the key ignores case", () => {
+    const people = peopleOf([
+      held("a", 1, "Zed", "2026-06-01"),
+      held("b", 2, "Amy", "2026-06-01"),
+      held("c", 1, "Bob", "2026-05-31"),
+    ]);
+    expect(people.map((p) => p.id)).toEqual(["Bob", "Zed", "Amy"]);
+    expect(people.map((p) => p.key)).toEqual(["1:bob", "1:zed", "2:amy"]);
+  });
 });

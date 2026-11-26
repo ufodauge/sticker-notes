@@ -1,23 +1,12 @@
-// A page turned where it is gripped, as paper does it: the gripped point is drawn toward the finger
-// and the page folds along the line halfway between them (grip the edge and it folds straight; grip
-// near a corner and the corner curls). Coordinates are the page's own, measured outward from
-// the spine: u from 0 (the spine) to w (the free edge), v from 0 (top) to h (bottom).
+// Paper lifted where it is gripped, as a page being turned or a sticker being peeled: the gripped
+// point is drawn to the finger and the paper rolls over on the way (grip an edge and it rolls
+// straight; grip near a corner and the corner curls). Coordinates are the paper's own; for a page,
+// measured outward from the spine: x from 0 (the spine) to w (the free edge), y from 0 to h.
 
 export type Pt = { readonly x: number; readonly y: number };
 type Polygon = readonly Pt[];
 // a canvas transform [a, b, c, d, e, f]: x' = a·x + c·y + e, y' = b·x + d·y + f
 export type Matrix = readonly [number, number, number, number, number, number];
-
-export type Fold = {
-  // a point on the fold and the unit normal pointing toward the lifted corner
-  readonly at: Pt;
-  readonly normal: Pt;
-  // the part of the page still lying flat, and the lifted flap where it now lies (turned over)
-  readonly flat: Polygon;
-  readonly flap: Polygon;
-  // takes a point of the page to where it lies once folded over
-  readonly mirror: Matrix;
-};
 
 const sub = (a: Pt, b: Pt): Pt => ({ x: a.x - b.x, y: a.y - b.y });
 const dot = (a: Pt, b: Pt) => a.x * b.x + a.y * b.y;
@@ -67,36 +56,8 @@ const area = (poly: Polygon) =>
 // a sliver with no area (the page edge lying on the fold) is no polygon at all
 const solid = (poly: Pt[]): Polygon => (area(poly) < 1e-6 ? [] : poly);
 
-// The fold for the corner drawn to the finger; undefined while the page still lies flat.
-export function fold(corner: Pt, finger: Pt, w: number, h: number): Fold | undefined {
-  const d = sub(corner, finger);
-  const l = len(d);
-  if (l < 0.5) return undefined;
-  const normal = { x: d.x / l, y: d.y / l };
-  const at = { x: (corner.x + finger.x) / 2, y: (corner.y + finger.y) / 2 };
-  // reflection across the fold: p ↦ p − 2((p − at)·n)n
-  const [nx, ny] = [normal.x, normal.y];
-  const a = 1 - 2 * nx * nx;
-  const b = -2 * nx * ny;
-  const dd = 1 - 2 * ny * ny;
-  const k = 2 * (at.x * nx + at.y * ny);
-  const mirror: Matrix = [a, b, b, dd, k * nx, k * ny];
-  const page: Polygon = [
-    { x: 0, y: 0 },
-    { x: w, y: 0 },
-    { x: w, y: h },
-    { x: 0, y: h },
-  ];
-  return {
-    at,
-    normal,
-    flat: solid(cut(page, at, normal, -1)),
-    flap: solid(cut(page, at, normal, 1).map((p) => apply(mirror, p))),
-    mirror,
-  };
-}
-
-// Where the corner goes while the page is let go: along a low arc to the target.
+// Where the held point goes once the paper is let go: along a low arc to the target (up over a
+// target in the lower half, down over one in the upper half), easing out.
 export function settle(from: Pt, to: Pt, t: number, h: number): Pt {
   const e = 1 - (1 - t) ** 3;
   const lift = Math.sin(e * Math.PI) * h * 0.06 * (to.y > h / 2 ? -1 : 1);
@@ -130,6 +91,13 @@ export type Roll = {
 
 const STRIPS_ON_ROLL = 18;
 
+const rectangle = (w: number, h: number): Polygon => [
+  { x: 0, y: 0 },
+  { x: w, y: 0 },
+  { x: w, y: h },
+  { x: 0, y: h },
+];
+
 // Where a point of the lifted paper at distance d from the axis shows, for a roll of radius r.
 function rolled(d: number, r: number): number {
   return d <= Math.PI * r ? r * Math.sin(d / r) : -(d - Math.PI * r);
@@ -145,12 +113,7 @@ export function roll(grip: Pt, finger: Pt, w: number, h: number, tightness = 1):
   // the grip lands under the finger: the paper used up by the roll is π·r
   const depth = (l + Math.PI * radius) / 2;
   const at = { x: grip.x - normal.x * depth, y: grip.y - normal.y * depth };
-  const rect: Polygon = [
-    { x: 0, y: 0 },
-    { x: w, y: 0 },
-    { x: w, y: h },
-    { x: 0, y: h },
-  ];
+  const rect = rectangle(w, h);
   const far = Math.max(...rect.map((p) => dot(sub(p, at), normal)), 0);
   const onRoll = Math.min(far, Math.PI * radius);
   const step = onRoll / STRIPS_ON_ROLL;
@@ -190,7 +153,7 @@ export function roll(grip: Pt, finger: Pt, w: number, h: number, tightness = 1):
 // The transform that takes the paper at distances d0..d1 from the axis to x0..x1: a stretch
 // (negative: turned over) along the normal, about the axis.
 export function stripMatrix(r: Roll, s: Strip): Matrix {
-  const k = s.d1 === s.d0 ? 1 : (s.x1 - s.x0) / (s.d1 - s.d0);
+  const k = (s.x1 - s.x0) / (s.d1 - s.d0);
   const shift = s.x0 - k * s.d0;
   const { x: nx, y: ny } = r.normal;
   // p ↦ p + n·((k − 1)·((p − at)·n) + shift)
