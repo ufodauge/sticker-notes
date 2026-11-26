@@ -43,15 +43,6 @@ export const t = {
     date: (iso: string) => iso.replaceAll("-", "."),
   },
 
-  debug: {
-    open: "デバッグ",
-    dialog: "デバッグ",
-    unlockAll: "素材をすべて使えるようにする",
-    simulate: "交換をためす",
-    simulateHint: "知らない誰かのシールが届く",
-    off: "デバッグをやめる",
-  },
-
   back: {
     show: "裏を見る",
     dialog: "シールの裏",
@@ -173,4 +164,14 @@ export const t = {
       risky: "・読み取りにくいかも",
     },
   },
+} as const;
+
+// The debug menu's words, apart from `t` so that a build without the menu leaves them out too.
+export const debugText = {
+  open: "デバッグ",
+  dialog: "デバッグ",
+  unlockAll: "素材をすべて使えるようにする",
+  simulate: "交換をためす",
+  simulateHint: "知らない誰かのシールが届く",
+  off: "デバッグをやめる",
 } as const;

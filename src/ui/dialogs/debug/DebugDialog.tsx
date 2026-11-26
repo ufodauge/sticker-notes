@@ -7,17 +7,17 @@ import common from "../../common.module.css";
 import { debug } from "../../debug.ts";
 import { Dialog } from "../../Dialog.tsx";
 import { useCloseDialog } from "../../dialog-context.ts";
-import { t } from "../../messages.ts";
+import { debugText } from "../../messages.ts";
 import styles from "./DebugDialog.module.css";
 
 export function DebugDialog({ onClose }: { readonly onClose: () => void }) {
   const state = useSyncExternalStore(debug.subscribe, debug.get);
   return (
-    <Dialog label={t.debug.dialog} onClose={onClose}>
+    <Dialog label={debugText.dialog} onClose={onClose}>
       <div className={styles.body}>
         <Simulate />
         <label className={styles.switch}>
-          <span>{t.debug.unlockAll}</span>
+          <span>{debugText.unlockAll}</span>
           <input
             type="checkbox"
             role="switch"
@@ -26,7 +26,7 @@ export function DebugDialog({ onClose }: { readonly onClose: () => void }) {
           />
         </label>
         <button type="button" className={common.button} onClick={debug.turnOff}>
-          {t.debug.off}
+          {debugText.off}
         </button>
       </div>
     </Dialog>
@@ -49,9 +49,9 @@ function Simulate() {
         }}
       >
         <Shuffle aria-hidden="true" size={18} strokeWidth={1.5} />
-        {t.debug.simulate}
+        {debugText.simulate}
       </button>
-      <p className={common.muted}>{t.debug.simulateHint}</p>
+      <p className={common.muted}>{debugText.simulateHint}</p>
     </div>
   );
 }

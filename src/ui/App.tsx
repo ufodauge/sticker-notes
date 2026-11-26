@@ -23,10 +23,11 @@ import { BackDialog } from "./dialogs/back/BackDialog.tsx";
 import { DebugDialog } from "./dialogs/debug/DebugDialog.tsx";
 import { availableMaterials, materialsSeen } from "./dialogs/create/materials-seen.ts";
 import { debug } from "./debug.ts";
+import { DEBUG_BUILD } from "./debug-build.ts";
 import { PeopleDialog } from "./dialogs/people/PeopleDialog.tsx";
 import { PrinterCopy } from "./dialogs/print/Sheets.tsx";
 import { feedback } from "./feedback.ts";
-import { t } from "./messages.ts";
+import { debugText, t } from "./messages.ts";
 import { printMode } from "./print-mode.ts";
 import { Toast } from "./Toast.tsx";
 import { discardSticker, undo } from "./undo.ts";
@@ -128,12 +129,12 @@ export function App() {
             <Printer aria-hidden="true" size={22} strokeWidth={1.5} />
           </button>
         )}
-        {debugOn && (
+        {DEBUG_BUILD && debugOn && (
           <button
             type="button"
             className={common.icon}
-            aria-label={t.debug.open}
-            title={t.debug.open}
+            aria-label={debugText.open}
+            title={debugText.open}
             onClick={() => dispatch({ type: "open", overlay: { kind: "debug" } })}
           >
             <Bug aria-hidden="true" size={22} strokeWidth={1.5} />
@@ -272,7 +273,7 @@ export function App() {
       {overlay.kind === "people" && (
         <PeopleDialog key={opened} stickers={stickers} focus={overlay.focus} onClose={close} />
       )}
-      {overlay.kind === "debug" && <DebugDialog key={opened} onClose={close} />}
+      {DEBUG_BUILD && overlay.kind === "debug" && <DebugDialog key={opened} onClose={close} />}
       {ready && overlay.kind === "pocket" && (
         <PocketDialog
           key={opened}
