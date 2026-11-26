@@ -10,10 +10,11 @@
   max-inline-size: calc(100% - 2 * var(--space-4));
   margin-inline: auto;
   padding: var(--space-1) var(--space-1) var(--space-1) var(--space-4);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: var(--surface);
-  box-shadow: 0 6px 20px rgb(0 0 0 / 0.08);
+  /* a strip of paper laid on the desk */
+  border: 0;
+  border-radius: 3px;
+  background: var(--paper);
+  box-shadow: var(--paper-shadow);
   transition:
     opacity var(--t-med) ease-out,
     translate var(--t-med) var(--ease-out);

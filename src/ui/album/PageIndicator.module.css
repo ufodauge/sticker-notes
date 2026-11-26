@@ -6,7 +6,7 @@
   margin-inline-end: auto;
   padding-inline: var(--space-3) var(--space-2);
   /* a paper tag on the desk, so it reads on the wood */
-  border-radius: 999px;
+  border-radius: 4px;
   background: var(--paper);
   box-shadow: 0 2px 5px rgb(0 0 0 / 0.18);
   color: var(--ink-soft);

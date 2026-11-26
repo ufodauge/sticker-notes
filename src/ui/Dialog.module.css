@@ -1,9 +1,15 @@
+/* a sheet of notebook paper laid on the desk: faint rules, a strip of tape across the top */
 .dialog {
   position: fixed;
-  padding: var(--space-6) var(--space-4) max(var(--space-6), env(safe-area-inset-bottom));
-  border: 1px solid var(--line);
-  background: var(--paper);
+  padding: calc(var(--space-6) + 8px) var(--space-4)
+    max(var(--space-6), env(safe-area-inset-bottom));
+  border: 0;
+  background:
+    linear-gradient(var(--tape), var(--tape)) top center / 96px 14px no-repeat,
+    repeating-linear-gradient(to bottom, transparent 0 27px, var(--rule) 27px 28px) 0 12px,
+    var(--paper);
   color: var(--ink);
+  box-shadow: var(--paper-shadow);
   overflow-y: auto;
   overscroll-behavior: contain;
   opacity: 0;
@@ -52,8 +58,7 @@
   max-inline-size: 100%;
   max-block-size: 92dvh;
   margin: 0;
-  border-width: 1px 0 0;
-  border-radius: 16px 16px 0 0;
+  border-radius: 4px 4px 0 0;
 }
 
 @media (min-width: 720px) {
@@ -62,8 +67,8 @@
     inline-size: min(640px, 92vw);
     max-block-size: 88dvh;
     margin: auto;
-    border-width: 1px;
-    border-radius: 16px;
+    border-radius: 3px;
+    rotate: -0.4deg;
   }
 }
 

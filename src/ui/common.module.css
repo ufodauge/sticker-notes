@@ -9,6 +9,10 @@
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--surface);
+  /* a paper tag: a little shadow under it, as it lies on the sheet */
+  box-shadow:
+    0 1px 0 var(--line),
+    0 2px 4px rgb(40 30 20 / 0.08);
   white-space: nowrap;
   cursor: pointer;
   touch-action: manipulation;
@@ -47,6 +51,7 @@
   padding: 0;
   border-color: transparent;
   background: transparent;
+  box-shadow: none;
 }
 
 .icon:hover {
@@ -73,13 +78,15 @@
   color: var(--text-warn);
 }
 
+/* written on a line, as on the paper */
 .input {
   min-block-size: var(--tap);
   inline-size: 100%;
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--surface);
+  padding: var(--space-2) var(--space-1);
+  border: 0;
+  border-block-end: 1px solid var(--ink-soft);
+  border-radius: 0;
+  background: transparent;
   font-size: 1rem;
   transition: border-color var(--t-fast) ease-out;
 }
@@ -90,7 +97,7 @@
 }
 
 .input[aria-invalid="true"] {
-  border-style: dashed;
+  border-block-end-style: dashed;
   border-color: var(--ink);
 }
 

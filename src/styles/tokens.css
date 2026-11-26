@@ -1,17 +1,24 @@
 /*
- * The UI's look (toolbar, dialogs, toasts, buttons): wireframe, paper and ink and thin lines,
- * no accent colour. Named by use, not by value. The scene (desk, book, light) is in scene.css.
+ * The UI's look (toolbar, dialogs, toasts, buttons): paper on the desk. Dialogs are sheets of
+ * notebook paper taped down, buttons are paper tags, inputs are lines written on, a toast is a
+ * sticky note. Paper is paper in every theme (as the album's sheets are), so there is no dark set:
+ * the room's light (scene.css) is what changes. Colour belongs to the stickers. Named by use.
  */
 :root {
-  color-scheme: light dark;
-  --paper: #ffffff;
-  --ink: #161616;
-  --ink-soft: #6b6b6b;
-  --line: #d6d6d6;
-  --line-faint: #ececec;
-  --surface: #ffffff;
-  --scrim: rgb(0 0 0 / 0.32);
-  --focus: #161616;
+  color-scheme: light;
+  --paper: #fcfaf4;
+  --ink: #24221e;
+  --ink-soft: #6d675c;
+  --line: #d8d1c2;
+  --line-faint: #ebe6da;
+  --surface: #fffdf8;
+  --scrim: rgb(20 14 8 / 0.36);
+  --focus: #24221e;
+  /* the faint rules of notebook paper, the tape that holds a sheet down, a sticky note */
+  --rule: rgb(120 150 190 / 0.16);
+  --tape: rgb(236 226 196 / 0.82);
+  --note: #fdf2bf;
+  --paper-shadow: 0 1px 1px rgb(40 30 20 / 0.12), 0 8px 22px rgb(40 30 20 / 0.2);
 
   /* the album paper is white in every theme, like real paper (and like the print) */
   --sheet: #ffffff;
@@ -30,7 +37,7 @@
   --space-3: 12px;
   --space-4: 16px;
   --space-6: 24px;
-  --radius: 10px;
+  --radius: 4px;
   --tap: 44px;
 
   --font: system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
@@ -40,20 +47,6 @@
   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
   --t-fast: 140ms;
   --t-med: 220ms;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --paper: #141414;
-    --ink: #ececec;
-    --ink-soft: #9a9a9a;
-    --line: #3a3a3a;
-    --line-faint: #222222;
-    --surface: #1b1b1b;
-    --scrim: rgb(0 0 0 / 0.55);
-    --focus: #ececec;
-    --text-warn: oklab(0.905 -0.003 0.12);
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
