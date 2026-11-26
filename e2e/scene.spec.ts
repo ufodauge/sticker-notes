@@ -26,3 +26,12 @@ test("there is no light switch: only the clock decides", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("button", { name: "電気を消す" })).toHaveCount(0);
 });
+
+test("midday lays nothing over the desk; the evening does", async ({ page }) => {
+  await page.clock.install({ time: new Date("2026-11-26T12:30:00") });
+  await page.goto("/");
+  await expect(page.locator("main")).toHaveAttribute("data-phase", "day");
+  await expect(page.locator("main [data-sun-side]")).toHaveCount(0);
+  await page.clock.runFor("05:00:00");
+  await expect(page.locator("main [data-sun-side]")).toHaveCount(1);
+});

@@ -27,8 +27,9 @@ const KEYS: readonly (readonly [number, Light])[] = [
   [0, NIGHT],
   [5 * 60, NIGHT],
   [6 * 60 + 30, { sun: 1, sunX: -1, length: 0.9, warm: 0.15, dim: 0.1, lamp: 0, blinds: 0 }],
-  [10 * 60, { sun: 0.35, sunX: -0.3, length: 0.3, warm: 0, dim: 0, lamp: 0, blinds: 0 }],
-  [15 * 60, { sun: 0.35, sunX: 0.3, length: 0.3, warm: 0, dim: 0, lamp: 0, blinds: 0 }],
+  // midday: plain daylight, nothing laid over the desk
+  [10 * 60, { sun: 0, sunX: 0, length: 0, warm: 0, dim: 0, lamp: 0, blinds: 0 }],
+  [15 * 60, { sun: 0, sunX: 0, length: 0, warm: 0, dim: 0, lamp: 0, blinds: 0 }],
   [17 * 60 + 30, { sun: 1, sunX: 1, length: 1, warm: 1, dim: 0.18, lamp: 0, blinds: 1 }],
   [19 * 60, NIGHT],
   [24 * 60, NIGHT],

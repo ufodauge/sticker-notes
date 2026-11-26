@@ -21,9 +21,16 @@ describe("lightAt", () => {
     expect(evening).toMatchObject({ sun: 1, sunX: 1, warm: 1, blinds: 1, length: 1 });
   });
 
-  test("midday is plain daylight", () => {
-    expect(lightAt(at(12))).toMatchObject({ dim: 0, lamp: 0, warm: 0, blinds: 0 });
-    expect(lightAt(at(12)).sun).toBeLessThan(0.5);
+  test("midday is plain daylight: nothing at all", () => {
+    expect(lightAt(at(12))).toEqual({
+      sun: 0,
+      sunX: 0,
+      length: 0,
+      warm: 0,
+      dim: 0,
+      lamp: 0,
+      blinds: 0,
+    });
   });
 
   test("the light drifts minute by minute, never jumping, and wraps round midnight", () => {
