@@ -143,6 +143,46 @@ describe("roll", () => {
   });
 });
 
+describe("a page fastened at its spine", () => {
+  const spine = [
+    { x: 0, y: 0 },
+    { x: 0, y: H },
+  ];
+  const lifts = (r: NonNullable<ReturnType<typeof roll>>, p: Pt) =>
+    (p.x - r.at.x) * r.normal.x + (p.y - r.at.y) * r.normal.y > 1e-9;
+  const grips = [
+    { x: W, y: H },
+    { x: W, y: 0 },
+    { x: W, y: H / 2 },
+    { x: W * 0.8, y: H },
+    { x: W * 0.8, y: 0 },
+  ];
+  const fingers = Array.from({ length: 21 * 21 }, (_, i) => ({
+    x: -W * 1.5 + ((i % 21) / 20) * W * 3,
+    y: -H * 0.5 + (Math.floor(i / 21) / 20) * H * 2,
+  }));
+
+  test("wherever the finger goes, the spine stays down", () => {
+    const lifted = grips.flatMap((grip) =>
+      fingers.flatMap((f) => {
+        const r = roll(grip, reach(grip, f, W, H), W, H, 1, spine);
+        return r && spine.some((p) => lifts(r, p)) ? [{ grip, f }] : [];
+      }),
+    );
+    expect(lifted).toEqual([]);
+  });
+
+  test("unfastened paper (a sticker) lets the grip land right under the finger instead", () => {
+    const grip = { x: W, y: H };
+    const finger = reach(grip, { x: -W, y: -H }, W, H);
+    const free = roll(grip, finger, W, H);
+    const held = roll(grip, finger, W, H, 1, spine);
+    if (!free || !held) throw new Error("no roll");
+    expect(spine.some((p) => lifts(free, p))).toBe(true);
+    expect(spine.some((p) => lifts(held, p))).toBe(false);
+  });
+});
+
 describe("stripMatrix", () => {
   test("moves paper only across the axis: along it, nothing changes", () => {
     const r = roll({ x: W, y: H / 2 }, { x: W - 150, y: H / 2 + 60 }, W, H);

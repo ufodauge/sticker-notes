@@ -103,8 +103,17 @@ function rolled(d: number, r: number): number {
   return d <= Math.PI * r ? r * Math.sin(d / r) : -(d - Math.PI * r);
 }
 
-// `tightness` scales the roll: 1 while held, easing to 0 as the paper settles flat.
-export function roll(grip: Pt, finger: Pt, w: number, h: number, tightness = 1): Roll | undefined {
+// `tightness` scales the roll: 1 while held, easing to 0 as the paper settles flat. `held` are
+// points where the paper is fastened (a page's spine): they never lift, even if the grip then
+// lands a little short of the finger.
+export function roll(
+  grip: Pt,
+  finger: Pt,
+  w: number,
+  h: number,
+  tightness = 1,
+  held: readonly Pt[] = [],
+): Roll | undefined {
   const g = sub(grip, finger);
   const l = len(g);
   if (l < 0.5) return undefined;
@@ -112,7 +121,9 @@ export function roll(grip: Pt, finger: Pt, w: number, h: number, tightness = 1):
   const radius = Math.max(0.01, Math.min(l * 0.12, Math.max(w, h) * 0.08) * tightness);
   // the grip lands under the finger: the paper used up by the roll is π·r
   const depth = (l + Math.PI * radius) / 2;
-  const at = { x: grip.x - normal.x * depth, y: grip.y - normal.y * depth };
+  const under = { x: grip.x - normal.x * depth, y: grip.y - normal.y * depth };
+  const over = Math.max(0, ...held.map((p) => dot(sub(p, under), normal)));
+  const at = { x: under.x + normal.x * over, y: under.y + normal.y * over };
   const rect = rectangle(w, h);
   const far = Math.max(...rect.map((p) => dot(sub(p, at), normal)), 0);
   const onRoll = Math.min(far, Math.PI * radius);

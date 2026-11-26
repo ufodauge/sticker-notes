@@ -37,7 +37,7 @@ type Props = {
   readonly onCreate: () => void;
 };
 
-const WHEEL_PAGE_MS = 420;
+const WHEEL_PAGE_MS = 300;
 const DECIDE_PX = 10;
 // a turn goes through once the held point has been brought this close to the spine (page widths)
 const COMMIT_SHARE = 0.3;

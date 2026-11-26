@@ -29,6 +29,8 @@ export type RollPicture = {
   readonly shadow: number;
   // 1 while held; down to 0 as the paper settles flat
   readonly tightness?: number;
+  // where the paper is fastened and never lifts (a page's spine)
+  readonly held?: readonly Pt[];
 };
 
 function path(ctx: CanvasRenderingContext2D, poly: readonly Pt[]) {
@@ -53,7 +55,7 @@ function layerFor(target: HTMLCanvasElement): CanvasRenderingContext2D | null {
 }
 
 export function drawRoll(ctx: CanvasRenderingContext2D, p: RollPicture): void {
-  const r = roll(p.grip, p.finger, p.w, p.h, p.tightness);
+  const r = roll(p.grip, p.finger, p.w, p.h, p.tightness, p.held);
   p.base(ctx);
   if (!r) {
     p.front(ctx);
@@ -147,10 +149,18 @@ export type Curl = {
   readonly release: (turned: boolean, done: () => void) => void;
 };
 
+// let go, a page goes over this quickly (or falls back where it was)
+const TURN_MS = 440;
+const BACK_MS = 240;
+
 export function startCurl(s: CurlSetup): Curl {
   const { canvas, w, h, outward, front, back, grip, dpr } = s;
   const ctx = canvas.getContext("2d");
   const state = { finger: grip, frame: 0, tightness: 1 };
+  const spine = [
+    { x: 0, y: 0 },
+    { x: 0, y: h },
+  ];
 
   const base = (c: CanvasRenderingContext2D) => {
     c.setTransform(dpr * outward, 0, 0, dpr, s.spineX * dpr, s.top * dpr);
@@ -179,6 +189,7 @@ export function startCurl(s: CurlSetup): Curl {
       base,
       shadow: state.tightness,
       tightness: state.tightness,
+      held: spine,
     });
   };
 
@@ -194,11 +205,12 @@ export function startCurl(s: CurlSetup): Curl {
       const from = state.finger;
       const to = turned ? { x: -grip.x, y: grip.y } : grip;
       const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
-      const ms = reduced ? 1 : turned ? 680 : 340;
+      const ms = reduced ? 1 : turned ? TURN_MS : BACK_MS;
       const t0 = performance.now();
       const step = (now: number) => {
         const t = Math.min(1, (now - t0) / ms);
-        state.finger = settle(from, to, t, h);
+        // the arc stays within the page's reach, so the spine never lifts on the way
+        state.finger = reach(grip, settle(from, to, t, h), w, h);
         // gone over, the page comes down flat on the other side
         if (turned) state.tightness = 1 - t ** 3;
         draw();
