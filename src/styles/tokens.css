@@ -1,0 +1,64 @@
+/*
+ * The UI's look (toolbar, dialogs, toasts, buttons): wireframe, paper and ink and thin lines,
+ * no accent colour. Named by use, not by value. The scene (desk, book, light) is in scene.css.
+ */
+:root {
+  color-scheme: light dark;
+  --paper: #ffffff;
+  --ink: #161616;
+  --ink-soft: #6b6b6b;
+  --line: #d6d6d6;
+  --line-faint: #ececec;
+  --surface: #ffffff;
+  --scrim: rgb(0 0 0 / 0.32);
+  --focus: #161616;
+
+  /* the album paper is white in every theme, like real paper (and like the print) */
+  --sheet: #ffffff;
+  --sheet-line: #ececec;
+  --sheet-edge: #d6d6d6;
+  --sheet-ink: #6b6b6b;
+  --sheet-ink-strong: #161616;
+  /* the glossy backing paper a sticker comes on, and the clear film of the pocket */
+  --backing: #f4f1e8;
+  --backing-slit: #e3ddcc;
+  --pocket-film: rgb(214 228 236 / 0.55);
+  --pocket-edge: rgb(120 140 150 / 0.55);
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --radius: 10px;
+  --tap: 44px;
+
+  --font: system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+  --text-small: 0.875rem;
+  --text-warn: oklab(0.6 0.02 0.2);
+
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --t-fast: 140ms;
+  --t-med: 220ms;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #141414;
+    --ink: #ececec;
+    --ink-soft: #9a9a9a;
+    --line: #3a3a3a;
+    --line-faint: #222222;
+    --surface: #1b1b1b;
+    --scrim: rgb(0 0 0 / 0.55);
+    --focus: #ececec;
+    --text-warn: oklab(0.905 -0.003 0.12);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --t-fast: 0ms;
+    --t-med: 0ms;
+  }
+}

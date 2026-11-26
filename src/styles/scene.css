@@ -1,0 +1,59 @@
+/*
+ * The scene's look: the desk, the book, the things on the desk, the light of the hour, and the
+ * materials stickers are made of. Unlike the UI it is drawn as a scene (wood, cloth, daylight).
+ * Every value here is used as is; change one and the scene follows.
+ *
+ * Colours that light mixes in at varying strength are written as channels ("r g b"), used as
+ * `rgb(var(--name) / alpha)`. How strong the light is at each hour is in src/core/daylight.ts.
+ */
+:root {
+  /* the desk: wood, and the grain over it */
+  --wood-light: #c99a6b;
+  --wood: #b4825a;
+  --wood-dark: #a8774f;
+  --wood-grain-light: 255 236 210;
+  --wood-grain-dark: 90 50 20;
+
+  /* the album's cloth cover, and the shadows things cast on the desk */
+  --cover: #34475f;
+  --desk-shadow: 40 20 0;
+
+  /* the felt mat (a few special stickers) and its stitched edge */
+  --felt: #3e5a4c;
+  --felt-stitch: 236 226 200;
+
+  /* the laptop's aluminium lid */
+  --laptop-light: #d4d7dc;
+  --laptop: #b9bdc4;
+
+  /* the light: how strong each part gets at its fullest (0..1) and its colour */
+  --sun-light: 255 246 222;
+  --sun-strength: 0.3;
+  --blinds-light: 255 190 120;
+  --blinds-strength: 0.26;
+  --lamp-light: 255 204 140;
+  --lamp-strength: 0.32;
+  --sunset: 255 168 98;
+  --sunset-strength: 0.3;
+  --night: 28 30 62;
+  --night-strength: 1.15;
+  --leaf-shadow: 24 36 26;
+  --leaf-strength: 0.3;
+  /* where the desk lamp stands, as a point on the screen */
+  --lamp-at: 24% 20%;
+
+  /* materials: the holo film's rainbow, and the two foils (dark, middle, light) */
+  --holo-1: #ff9ad5;
+  --holo-2: #ffe27a;
+  --holo-3: #9dffb0;
+  --holo-4: #8fd8ff;
+  --holo-5: #c69cff;
+  --gold-dark: #7a5512;
+  --gold-mid: #c5952f;
+  --gold-light: #fff1b8;
+  --silver-dark: #5e646c;
+  --silver-mid: #a9b0b8;
+  --silver-light: #ffffff;
+  /* foil catches the evening's orange */
+  --foil-sunset: #ffb070;
+}

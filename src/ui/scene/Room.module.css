@@ -12,12 +12,12 @@
   background:
     repeating-linear-gradient(
       179deg,
-      rgb(255 236 210 / 0.05) 0 3px,
+      rgb(var(--wood-grain-light) / 0.05) 0 3px,
       transparent 3px 17px,
-      rgb(90 50 20 / 0.05) 17px 18px,
+      rgb(var(--wood-grain-dark) / 0.05) 17px 18px,
       transparent 18px 31px
     ),
-    linear-gradient(170deg, #c99a6b, #b4825a 60%, #a8774f);
+    linear-gradient(170deg, var(--wood-light), var(--wood) 60%, var(--wood-dark));
 }
 
 .light {
@@ -39,17 +39,21 @@
   --toward: 90deg;
   background:
     radial-gradient(
-      circle at 24% 20%,
-      rgb(255 204 140 / calc(var(--lamp) * 0.32)) 0,
+      circle at var(--lamp-at),
+      rgb(var(--lamp-light) / calc(var(--lamp) * var(--lamp-strength))) 0,
       transparent calc(var(--lamp) * 50%)
     ),
     repeating-linear-gradient(
       -58deg,
       transparent 0 22px,
-      rgb(255 190 120 / calc(var(--blinds) * 0.26)) 34px 56px,
+      rgb(var(--blinds-light) / calc(var(--blinds) * var(--blinds-strength))) 34px 56px,
       transparent 68px 74px
     ),
-    linear-gradient(var(--toward), rgb(255 246 222 / calc(var(--sun) * 0.3)), transparent 60%);
+    linear-gradient(
+      var(--toward),
+      rgb(var(--sun-light) / calc(var(--sun) * var(--sun-strength))),
+      transparent 60%
+    );
   mix-blend-mode: screen;
 }
 
@@ -60,30 +64,32 @@
 /* what darkens and tints: the orange of a low sun or the lamp's bulb, and the room going dark
    except where the lamp shines (multiply) */
 .shade {
-  --clear: calc(var(--dim) * 1.15 * (1 - var(--lamp) * 0.9));
+  --clear: calc(var(--dim) * var(--night-strength) * (1 - var(--lamp) * 0.9));
   background:
     radial-gradient(
-      circle at 24% 20%,
-      rgb(28 30 62 / var(--clear)) 0,
-      rgb(28 30 62 / var(--clear)) calc(var(--lamp) * 16%),
-      rgb(28 30 62 / calc(var(--dim) * 1.15)) calc(18% + var(--lamp) * 50%)
+      circle at var(--lamp-at),
+      rgb(var(--night) / var(--clear)) 0,
+      rgb(var(--night) / var(--clear)) calc(var(--lamp) * 16%),
+      rgb(var(--night) / calc(var(--dim) * var(--night-strength))) calc(18% + var(--lamp) * 50%)
     ),
     linear-gradient(
-      rgb(255 168 98 / calc(var(--warm) * 0.3)),
-      rgb(255 168 98 / calc(var(--warm) * 0.3))
+      rgb(var(--sunset) / calc(var(--warm) * var(--sunset-strength))),
+      rgb(var(--sunset) / calc(var(--warm) * var(--sunset-strength)))
     );
   mix-blend-mode: multiply;
 }
 
-/* a houseplant by the window, seen only as its shadow; it stretches as the sun sinks, and sways
-   as one piece (on the compositor: the blurred shadow is drawn once) */
+/* a houseplant by the window, seen only as its shadow (src/assets/scene/plant.svg as a mask); it
+   stretches as the sun sinks, and sways as one piece (on the compositor: drawn once) */
 .plant {
   inset: auto;
   inset-block-start: -4%;
   inset-inline-start: -3%;
   inline-size: clamp(180px, 34%, 340px);
-  color: rgb(24 36 26);
-  opacity: calc(var(--sun) * 0.3);
+  aspect-ratio: 200 / 280;
+  opacity: calc(var(--sun) * var(--leaf-strength));
+  /* blurred here, after the mask has cut the leaves out (a blur under a mask stays sharp) */
+  filter: blur(calc(1.5px + var(--length) * 3.5px));
   mix-blend-mode: multiply;
   transform-origin: 0 0;
   transform: skewX(calc(var(--length) * -22deg)) scale(calc(1 + var(--length) * 0.35), 1);
@@ -96,17 +102,20 @@
   transform: skewX(calc(var(--length) * 22deg)) scale(calc(1 + var(--length) * 0.35), 1);
 }
 
-.plant svg {
-  display: block;
-  inline-size: 100%;
-  block-size: auto;
-  filter: blur(calc(1.5px + var(--length) * 3.5px));
+.leaves {
+  block-size: 100%;
+  background: rgb(var(--leaf-shadow));
+  mask: url("../../assets/scene/plant.svg") center / contain no-repeat;
   transform-origin: 10% 0;
   will-change: transform;
 }
 
+.light[data-sun-side="right"] .leaves {
+  scale: -1 1;
+}
+
 @media (prefers-reduced-motion: no-preference) {
-  .plant svg {
+  .leaves {
     animation: sway 7s ease-in-out infinite alternate;
   }
 }

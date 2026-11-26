@@ -29,7 +29,17 @@
 .finish[data-material="holo"] {
   background:
     linear-gradient(105deg, transparent 30%, rgb(255 255 255 / 0.75) 45%, transparent 60%),
-    linear-gradient(125deg, #ff9ad5, #ffe27a, #9dffb0, #8fd8ff, #c69cff, #ff9ad5, #ffe27a, #9dffb0);
+    linear-gradient(
+      125deg,
+      var(--holo-1),
+      var(--holo-2),
+      var(--holo-3),
+      var(--holo-4),
+      var(--holo-5),
+      var(--holo-1),
+      var(--holo-2),
+      var(--holo-3)
+    );
   background-size:
     260% 260%,
     320% 320%;
@@ -103,15 +113,23 @@
 }
 
 .finish[data-metal="gold"] {
-  --metal-dark: #7a5512;
-  --metal-mid: #c5952f;
-  --metal-light: color-mix(in oklab, #fff1b8, #ffb070 calc(var(--warm, 0) * 55%));
+  --metal-dark: var(--gold-dark);
+  --metal-mid: var(--gold-mid);
+  --metal-light: color-mix(
+    in oklab,
+    var(--gold-light),
+    var(--foil-sunset) calc(var(--warm, 0) * 55%)
+  );
 }
 
 .finish[data-metal="silver"] {
-  --metal-dark: #5e646c;
-  --metal-mid: #a9b0b8;
-  --metal-light: color-mix(in oklab, #ffffff, #ffc090 calc(var(--warm, 0) * 55%));
+  --metal-dark: var(--silver-dark);
+  --metal-mid: var(--silver-mid);
+  --metal-light: color-mix(
+    in oklab,
+    var(--silver-light),
+    var(--foil-sunset) calc(var(--warm, 0) * 55%)
+  );
 }
 
 /* clear: a film with a glint */
