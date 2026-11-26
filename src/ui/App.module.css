@@ -21,6 +21,7 @@
   position: relative;
   isolation: isolate;
   overflow: hidden;
+  container-type: size;
   min-block-size: 0;
   min-inline-size: 0;
   padding-block-end: max(var(--space-6), env(safe-area-inset-bottom));
@@ -68,4 +69,31 @@
 .main[data-dropping] {
   outline: 2px dashed var(--ink);
   outline-offset: -8px;
+}
+
+/* the album and the desk beside it: the desk below the book on a tall screen, beside it on a
+   wide one */
+.room {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) clamp(120px, 24cqh, 210px);
+  block-size: 100%;
+}
+
+.book {
+  position: relative;
+  min-block-size: 0;
+  min-inline-size: 0;
+  /* on a tall screen the pocket sits above the book, not over its top edge */
+  padding-block-start: calc(84px + var(--space-2));
+}
+
+@container (aspect-ratio > 1) {
+  .book {
+    padding-block-start: 0;
+  }
+
+  .room {
+    grid-template-rows: none;
+    grid-template-columns: minmax(0, 1fr) clamp(170px, 22cqw, 300px);
+  }
 }

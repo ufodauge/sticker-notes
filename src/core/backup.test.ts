@@ -224,4 +224,50 @@ describe("planMerge details", () => {
     };
     expect(planMerge(none, incoming).placements.map((p) => p.id)).toEqual(["a"]);
   });
+
+  test("stickers on the desk need no page, and a surface takes only as many as it holds", () => {
+    const current: BackupData = {
+      ...none,
+      placements: [pl("d1", "s1", "surface:desk"), pl("d2", "s2", "surface:desk")],
+    };
+    const incoming: BackupData = {
+      ...none,
+      placements: [
+        pl("d3", "s3", "surface:desk"),
+        pl("d4", "s4", "surface:desk"),
+        pl("d5", "s5", "surface:desk"),
+        pl("l1", "s6", "surface:laptop"),
+      ],
+    };
+    expect(planMerge(current, incoming).placements.map((p) => p.id)).toEqual(["d3", "d4", "l1"]);
+  });
+});
+
+describe("surfaces in a backup", () => {
+  test("a sticker on the desk or the laptop is kept, up to what each surface holds", async () => {
+    const data = await sample();
+    const [a, b, c, d, e] = data.stickers;
+    if (!a || !b || !c || !d || !e) throw new Error("fixtures");
+    const at = (id: string, stickerId: string, pageId: string): Placement => ({
+      id,
+      pageId,
+      stickerId,
+      x: 0.5,
+      y: 0.5,
+      scale: 2,
+      rotation: 0,
+      z: 1,
+    });
+    const placements = [
+      at("d1", a.id, "surface:desk"),
+      at("d2", b.id, "surface:desk"),
+      at("d3", c.id, "surface:desk"),
+      at("d4", d.id, "surface:desk"),
+      at("d5", e.id, "surface:desk"),
+    ];
+    const r = await parseBackup(serializeBackup({ ...data, placements }, new Date()));
+    expect(r.ok && r.data.placements.map((p) => p.id)).toEqual(["d1", "d2", "d3", "d4"]);
+    expect(r.ok && r.skipped).toBe(1);
+    expect(r.ok && r.data.pages).toEqual(data.pages);
+  });
 });

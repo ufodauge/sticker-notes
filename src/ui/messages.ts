@@ -3,6 +3,7 @@
 // - "\n" is a line break (the element must be `white-space: pre-line` / `styles.pre`).
 // - Not here: SNS names (`core/sns.ts`, brand names), palette names (`core/palette-data.ts`,
 //   part of payload v1), the PWA manifest and <title> (`vite.config.ts`, `index.html`).
+import type { SurfaceKind } from "../core/surface.ts";
 import type { BackupError } from "../core/backup.ts";
 import type { MaterialKind } from "../core/material.ts";
 
@@ -29,6 +30,8 @@ export const t = {
     pageJump: "ページへ移る",
     handle: { label: "回転と大きさ(ドラッグ)", tooltip: "回転と大きさ" },
   },
+
+  desk: { desk: "机のマット", laptop: "ノートPC" } satisfies Readonly<Record<SurfaceKind, string>>,
 
   pocket: {
     open: (n: number) => `ポケット(${n}枚)`,

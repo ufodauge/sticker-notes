@@ -1,6 +1,7 @@
 import * as v from "valibot";
 import { PageSchema, PlacementSchema, type Page, type Placement } from "./album.ts";
 import { decodeBody, stickerIdOf } from "./payload.ts";
+import { hasRoom, surfaceOf } from "./surface.ts";
 
 const BACKUP_FORMAT = "sticker-notes-backup";
 const BACKUP_VERSION = 2;
@@ -114,16 +115,16 @@ export async function parseBackup(text: string): Promise<ParseResult> {
   });
   const pageIds = new Set(pages.map((p) => p.id));
   const placedStickers = new Set<string>();
-  const placements = file.placements.flatMap((raw) => {
+  const placements = file.placements.reduce<Placement[]>((kept, raw) => {
     const r = v.safeParse(PlacementSchema, raw);
-    if (!r.success) return [];
+    if (!r.success) return kept;
     const p = r.output;
-    if (!pageIds.has(p.pageId) || !seen.has(p.stickerId) || placedStickers.has(p.stickerId)) {
-      return [];
-    }
+    const surface = surfaceOf(p.pageId);
+    const where = surface ? hasRoom(surface, kept) : pageIds.has(p.pageId);
+    if (!where || !seen.has(p.stickerId) || placedStickers.has(p.stickerId)) return kept;
     placedStickers.add(p.stickerId);
-    return [p];
-  });
+    return [...kept, p];
+  }, []);
   const skipped =
     file.stickers.length -
     stickers.length +
@@ -149,11 +150,18 @@ export function planMerge(current: BackupData, incoming: BackupData): MergePlan 
     .toSorted((a, b) => a.order - b.order)
     .map((p, i) => ({ ...p, order: baseOrder + i }));
   const targetPages = new Set([...havePage, ...pages.map((p) => p.id)]);
+  // onto a surface only while it has room, counting what is on it already
+  const placements = incoming.placements.reduce<Placement[]>((kept, p) => {
+    if (placed.has(p.stickerId) || havePlacement.has(p.id)) return kept;
+    const surface = surfaceOf(p.pageId);
+    const fits = surface
+      ? hasRoom(surface, [...current.placements, ...kept])
+      : targetPages.has(p.pageId);
+    return fits ? [...kept, p] : kept;
+  }, []);
   return {
     stickers: incoming.stickers.filter((s) => !haveSticker.has(s.id)),
     pages,
-    placements: incoming.placements.filter(
-      (p) => !placed.has(p.stickerId) && !havePlacement.has(p.id) && targetPages.has(p.pageId),
-    ),
+    placements,
   };
 }

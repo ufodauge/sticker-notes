@@ -28,6 +28,7 @@ import {
 } from "./db.ts";
 import { requestPersist } from "./platform.ts";
 import { SETTINGS, type SettingKey, type SettingValue } from "./settings.ts";
+import { isSurface } from "../core/surface.ts";
 
 export type { AddResult, Discarded };
 
@@ -124,8 +125,9 @@ export const stickerStore = {
       "near" in at ? at.near : at.pageId,
     );
     const atPoint = (pageId: string, change: PlacementChange) => {
-      const existing = snap.pages.find((p) => p.id === pageId);
-      const target = existing?.id ?? ids.page;
+      // a surface off the album (the desk, a laptop) is no page: none is made for it
+      const existing = isSurface(pageId) ? pageId : snap.pages.find((p) => p.id === pageId)?.id;
+      const target = existing ?? ids.page;
       return {
         placement: {
           ...applyChange(auto.placement, change),

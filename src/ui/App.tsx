@@ -26,6 +26,7 @@ import { DEBUG_BUILD } from "./debug-build.ts";
 import { daylight } from "./scene/clock.ts";
 import { lightStyle } from "./scene/light-style.ts";
 import { DaylightLayer, Desk } from "./scene/Room.tsx";
+import { DeskSurfaces } from "./scene/DeskSurfaces.tsx";
 import { PeopleDialog } from "./dialogs/people/PeopleDialog.tsx";
 import { PrinterCopy } from "./dialogs/print/Sheets.tsx";
 import { feedback } from "./feedback.ts";
@@ -158,17 +159,28 @@ export function App() {
         }}
       >
         <Desk />
-        {ready && (
-          <Album
-            snap={ready}
-            selected={state.selected}
-            highlight={highlight}
-            leaving={state.leaving?.placementId ?? null}
-            onSelect={(placementId) => dispatch({ type: "select", placementId })}
-            onLeft={onLeft}
-            onCreate={() => dispatch({ type: "open", overlay: { kind: "create" } })}
-          />
-        )}
+        <div className={styles.room}>
+          <div className={styles.book}>
+            {ready && (
+              <Album
+                snap={ready}
+                selected={state.selected}
+                highlight={highlight}
+                leaving={state.leaving?.placementId ?? null}
+                onSelect={(placementId) => dispatch({ type: "select", placementId })}
+                onLeft={onLeft}
+                onCreate={() => dispatch({ type: "open", overlay: { kind: "create" } })}
+              />
+            )}
+          </div>
+          {ready && (
+            <DeskSurfaces
+              snap={ready}
+              selected={state.selected}
+              onSelect={(placementId) => dispatch({ type: "select", placementId })}
+            />
+          )}
+        </div>
         {ready && stickers.length > 0 && (
           <Pocket
             stickers={pocket}

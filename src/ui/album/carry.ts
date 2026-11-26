@@ -1,4 +1,6 @@
 import type { Sticker } from "../../core/payload.ts";
+import { hasRoom, surfaceOf } from "../../core/surface.ts";
+import { stickerStore } from "../../data/sticker-store.ts";
 
 // A sticker held in the hand: peeled off a page or pulled out of the pocket, it leaves its place
 // and follows the finger above everything until it is put down. Held at a screen edge for a
@@ -120,7 +122,8 @@ export type DropTarget =
   | { readonly kind: "pocket" };
 
 // What lies under a point: a page (null for the blank spread after the last page, which a
-// sticker put on it makes into a page), or the pocket. By
+// sticker put on it makes into a page), a surface on the desk (as a page with the surface's ID;
+// a full one takes nothing more), or the pocket. By
 // geometry rather than hit testing, so it also works while a modal dialog makes the album inert.
 // Where leaves overlap, the one on top of its stack wins.
 export function dropTarget(x: number, y: number): DropTarget | undefined {
@@ -129,6 +132,16 @@ export function dropTarget(x: number, y: number): DropTarget | undefined {
     return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
   };
   if ([...document.querySelectorAll("[data-pocket]")].some(inside)) return { kind: "pocket" };
+  const surface = [...document.querySelectorAll<HTMLElement>("[data-surface]")].find(inside);
+  if (surface) {
+    const id = surface.dataset.surface ?? "";
+    const kind = surfaceOf(id);
+    const snap = stickerStore.getSnapshot();
+    const placements = snap.status === "ready" ? snap.placements : [];
+    if (!kind || !hasRoom(kind, placements, state.held?.stickerId)) return undefined;
+    const r = surface.getBoundingClientRect();
+    return { kind: "page", pageId: id, x: (x - r.left) / r.width, y: (y - r.top) / r.height };
+  }
   const stackOrder = (el: Element) =>
     Number(getComputedStyle(el.closest("[data-leaf]") ?? el).zIndex) || 0;
   const found = [

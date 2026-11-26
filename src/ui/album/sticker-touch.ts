@@ -22,8 +22,16 @@ const depthOf = (s: StoredSticker) => {
 };
 
 // Whether a point on screen lies on the sticker's edge, where a fingernail can get under it.
-export function onEdge(s: StoredSticker, p: Placement, box: Box, at: Pt, pointer: string): boolean {
-  const size = (box.width / 600) * 36 * p.scale;
+// `dots`: how wide the paper is in sticker dots (a page's spread is 600).
+export function onEdge(
+  s: StoredSticker,
+  p: Placement,
+  box: Box,
+  at: Pt,
+  pointer: string,
+  dots = 600,
+): boolean {
+  const size = (box.width / dots) * 36 * p.scale;
   const dx = at.x - (box.left + p.x * box.width);
   const dy = at.y - (box.top + p.y * box.height);
   const r = (-p.rotation * Math.PI) / 180;
