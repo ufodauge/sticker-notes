@@ -179,4 +179,6 @@ export const debugText = {
   hour: "時刻",
   hourClock: "端末の時計",
   hourAt: (h: number) => `${h}時`,
+  samples: "見本(場面と素材)",
+  samplesAt: (h: number, m: number) => `${h}:${String(m).padStart(2, "0")}`,
 } as const;
