@@ -18,16 +18,18 @@ export type FlowDef = {
   readonly states: readonly FlowState[];
 };
 
-// The first visit, opened as it is: the album starts with sample stickers to learn on.
+// The first visit, opened as it is: the album starts with sample stickers to learn on. No words:
+// each step shows itself (a corner lifting, a page's corner folding, a button beating), and a
+// finger shows how only when nothing is done for a while.
 const tutorialStart: FlowDef = {
   id: "tutorial.start",
   note: "はじめて開いた人(見本のシールで覚える)",
   states: [
-    { id: "intro", note: "ようこそ。見本のシールで試す", on: "tutorial.begin" },
-    { id: "peel", note: "端をつまんで剥がす", on: "sticker.peeled" },
+    { id: "peel", note: "見本の一枚の角がめくれかけている: 剥がす", on: "sticker.peeled" },
     { id: "place", note: "好きな所に貼る", on: "sticker.placed" },
-    { id: "turn", note: "ページの端でめくる", on: "page.turned" },
-    { id: "create", note: "自分のも作ってみる", on: "create.opened" },
+    { id: "turn", note: "ページの角が折れかけている: めくる", on: "page.turned" },
+    { id: "create", note: "作るボタンが脈打つ: 押す", on: "create.opened" },
+    { id: "making", note: "作っている(作る画面を閉じるまで待つ)", on: "create.closed" },
     { id: "outro", note: "できた。交換しよう", on: "tutorial.finish" },
     { id: "done", note: "おわり" },
   ],
@@ -38,9 +40,8 @@ const tutorialReceived: FlowDef = {
   id: "tutorial.received",
   note: "交換のリンクから来た人(もらったシールで覚える)",
   states: [
-    { id: "intro", note: "シールが届いた", on: "tutorial.begin" },
-    { id: "place", note: "ポケットから引き出して貼る", on: "sticker.placed" },
-    { id: "create", note: "お返しを作る", on: "sticker.created" },
+    { id: "place", note: "届いたシールでポケットが揺れる: 引き出して貼る", on: "sticker.placed" },
+    { id: "create", note: "作るボタンが脈打つ: お返しを作る", on: "sticker.created" },
     { id: "give", note: "お返しのQRを見せる", on: "qr.closed" },
     { id: "outro", note: "交換できた", on: "tutorial.finish" },
     { id: "done", note: "おわり" },

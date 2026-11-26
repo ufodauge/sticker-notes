@@ -1,4 +1,4 @@
-/* The tutorial is UI: paper and ink and a thin line, over everything but the dialogs. */
+/* The tutorial: cues over the real things (part of the scene), and one last paper card. */
 .layer {
   position: fixed;
   inset: 0;
@@ -6,89 +6,159 @@
   pointer-events: none;
 }
 
-.caption {
+/* the way out: a little paper tag at the top left, clear of the pocket */
+.close {
   position: absolute;
-  inset-block-start: max(var(--space-3), env(safe-area-inset-top));
-  /* at the top left, clear of the pocket at the top right */
-  inset-inline-start: var(--space-4);
-  inline-size: fit-content;
-  max-inline-size: calc(100% - var(--space-4) - 128px);
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-4);
-  border: 1px solid var(--line);
+  inset-block-start: max(var(--space-2), env(safe-area-inset-top));
+  inset-inline-start: var(--space-2);
   border-radius: 999px;
   background: var(--paper);
-  color: var(--ink);
-  box-shadow: 0 4px 12px rgb(0 0 0 / 0.12);
-  word-break: keep-all;
+  box-shadow: 0 2px 5px rgb(0 0 0 / 0.18);
   pointer-events: auto;
 }
 
-.count {
-  color: var(--ink-soft);
-  font-size: var(--text-small);
-  font-variant-numeric: tabular-nums;
+/* a tick for a step done: it pops at the top and fades */
+.done {
+  position: absolute;
+  inset-block-start: max(var(--space-3), env(safe-area-inset-top));
+  inset-inline-start: 50%;
+  display: grid;
+  place-items: center;
+  inline-size: 36px;
+  block-size: 36px;
+  margin-inline-start: -18px;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  background: rgb(var(--stamp-ink));
+  color: #ffffff;
+  box-shadow: 0 3px 8px rgb(0 0 0 / 0.25);
+  animation: tick 1.4s var(--ease-out) both;
 }
 
-.close {
-  flex: none;
+@keyframes tick {
+  0% {
+    scale: 0.3;
+    opacity: 0;
+  }
+  20% {
+    scale: 1.2;
+    opacity: 1;
+  }
+  35%,
+  70% {
+    scale: 1;
+    opacity: 1;
+  }
+  100% {
+    scale: 1;
+    opacity: 0;
+  }
 }
 
-/* the ghostly finger, doing the step on the real thing, again and again */
+.cue {
+  position: absolute;
+  inset: 0;
+}
+
+.cue[hidden] {
+  display: none;
+}
+
+/* what draws the eye, laid over the thing itself */
+.mark {
+  position: absolute;
+  inset-block-start: var(--my);
+  inset-inline-start: var(--mx);
+  inline-size: var(--mw);
+  block-size: var(--mh);
+}
+
+/* the page's corner folding over, as a turned page would start */
+.cue[data-mark="dogear"] .mark::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, transparent 0 50%, #ececea 50% 100%);
+  filter: drop-shadow(-3px -3px 3px rgb(0 0 0 / 0.22));
+  transform-origin: 100% 100%;
+  animation: lift 1.8s ease-in-out infinite;
+}
+
+@keyframes lift {
+  0%,
+  100% {
+    scale: 0.55;
+  }
+  50% {
+    scale: 1;
+  }
+}
+
+/* a button, or the pocket, beating */
+.cue[data-mark="ring"] .mark {
+  border-radius: 999px;
+  animation: beat 1.3s ease-out infinite;
+}
+
+@keyframes beat {
+  0% {
+    box-shadow: 0 0 0 0 rgb(255 255 255 / 0.95);
+  }
+  100% {
+    box-shadow: 0 0 0 16px rgb(255 255 255 / 0);
+  }
+}
+
+/* the finger: anchored at its tip on the point; it waits a few seconds, then shows the move */
 .finger {
   position: absolute;
   inset-block-start: 0;
   inset-inline-start: 0;
-  display: grid;
-  place-items: center;
-  inline-size: 52px;
-  block-size: 52px;
-  margin: -6px 0 0 -14px;
-  border-radius: 50%;
-  background: rgb(255 255 255 / 0.55);
-  box-shadow:
-    0 0 0 2px rgb(255 255 255 / 0.8),
-    0 4px 10px rgb(0 0 0 / 0.2);
-  color: var(--sheet-ink-strong);
   translate: var(--x0) var(--y0);
+  opacity: 0;
+  animation: demo 2.4s var(--ease-out) 4s infinite;
 }
 
-.finger[hidden] {
-  display: none;
+.cue[data-tap] .finger {
+  animation-name: tap;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .finger {
-    animation: demo 2.2s var(--ease-out) infinite;
-  }
+.touch {
+  position: absolute;
+  inset-block-start: -14px;
+  inset-inline-start: -14px;
+  inline-size: 28px;
+  block-size: 28px;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.45);
+  box-shadow: 0 0 0 2px rgb(255 255 255 / 0.8);
+}
 
-  .finger[data-tap] {
-    animation: tap 1.4s ease-in-out infinite;
-  }
+/* lucide's pointing hand: its fingertip is at about (10, 2) of 24, so at (12.5, 2.5) at 30px */
+.hand {
+  position: absolute;
+  inset-block-start: -3px;
+  inset-inline-start: -12px;
+  color: var(--sheet-ink-strong);
+  filter: drop-shadow(0 0 2px #ffffff) drop-shadow(0 2px 3px rgb(0 0 0 / 0.3));
 }
 
 @keyframes demo {
   0%,
-  12% {
+  10% {
     translate: var(--x0) var(--y0);
-    scale: 1;
     opacity: 0;
   }
   20% {
     opacity: 1;
-    scale: 0.88;
   }
   70% {
     translate: var(--x1) var(--y1);
-    scale: 0.88;
     opacity: 1;
   }
   85%,
   100% {
     translate: var(--x1) var(--y1);
-    scale: 1;
     opacity: 0;
   }
 }
@@ -96,15 +166,29 @@
 @keyframes tap {
   0%,
   100% {
+    opacity: 1;
     scale: 1;
   }
   45% {
+    opacity: 1;
     scale: 0.82;
   }
 }
 
-/* the intro and the outro: a card in the middle, the desk dimmed a little behind it */
-.layer:has(.card) {
+@media (prefers-reduced-motion: reduce) {
+  .cue .mark,
+  .cue .mark::after {
+    animation: none;
+  }
+
+  .finger {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+/* the last card: paper on the desk, the desk dimmed a little behind it */
+.layer[data-card] {
   display: grid;
   place-items: center;
   background: rgb(0 0 0 / 0.18);
@@ -115,14 +199,14 @@
   display: grid;
   gap: var(--space-3);
   justify-items: center;
-  inline-size: min(100% - var(--space-4) * 2, 360px);
+  inline-size: min(100% - var(--space-4) * 2, 340px);
   padding: var(--space-6) var(--space-4) var(--space-4);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: 3px;
   background: var(--paper);
   color: var(--ink);
   text-align: center;
   box-shadow: 0 10px 30px rgb(0 0 0 / 0.25);
+  rotate: -1deg;
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -147,35 +231,4 @@
   margin: 0;
   white-space: pre-line;
   color: var(--ink-soft);
-}
-
-/* the tick for a step just done: it pops, then fades */
-.done {
-  display: grid;
-  place-items: center;
-  inline-size: 24px;
-  block-size: 24px;
-  margin-inline-start: calc(var(--space-2) * -1);
-  border-radius: 50%;
-  background: var(--ink);
-  color: var(--paper);
-  animation: tick 1.6s var(--ease-out) both;
-}
-
-@keyframes tick {
-  0% {
-    scale: 0.3;
-  }
-  20% {
-    scale: 1.2;
-  }
-  35%,
-  70% {
-    scale: 1;
-    opacity: 1;
-  }
-  100% {
-    scale: 1;
-    opacity: 0;
-  }
 }

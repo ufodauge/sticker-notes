@@ -12,13 +12,13 @@ export type AppEvent =
   | { readonly type: "page.turned"; readonly spread: number }
   // a sticker received by a link; `met` counts the people met when it is the first from someone
   | { readonly type: "sticker.received"; readonly stickerId: string; readonly met?: number }
-  // the dialog for making a sticker opened, and a sticker made
+  // the dialog for making a sticker opened (and put away again), and a sticker made
   | { readonly type: "create.opened" }
+  | { readonly type: "create.closed" }
   | { readonly type: "sticker.created"; readonly stickerId: string }
   // one's own QR put away (shown to someone, or not)
   | { readonly type: "qr.closed" }
-  // the tutorial's own buttons
-  | { readonly type: "tutorial.begin" }
+  // the tutorial's last card put away
   | { readonly type: "tutorial.finish" };
 
 export type EventType = AppEvent["type"];
@@ -30,8 +30,8 @@ export const EVENT_TYPES: readonly EventType[] = [
   "page.turned",
   "sticker.received",
   "create.opened",
+  "create.closed",
   "sticker.created",
   "qr.closed",
-  "tutorial.begin",
   "tutorial.finish",
 ];

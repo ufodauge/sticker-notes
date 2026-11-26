@@ -250,7 +250,15 @@ export function App() {
       )}
 
       {overlay.kind === "create" && (
-        <CreateDialog key={opened} file={overlay.file} onClose={close} onSaved={onSaved} />
+        <CreateDialog
+          key={opened}
+          file={overlay.file}
+          onClose={() => {
+            events.emit({ type: "create.closed" });
+            close();
+          }}
+          onSaved={onSaved}
+        />
       )}
       {qrSticker && overlay.kind === "qr" && (
         <QrDialog

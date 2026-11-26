@@ -28,8 +28,7 @@ export const tutorial = {
   },
   // null until it is known whether there is one
   get: (): TutorialState | null => state.value,
-  // the intro's and the outro's buttons
-  begin: (): void => events.emit({ type: "tutorial.begin" }),
+  // the last card's button
   finish: (): void => events.emit({ type: "tutorial.finish" }),
   close: (): void => publish(DONE),
   // from the menu: the first visit's way through, on the stickers there are

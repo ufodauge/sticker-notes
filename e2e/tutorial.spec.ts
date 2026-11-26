@@ -26,11 +26,9 @@ test("a first visit learns on the sample stickers: peel, stick, turn, make one's
   page,
 }) => {
   await page.goto("/");
-  await expect(caption(page)).toHaveAttribute("data-tutorial", "tutorial.start:intro");
-  await expect(page.getByRole("dialog", { name: "ようこそ" })).toBeVisible();
-  await page.getByRole("button", { name: "はじめる" }).click();
+  // no words: it begins at once, one sample sticker lifting now and then as if it would come off
   await expect(caption(page)).toHaveAttribute("data-tutorial", "tutorial.start:peel");
-  await expect(caption(page)).toContainText("1/4");
+  await expect(page.locator("[data-tease]")).toHaveCount(1);
   const samples = page.locator("[data-facing]").getByRole("button", { name: "X @sticker_notes" });
   await expect(samples).toHaveCount(3);
 
@@ -55,6 +53,9 @@ test("a first visit learns on the sample stickers: peel, stick, turn, make one's
     .getByRole("navigation")
     .getByRole("button", { name: "画像からステッカーを作る" })
     .click();
+  // the last card waits until the making is put away
+  await expect(caption(page)).toHaveAttribute("data-tutorial", "tutorial.start:making");
+  await expect(page.getByRole("dialog", { name: "これで準備ばっちり" })).toHaveCount(0);
   await page.keyboard.press("Escape");
   await expect(caption(page)).toHaveAttribute("data-tutorial", "tutorial.start:outro");
   await page.getByRole("button", { name: "はじめよう" }).click();
@@ -70,7 +71,6 @@ test("a first visit learns on the sample stickers: peel, stick, turn, make one's
 
 test("the tutorial can be closed at any time, and stays closed", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "はじめる" }).click();
   await expect(caption(page)).toHaveAttribute("data-tutorial", "tutorial.start:peel");
   await page.getByRole("button", { name: "チュートリアルを閉じる" }).click();
   await expect(caption(page)).toHaveCount(0);
@@ -83,9 +83,9 @@ test("brought by a shared sticker: stick it from the pocket, then make one to gi
   page,
 }) => {
   await page.goto(`/${fragmentOf("slime")}`);
-  await expect(caption(page)).toHaveAttribute("data-tutorial", "tutorial.received:intro");
-  await page.getByRole("button", { name: "はじめる" }).click();
   await expect(caption(page)).toHaveAttribute("data-tutorial", "tutorial.received:place");
+  // the pocket beats, with the sticker that came in it
+  await expect(page.locator('[data-mark="ring"]')).toBeVisible();
   // no samples for someone who came with a sticker of their own to learn on
   await expect(page.getByRole("button", { name: "X @sticker_notes" })).toHaveCount(0);
   await expect(pocketButton(page)).toHaveAccessibleName("ポケット(1枚)");
@@ -113,9 +113,9 @@ test("brought by a shared sticker: stick it from the pocket, then make one to gi
 
 test("it can be shown again from the menu", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "あとで" }).click();
+  await page.getByRole("button", { name: "チュートリアルを閉じる" }).click();
   await expect(caption(page)).toHaveCount(0);
   await page.getByRole("button", { name: "メニュー" }).click();
   await page.getByRole("button", { name: "使い方をもう一度" }).click();
-  await expect(caption(page)).toHaveAttribute("data-tutorial", "tutorial.start:intro");
+  await expect(caption(page)).toHaveAttribute("data-tutorial", "tutorial.start:peel");
 });

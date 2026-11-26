@@ -14,7 +14,7 @@ describe("flows", () => {
   });
 
   test("an event moves a flow on only when its state waits for it", () => {
-    const at: FlowAt = { flow: "tutorial.start", at: 1 };
+    const at: FlowAt = { flow: "tutorial.start", at: 0 };
     expect(stateOf(at)?.id).toBe("peel");
     expect(step(at, "sticker.placed")).toBe(at);
     expect(stateOf(step(at, "sticker.peeled"))?.id).toBe("place");

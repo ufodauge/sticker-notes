@@ -58,6 +58,45 @@
   visibility: hidden;
 }
 
+/* the tutorial's sample sticker that wants to come off: now and then it lifts from its lower right
+   edge, as a sticker not quite pressed down does, and settles again */
+.grab[data-tease] .art {
+  transform-origin: 20% 20%;
+  animation: tease 2.6s ease-in-out infinite;
+}
+
+@keyframes tease {
+  0%,
+  45%,
+  100% {
+    rotate: 0deg;
+    translate: 0 0;
+    filter: none;
+  }
+  60% {
+    rotate: -5deg;
+    translate: 2% -4%;
+    filter: drop-shadow(4px 8px 5px rgb(0 0 0 / 0.28));
+  }
+  70% {
+    rotate: -2deg;
+    translate: 1% -2%;
+    filter: drop-shadow(2px 4px 3px rgb(0 0 0 / 0.2));
+  }
+  80% {
+    rotate: -5deg;
+    translate: 2% -4%;
+    filter: drop-shadow(4px 8px 5px rgb(0 0 0 / 0.28));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .grab[data-tease] .art {
+    animation: none;
+    filter: drop-shadow(3px 6px 4px rgb(0 0 0 / 0.25));
+  }
+}
+
 /* the outline grown by the grace dots, on a box grown to match */
 .touch {
   position: absolute;
