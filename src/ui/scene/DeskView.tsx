@@ -20,13 +20,34 @@ type Props = {
 
 // The desk can be larger than the screen; it opens with the album in the middle of the view.
 // (A ref callback: it runs once, when the desk is first laid out.)
-function centreOnce(el: HTMLElement | null): void {
-  if (!el || el.dataset.centred) return;
-  el.dataset.centred = "";
-  el.scrollTo({
-    left: (el.scrollWidth - el.clientWidth) / 2,
-    top: (el.scrollHeight - el.clientHeight) / 2,
-  });
+// The light (Room.tsx) falls on the desk, not on the screen: how far the desk has been moved from
+// the middle is handed to it as --pan-x/--pan-y (on the scene around both), so the window's patch
+// of sun, the plant's shadow and the lamp's pool move with the wood.
+function centreOnce(el: HTMLElement | null) {
+  if (!el) return undefined;
+  if (!el.dataset.centred) {
+    el.dataset.centred = "";
+    el.scrollTo({
+      left: (el.scrollWidth - el.clientWidth) / 2,
+      top: (el.scrollHeight - el.clientHeight) / 2,
+    });
+  }
+  const scene = el.parentElement;
+  const pan = () => {
+    scene?.style.setProperty(
+      "--pan-x",
+      `${(el.scrollWidth - el.clientWidth) / 2 - el.scrollLeft}px`,
+    );
+    scene?.style.setProperty(
+      "--pan-y",
+      `${(el.scrollHeight - el.clientHeight) / 2 - el.scrollTop}px`,
+    );
+  };
+  pan();
+  const stop = new AbortController();
+  el.addEventListener("scroll", pan, { passive: true, signal: stop.signal });
+  addEventListener("resize", pan, { signal: stop.signal });
+  return () => stop.abort();
 }
 
 export function DeskView({

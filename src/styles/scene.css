@@ -33,8 +33,10 @@
   --leaf-strength: 0.3;
   /* the ink of the stamp pressed when someone new is met */
   --stamp-ink: 196 40 48;
-  /* where the desk lamp stands, as a point on the screen */
-  --lamp-at: 24% 20%;
+  /* where the desk lamp stands, as a point on the screen with the desk in the middle (it moves
+     with the desk: Room.module.css) */
+  --lamp-x: 24%;
+  --lamp-y: 20%;
 
   /* materials: the holo film's rainbow, and the two foils (dark, middle, light) */
   --holo-1: #ff4fb4;

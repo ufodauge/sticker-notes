@@ -33,12 +33,22 @@
   inset: 0;
 }
 
+/* the light lies on the desk: it moves with the wood as the desk is scrolled (DeskView.tsx) */
+.light {
+  --lamp-at-desk: calc(var(--lamp-x) + var(--pan-x, 0px)) calc(var(--lamp-y) + var(--pan-y, 0px));
+}
+
+.window,
+.plant {
+  translate: var(--pan-x, 0px) var(--pan-y, 0px);
+}
+
 /* what brightens: the window's sun from its side, and the lamp's pool at night (screen) */
 .glow {
   --toward: 90deg;
   background:
     radial-gradient(
-      circle at var(--lamp-at),
+      circle at var(--lamp-at-desk),
       rgb(var(--lamp-light) / calc(var(--lamp) * var(--lamp-strength))) 0,
       transparent calc(var(--lamp) * 50%)
     ),
@@ -60,7 +70,7 @@
   --clear: calc(var(--dim) * var(--night-strength) * (1 - var(--lamp) * 0.9));
   background:
     radial-gradient(
-      circle at var(--lamp-at),
+      circle at var(--lamp-at-desk),
       rgb(var(--night) / var(--clear)) 0,
       rgb(var(--night) / var(--clear)) calc(var(--lamp) * 16%),
       rgb(var(--night) / calc(var(--dim) * var(--night-strength))) calc(18% + var(--lamp) * 50%)
