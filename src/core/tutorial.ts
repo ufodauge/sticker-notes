@@ -35,7 +35,7 @@ const SAMPLES: readonly (readonly [seed: number, material: MaterialKind])[] = [
   [202, "holo"],
   [303, "glitter"],
 ];
-const FRIEND: readonly [seed: number, material: MaterialKind] = [404, "puffy"];
+const FRIEND: readonly [seed: number, material: MaterialKind] = [222, "puffy"];
 
 const sample = ([seed, kind]: readonly [number, MaterialKind]): Sticker => ({
   ...madeUpSticker(seed),

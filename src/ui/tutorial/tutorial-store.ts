@@ -62,7 +62,7 @@ events.on((e) => {
   if (s.flow === "tutorial.start" && stateOf(next)?.id === "pocket") arrive();
   // one's own, just made, goes on the page while its QR is up: the pocket is for what others
   // give (placed before the pocket step, which waits for a sticker placed)
-  if (s.flow === "tutorial.start" && e.type === "sticker.created") {
+  if (e.type === "sticker.created") {
     const own = e.stickerId;
     void stickerStore
       .place(own, { near: undefined })
@@ -85,6 +85,12 @@ export const takeDemoQr = (): boolean => {
   const want = demo.qr;
   demo.qr = false;
   return want;
+};
+
+// whether one made now is given back to the sticker that brought the person (the link's flow)
+export const givesBack = (): boolean => {
+  const s = state.value;
+  return !!s && "flow" in s && s.flow === "tutorial.received" && stateOf(s)?.id === "create";
 };
 
 // whether the sticker being made is the tutorial's: one's first, made at once from the picture

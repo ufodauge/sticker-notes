@@ -35,7 +35,13 @@ import { printMode } from "./print-mode.ts";
 import { PixelIcon } from "./PixelIcon.tsx";
 import { Stamp } from "./Stamp.tsx";
 import { Tutorial } from "./tutorial/Tutorial.tsx";
-import { friendReads, makesAtOnce, takeDemoQr, tutorial } from "./tutorial/tutorial-store.ts";
+import {
+  friendReads,
+  givesBack,
+  makesAtOnce,
+  takeDemoQr,
+  tutorial,
+} from "./tutorial/tutorial-store.ts";
 import { flowPanel } from "./flows/flow-panel.ts";
 import { events } from "../data/events.ts";
 import { Toast } from "./Toast.tsx";
@@ -71,7 +77,13 @@ export function App() {
 
   const openCreate = (with_: { readonly file?: File; readonly returnTo?: string } = {}) => {
     events.emit({ type: "create.opened" });
-    dispatch({ type: "open", overlay: { kind: "create", ...with_ } });
+    // brought by a link, the tutorial's one is made to give back to the sticker that came
+    const back = givesBack() ? stickers.find((s) => s.origin === "received")?.id : undefined;
+    const returnTo = with_.returnTo ?? back;
+    dispatch({
+      type: "open",
+      overlay: { kind: "create", ...with_, ...(returnTo ? { returnTo } : {}) },
+    });
   };
 
   const onSaved = (stickerId: string, result: AddResult) => {

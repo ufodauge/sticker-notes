@@ -90,9 +90,11 @@
   background: linear-gradient(
     90deg,
     rgb(0 0 0 / 0) 0%,
-    rgb(0 0 0 / 0.16) 60%,
-    rgb(255 255 255 / 0.7) 100%
+    rgb(0 0 0 / 0.28) 45%,
+    rgb(255 255 255 / 0.95) 60%,
+    #ececea 100%
   );
+  box-shadow: -6px 0 10px rgb(0 0 0 / 0.18);
   transform-origin: 100% 50%;
   animation: lift-edge 1.8s ease-in-out infinite;
 }

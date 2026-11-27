@@ -92,7 +92,7 @@ function cueOf(flow: TutorialFlow, stateId: string): Cue | null {
     // its edge beyond the screen: the strip of it at the screen's edge lifts, where it is taken
     const top = Math.max(page.top, 0);
     const bottom = Math.min(page.bottom, floor);
-    const at = new DOMRect(innerWidth - 22, top, 22, bottom - top);
+    const at = new DOMRect(innerWidth - 30, top, 30, bottom - top);
     const y = top + (bottom - top) * 0.8;
     return {
       mark: "edge",

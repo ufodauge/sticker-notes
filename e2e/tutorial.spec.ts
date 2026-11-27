@@ -149,3 +149,26 @@ test("brought by a shared sticker: stick it from the pocket, then make one to gi
   await page.getByRole("button", { name: "閉じる", exact: true }).click();
   await expect(caption(page)).toHaveCount(0);
 });
+
+test("brought by a link, the beating create button makes one to give back; it goes on the page", async ({
+  page,
+}) => {
+  await page.goto(`/${fragmentOf("slime")}`);
+  await expect(caption(page)).toHaveAttribute("data-tutorial", "tutorial.received:place");
+  await page.getByRole("button", { name: "ポケット(1枚)" }).click();
+  await page.getByRole("button", { name: "X @sticker_fan2026 を手に取る" }).click();
+  await page.getByRole("button", { name: "はがしてページに貼る" }).click();
+  await expect(caption(page)).toHaveAttribute("data-tutorial", "tutorial.received:create");
+  await page
+    .getByRole("navigation")
+    .getByRole("button", { name: "画像からステッカーを作る" })
+    .click();
+  await page.locator('input[type="file"]').setInputFiles("test/fixtures/sample.png");
+  const qr = page.getByRole("dialog", { name: "交換用のQR" });
+  await expect(qr).toContainText("X @sticker_fan2026 にお返し");
+  await page.keyboard.press("Escape");
+  await expect(caption(page)).toHaveAttribute("data-tutorial", "tutorial.received:outro");
+  // one's own is on the page: the pocket holds nothing of one's own
+  await expect(page.getByRole("button", { name: "シール", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "ポケット(0枚)" })).toBeVisible();
+});

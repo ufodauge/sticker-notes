@@ -1,4 +1,4 @@
-import { ArrowRight, Check, Copy, Maximize, Pencil, Share2 } from "lucide-react";
+import { ArrowRight, AtSign, Check, Copy, Maximize, Pencil, Share2 } from "lucide-react";
 import { useReducer, useRef, useSyncExternalStore } from "react";
 import { encodeBody, type Sticker } from "../../core/payload.ts";
 import {
@@ -141,9 +141,13 @@ function QrBody({
         <span className={styles.sns}>
           <SnsHandle kind={sticker.snsKind} id={sticker.snsId} size={16} />
         </span>
-        {!friendReads && (
-          <Pencil aria-hidden="true" className={styles.pencil} size={14} strokeWidth={1.5} />
-        )}
+        {/* with an SNS, a pencil to change it; without, the @ that one can be written here */}
+        {!friendReads &&
+          (sticker.snsKind === 0 ? (
+            <AtSign aria-hidden="true" className={styles.pencil} size={16} strokeWidth={1.5} />
+          ) : (
+            <Pencil aria-hidden="true" className={styles.pencil} size={14} strokeWidth={1.5} />
+          ))}
       </button>
       <div className={common.row}>
         <ShareLink url={url} title={nameOf(sticker)} />

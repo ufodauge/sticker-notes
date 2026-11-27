@@ -32,7 +32,7 @@ export const t = {
   tutorial: {
     "tutorial.start": {
       title: "シールの交換",
-      text: "QR を読んでもらうと届く\nお返しはポケットに",
+      text: "QR を読んでもらうと届く\n友だちのシールはポケットに",
       go: "閉じる",
     },
     "tutorial.received": {
