@@ -82,6 +82,12 @@
   mix-blend-mode: multiply;
 }
 
+/* the room out of the sun: a soft shade over everything, the window's patch brightening it */
+.roomShade {
+  background: rgb(var(--room-shade) / calc(var(--sun) * var(--room-shade-strength)));
+  mix-blend-mode: multiply;
+}
+
 /* the patch of sun the window throws on the desk, crossed by the shadow of its frame: it comes in
    from the sun's side and stretches as the sun sinks. Soft edges come from the mask alone (a blur
    over this much of the screen would cost every repaint). */

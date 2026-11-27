@@ -27,6 +27,7 @@ export function DaylightLayer({ light }: { readonly light: Light }) {
       data-sun-side={light.sunX < 0 ? "left" : "right"}
     >
       {glow && <div className={styles.glow} />}
+      {light.sun > SOME && <div className={styles.roomShade} />}
       {light.sun > SOME && (
         <div className={styles.window}>
           <div className={styles.pane} />

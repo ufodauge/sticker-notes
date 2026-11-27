@@ -21,8 +21,11 @@
   /* the light: how strong each part gets at its fullest (0..1) and its colour */
   --sun-light: 255 246 222;
   --sun-strength: 0.14;
-  /* the patch of sun through the window, crossed by the shadow of its frame */
-  --window-strength: 0.62;
+  /* the patch of sun through the window, crossed by the shadow of its frame; the rest of the room,
+     out of the sun, a little in shade (so the desk away from the window is not bare) */
+  --window-strength: 0.75;
+  --room-shade: 70 52 34;
+  --room-shade-strength: 0.2;
   --lamp-light: 255 204 140;
   --lamp-strength: 0.32;
   --sunset: 255 168 98;
