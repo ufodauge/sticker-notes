@@ -223,46 +223,6 @@
   outline-offset: -1px;
 }
 
-.slot {
-  position: absolute;
-  display: grid;
-  place-items: center;
-  inline-size: 24cqw;
-  aspect-ratio: 1;
-  translate: -50% -50%;
-  border: 1.5px dashed var(--sheet-edge);
-  border-radius: 14px;
-  background: transparent;
-  color: var(--sheet-ink);
-  cursor: pointer;
-  touch-action: manipulation;
-  transition:
-    border-color var(--t-fast) ease-out,
-    color var(--t-fast) ease-out,
-    scale var(--t-fast) var(--ease-out);
-}
-
-.slot:hover {
-  border-color: var(--sheet-ink);
-  color: var(--sheet-ink-strong);
-}
-
-.slot:active {
-  scale: 0.95;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .slot {
-    animation: breathe 2.4s ease-in-out infinite;
-  }
-}
-
-@keyframes breathe {
-  50% {
-    border-color: var(--sheet-ink);
-  }
-}
-
 .removePage {
   position: absolute;
   inset-block-start: var(--space-2);

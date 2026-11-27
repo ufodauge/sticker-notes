@@ -53,18 +53,14 @@ test("a first visit learns on the samples: peel, stick, turn, take a friend's fr
   await expect(caption(page)).toHaveAttribute("data-tutorial", "tutorial.start:create");
   await expect(caption(page).getByLabel("できた")).toHaveCount(1);
 
-  // one's own: put away with nothing made, the step comes round again
-  const create = page
+  // one's own, in one tap: the picture chosen is the sticker (no choosing)
+  await page
     .getByRole("navigation")
-    .getByRole("button", { name: "画像からステッカーを作る" });
-  await create.click();
+    .getByRole("button", { name: "画像からステッカーを作る" })
+    .click();
   await expect(caption(page)).toHaveAttribute("data-tutorial", "tutorial.start:making");
-  await page.keyboard.press("Escape");
-  await expect(caption(page)).toHaveAttribute("data-tutorial", "tutorial.start:create");
-  await create.click();
   await page.locator('input[type="file"]').setInputFiles("test/fixtures/sample.png");
-  await expect(page.getByRole("img", { name: "作成中のステッカー" })).toBeVisible();
-  await page.getByRole("button", { name: "ポケットに入れる" }).click();
+  await expect(page.getByRole("img", { name: "作成中のステッカー" })).toHaveCount(0);
 
   // its QR comes up, a friend reads it (made up), and it is put away by itself
   const qr = page.getByRole("dialog", { name: "交換用のQR" });
@@ -96,6 +92,34 @@ test("a first visit learns on the samples: peel, stick, turn, take a friend's fr
   ).not.toHaveCount(0);
 });
 
+test("making may be declined: a sample's QR is read instead, and the friend's comes back", async ({
+  page,
+}) => {
+  await page.goto("/?debug");
+  await expect(caption(page)).toHaveAttribute("data-tutorial", "tutorial.start:peel");
+  // straight to the step of making one (the debug flow view puts a tutorial at a state)
+  await page.getByRole("button", { name: "デバッグ", exact: true }).click();
+  await page.getByRole("button", { name: "流れを見る" }).click();
+  const panel = page.getByRole("complementary", { name: "流れを見る" });
+  await panel
+    .locator('[data-flow="tutorial.start"]')
+    .getByRole("button", { name: /^create/ })
+    .click();
+  await panel.getByRole("button", { name: "流れを閉じる" }).click();
+  await page
+    .getByRole("navigation")
+    .getByRole("button", { name: "画像からステッカーを作る" })
+    .click();
+  await expect(caption(page)).toHaveAttribute("data-tutorial", "tutorial.start:making");
+  await page.keyboard.press("Escape");
+  const qr = page.getByRole("dialog", { name: "交換用のQR" });
+  await expect(qr).toBeVisible();
+  await expect(caption(page)).toHaveAttribute("data-tutorial", "tutorial.start:give");
+  await expect(qr).toHaveCount(0, { timeout: 10_000 });
+  await expect(caption(page)).toHaveAttribute("data-tutorial", "tutorial.start:pocket");
+  await expect(pocketButton(page)).toHaveAccessibleName("ポケット(1枚)");
+});
+
 test("brought by a shared sticker: stick it from the pocket, then make one to give back", async ({
   page,
 }) => {
@@ -115,9 +139,8 @@ test("brought by a shared sticker: stick it from the pocket, then make one to gi
   await page.mouse.up();
   await expect(caption(page)).toHaveAttribute("data-tutorial", "tutorial.received:create");
   await page.getByRole("button", { name: "自分のも作る" }).click();
+  // one's first, in one tap
   await page.locator('input[type="file"]').setInputFiles("test/fixtures/sample.png");
-  await expect(page.getByRole("img", { name: "作成中のステッカー" })).toBeVisible();
-  await page.getByRole("button", { name: "ポケットに入れる" }).click();
   const qr = page.getByRole("dialog", { name: "交換用のQR" });
   await expect(qr).toBeVisible();
   await page.keyboard.press("Escape");

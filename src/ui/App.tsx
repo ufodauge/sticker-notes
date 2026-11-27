@@ -33,7 +33,7 @@ import { printMode } from "./print-mode.ts";
 import { PixelIcon } from "./PixelIcon.tsx";
 import { Stamp } from "./Stamp.tsx";
 import { Tutorial } from "./tutorial/Tutorial.tsx";
-import { friendReads, tutorial } from "./tutorial/tutorial-store.ts";
+import { friendReads, makesAtOnce, takeDemoQr, tutorial } from "./tutorial/tutorial-store.ts";
 import { flowPanel } from "./flows/flow-panel.ts";
 import { events } from "../data/events.ts";
 import { Toast } from "./Toast.tsx";
@@ -61,6 +61,7 @@ export function App() {
   const day = useSyncExternalStore(daylight.subscribe, daylight.get);
   const flowsOpen = useSyncExternalStore(flowPanel.subscribe, flowPanel.open);
   const tutorialReads = useSyncExternalStore(tutorial.subscribe, friendReads);
+  const atOnce = useSyncExternalStore(tutorial.subscribe, makesAtOnce);
   const seenMaterials = useSyncExternalStore(materialsSeen.subscribe, materialsSeen.get);
   useSyncExternalStore(debug.subscribe, debug.get);
 
@@ -114,7 +115,7 @@ export function App() {
         <PageIndicator count={Math.max(1, ready?.pages.length ?? 0)} />
         <button
           type="button"
-          className={`${mine.length === 0 ? `${common.button} ${styles.labeled}` : common.icon} ${styles.menu}`}
+          className={`${common.icon} ${styles.menu}`}
           aria-label={t.app.create.label}
           aria-description={newMaterial ? t.app.newMaterial : undefined}
           title={newMaterial ? t.app.newMaterial : t.app.create.tooltip}
@@ -122,7 +123,6 @@ export function App() {
           onClick={() => openCreate()}
         >
           <PixelIcon name="create" />
-          {mine.length === 0 && t.app.create.text}
         </button>
         {stickers.length > 0 && (
           <button
@@ -187,7 +187,6 @@ export function App() {
             leaving={state.leaving?.placementId ?? null}
             onSelect={(placementId) => dispatch({ type: "select", placementId })}
             onLeft={onLeft}
-            onCreate={() => openCreate()}
           />
         )}
         {ready && stickers.length > 0 && (
@@ -260,8 +259,14 @@ export function App() {
           onClose={() => {
             events.emit({ type: "create.closed" });
             close();
+            // the tutorial's making put away with nothing made: a sample stands in, its QR read
+            const demo = stickers.find((s) => s.origin === "sample");
+            if (takeDemoQr() && demo) {
+              dispatch({ type: "open", overlay: { kind: "qr", stickerId: demo.id } });
+            }
           }}
           onSaved={onSaved}
+          quick={atOnce}
         />
       )}
       {qrSticker && overlay.kind === "qr" && (

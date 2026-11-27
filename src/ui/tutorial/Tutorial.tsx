@@ -18,7 +18,7 @@ type Point = { readonly x: number; readonly y: number };
 type Cue = {
   // what draws attention over the thing (the sticker lifts by itself), a folding page corner, or
   // a beating ring
-  readonly mark: "none" | "dogear" | "ring";
+  readonly mark: "none" | "dogear" | "edge" | "ring";
   readonly at: DOMRect;
   // the finger's path (a tap when it does not move)
   readonly from: Point;
@@ -76,16 +76,29 @@ function cueOf(flow: TutorialFlow, stateId: string): Cue | null {
       .filter((r) => r.width > 0 && r.right > 0 && r.left < innerWidth)
       .sort((a, b) => b.right - a.right)[0];
     if (!page) return null;
-    const right = Math.min(page.right, innerWidth) - 4;
-    const bottom = Math.min(page.bottom, innerHeight - 96) - 4;
-    // as large as the part of the page in view allows (on a phone, the next page only peeks in)
-    const size = Math.max(24, Math.min(56, right - Math.max(page.left, 0)));
-    const at = new DOMRect(right - size, bottom - size, size, size);
+    const floor = innerHeight - 96;
+    // its corner in view: the corner folds over
+    if (page.right <= innerWidth && page.bottom <= floor) {
+      const right = page.right - 3;
+      const bottom = page.bottom - 3;
+      const at = new DOMRect(right - 56, bottom - 56, 56, 56);
+      return {
+        mark: "dogear",
+        at,
+        from: { x: right - 14, y: bottom - 14 },
+        to: { x: right - Math.min(200, page.width * 0.6), y: bottom - 40 },
+      };
+    }
+    // its edge beyond the screen: the strip of it at the screen's edge lifts, where it is taken
+    const top = Math.max(page.top, 0);
+    const bottom = Math.min(page.bottom, floor);
+    const at = new DOMRect(innerWidth - 22, top, 22, bottom - top);
+    const y = top + (bottom - top) * 0.8;
     return {
-      mark: "dogear",
+      mark: "edge",
       at,
-      from: { x: right - 14, y: bottom - 14 },
-      to: { x: right - Math.min(200, page.width * 0.6), y: bottom - 40 },
+      from: { x: innerWidth - 10, y },
+      to: { x: innerWidth - Math.min(220, innerWidth * 0.6), y: y - 20 },
     };
   }
   if (stateId === "create") {

@@ -17,14 +17,13 @@ export const t = {
   app: {
     storageUnavailable: "保存領域を開けなかった",
     toolbar: "操作",
-    create: { label: "画像からステッカーを作る", tooltip: "作る", text: "作る" },
+    create: { label: "画像からステッカーを作る", tooltip: "作る" },
     newMaterial: "新しい素材が使えるようになった",
     print: "印刷",
     menu: "メニュー",
   },
 
   album: {
-    createFirst: "画像からステッカーを作る",
     pageLabel: (n: number) => `${n}`,
     removePage: { label: (n: number) => `${n}ページ目を消す`, tooltip: "空のページを消す" },
     pageJump: "ページへ移る",

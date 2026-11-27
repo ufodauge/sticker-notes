@@ -1,4 +1,4 @@
-import { ImagePlus, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import {
   useCallback,
   useRef,
@@ -7,7 +7,7 @@ import {
   type PointerEvent,
   type WheelEvent,
 } from "react";
-import { slotCenter, sortedPages } from "../../core/album.ts";
+import { sortedPages } from "../../core/album.ts";
 import { stickerStore, type Ready } from "../../data/sticker-store.ts";
 import type { Highlight } from "../feedback.ts";
 import { t } from "../messages.ts";
@@ -34,7 +34,6 @@ type Props = {
   readonly leaving: string | null;
   readonly onSelect: (placementId: string | null) => void;
   readonly onLeft: () => void;
-  readonly onCreate: () => void;
 };
 
 const WHEEL_PAGE_MS = 300;
@@ -60,7 +59,7 @@ type Track = {
 };
 
 export function Album(props: Props) {
-  const { snap, selected, highlight, leaving, onSelect, onLeft, onCreate } = props;
+  const { snap, selected, highlight, leaving, onSelect, onLeft } = props;
   const viewport = useRef<HTMLDivElement | null>(null);
   const book = useRef<HTMLDivElement | null>(null);
   const track = useRef<Track | null>(null);
@@ -201,7 +200,6 @@ export function Album(props: Props) {
     // no page yet: the first spread (showing where to start), or the blank one after the last
     // page, which becomes a page as soon as a sticker is put on it
     if (spread.kind !== "page") {
-      const first = slotCenter(0);
       return (
         <section
           className={cls}
@@ -221,19 +219,7 @@ export function Album(props: Props) {
               leaving={null}
               onLeft={onLeft}
               onSelect={onSelect}
-            >
-              {half === 0 && spread.kind === "empty" && (
-                <button
-                  type="button"
-                  className={styles.slot}
-                  style={{ left: `${first.x * 100}%`, top: `${first.y * 100}%` }}
-                  aria-label={t.album.createFirst}
-                  onClick={onCreate}
-                >
-                  <ImagePlus aria-hidden="true" size={28} strokeWidth={1.25} />
-                </button>
-              )}
-            </PageCanvas>
+            ></PageCanvas>
           </div>
         </section>
       );

@@ -54,7 +54,7 @@ test("the first receive invites the visitor to make their own and stays until us
 }) => {
   await receiveToPocket(page, "slime");
   await expect(invitation(page)).toBeVisible();
-  await expect(createButton(page)).toHaveText("作る");
+  await expect(createButton(page)).toHaveText("");
   await page.waitForTimeout(7000);
   await expect(page.getByRole("status")).toContainText("がポケットに入った");
   await invitation(page).click();

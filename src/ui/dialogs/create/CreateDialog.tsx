@@ -37,12 +37,14 @@ type Props = {
   readonly file: File | undefined;
   readonly onClose: () => void;
   readonly onSaved: (stickerId: string, result: AddResult) => void;
+  // the tutorial's sticker (one's first): made at once from the picture, as it comes out
+  readonly quick: boolean;
 };
 
-export function CreateDialog({ file, onClose, onSaved }: Props) {
+export function CreateDialog({ file, onClose, onSaved, quick }: Props) {
   return (
     <Dialog label={t.create.dialog} onClose={onClose}>
-      <CreateFlow file={file} onSaved={onSaved} />
+      <CreateFlow file={file} onSaved={onSaved} quick={quick} />
     </Dialog>
   );
 }
@@ -59,6 +61,8 @@ async function load(
   loading: { current: AbortController | null },
   urls: { current: readonly string[] },
   dispatch: (a: CreateAction) => void,
+  // made at once, as it comes out (one's first sticker)
+  quick: ((state: EditState) => Promise<void>) | undefined,
 ): Promise<void> {
   if (!picked) return;
   loading.current?.abort();
@@ -72,27 +76,50 @@ async function load(
     return;
   }
   urls.current = [...urls.current, source.url];
+  if (quick) {
+    const state = createReducer(INITIAL, { type: "loaded", source });
+    if (state.step === "edit") {
+      await quick(state);
+      return;
+    }
+  }
   dispatch({ type: "loaded", source });
 }
 
 function CreateFlow({
   file,
   onSaved,
+  quick,
 }: {
   readonly file: File | undefined;
   readonly onSaved: Props["onSaved"];
+  readonly quick: boolean;
 }) {
   const [state, dispatch] = useReducer(createReducer, INITIAL);
   const loading = useRef<AbortController | null>(null);
   const urls = useRef<readonly string[]>([]);
+  const close = useCloseDialog();
 
-  const open = (picked: File | undefined) => void load(picked, loading, urls, dispatch);
+  // the first sticker: what the picture makes by itself, saved as it is
+  const makeAtOnce = async (s: EditState) => {
+    const saved = await saveSticker(derive(s, analyze(s.source, s.crop))).catch(() => undefined);
+    if (!saved) {
+      dispatch({ type: "loaded", source: s.source });
+      return;
+    }
+    materialsSeen.markAll(availableMaterials());
+    close();
+    onSaved(saved.id, saved.result);
+  };
+  const atOnce = quick ? makeAtOnce : undefined;
+
+  const open = (picked: File | undefined) => void load(picked, loading, urls, dispatch, atOnce);
 
   // unmount (dialog closed): stop decoding and release object URLs — a ref cleanup, not an
   // effect. The callback must keep its identity, or React would run the cleanup each render.
   const lifetime = useCallback(
     (el: HTMLDivElement | null) => {
-      if (el) void load(file, loading, urls, dispatch);
+      if (el) void load(file, loading, urls, dispatch, undefined);
       return () => {
         loading.current?.abort();
         urls.current.forEach((u) => URL.revokeObjectURL(u));

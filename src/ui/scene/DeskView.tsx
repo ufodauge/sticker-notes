@@ -15,7 +15,6 @@ type Props = {
   readonly leaving: string | null;
   readonly onSelect: (placementId: string | null) => void;
   readonly onLeft: () => void;
-  readonly onCreate: () => void;
 };
 
 // The desk can be larger than the screen; it opens with the album in the middle of the view.
@@ -50,15 +49,7 @@ function centreOnce(el: HTMLElement | null) {
   return () => stop.abort();
 }
 
-export function DeskView({
-  snap,
-  selected,
-  highlight,
-  leaving,
-  onSelect,
-  onLeft,
-  onCreate,
-}: Props) {
+export function DeskView({ snap, selected, highlight, leaving, onSelect, onLeft }: Props) {
   return (
     <div className={styles.scroller} ref={centreOnce} data-desk-view="">
       <div className={styles.table}>
@@ -72,7 +63,6 @@ export function DeskView({
             leaving={leaving}
             onSelect={onSelect}
             onLeft={onLeft}
-            onCreate={onCreate}
           />
         </div>
       </div>

@@ -33,7 +33,11 @@ const tutorialStart: FlowDef = {
       on: "page.turned",
     },
     { id: "create", note: "作るボタンが脈打つ: 自分のを作る", on: "create.opened" },
-    { id: "making", note: "作っている(何も作らずに閉じたら、作るに戻る)", on: "sticker.created" },
+    {
+      id: "making",
+      note: "作っている(最初の一枚は写真を選ぶだけ。作らずに閉じたら見本で続ける)",
+      on: "sticker.created",
+    },
     { id: "give", note: "その QR が出て、友だちが読み取る(見本の動き)", on: "qr.closed" },
     { id: "pocket", note: "友だちのお返しがポケットに届く: 引き出して貼る", on: "sticker.placed" },
     { id: "outro", note: "交換のしかた", on: "tutorial.finish" },

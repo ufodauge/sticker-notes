@@ -41,10 +41,20 @@ export const tutorial = {
 events.on((e) => {
   const s = state.value;
   if (!s || "done" in s) return;
-  // the making put away with nothing made: back to the step before, the button beating again
-  if (e.type === "create.closed" && stateOf(s)?.id === "making") {
-    publish({ ...s, at: s.at - 1 });
-    return;
+  // making may be declined. Put away with nothing made (a sticker made moves the flow on before
+  // its dialog goes): the first visit goes on with a sample's QR read instead; someone brought by
+  // a link has stuck what they came with, and is done
+  if (e.type === "create.closed") {
+    const id = stateOf(s)?.id;
+    if (s.flow === "tutorial.start" && id === "making") {
+      demo.qr = true;
+      publish({ ...s, at: s.at + 1 });
+      return;
+    }
+    if (s.flow === "tutorial.received" && id === "create") {
+      publish(DONE);
+      return;
+    }
   }
   const next = step(s, e.type);
   if (next === s) return;
@@ -68,6 +78,25 @@ function arrive(): void {
       .then((id) => feedback.landed(id, "pocket", null));
   }, 700);
 }
+
+// whether a sample's QR is to come up, the making having been declined (asked once)
+const demo = { qr: false };
+export const takeDemoQr = (): boolean => {
+  const want = demo.qr;
+  demo.qr = false;
+  return want;
+};
+
+// whether the sticker being made is the tutorial's: one's first, made at once from the picture
+export const makesAtOnce = (): boolean => {
+  const s = state.value;
+  if (!s || !("flow" in s)) return false;
+  const id = stateOf(s)?.id;
+  return (
+    (s.flow === "tutorial.start" && id === "making") ||
+    (s.flow === "tutorial.received" && id === "create")
+  );
+};
 
 // whether the QR on screen is the tutorial's, which a friend (made up) reads
 export const friendReads = (): boolean => {
