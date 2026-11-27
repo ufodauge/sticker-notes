@@ -35,11 +35,19 @@
   cursor: default;
 }
 
+/* the one main button: a paper tab with its edge and words inked in, as with a pen pressed hard */
 .primary {
   composes: button;
-  border-color: var(--ink);
-  background: var(--ink);
-  color: var(--paper);
+  border: 2px solid var(--ink);
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 700;
+  box-shadow: 2px 2px 0 var(--ink);
+}
+
+.primary:active {
+  box-shadow: 0 0 0 var(--ink);
+  translate: 2px 2px;
 }
 
 .primary:hover {

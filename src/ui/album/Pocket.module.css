@@ -90,10 +90,16 @@
   min-inline-size: 22px;
   block-size: 22px;
   padding-inline: 6px;
-  border-radius: 999px;
-  background: var(--ink);
-  color: var(--paper);
-  font-size: 0.75rem;
+  /* pencilled on the film, not a phone's badge */
+  border-radius: 0;
+  background: none;
+  color: var(--sheet-ink-strong);
+  font-size: 0.875rem;
+  font-weight: 700;
+  rotate: -6deg;
+  text-shadow:
+    0 0 2px #ffffff,
+    0 0 4px #ffffff;
   font-variant-numeric: tabular-nums;
 }
 

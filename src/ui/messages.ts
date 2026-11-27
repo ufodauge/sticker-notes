@@ -91,11 +91,10 @@ export const t = {
   feedback: {
     discarded: "引き出しにしまった",
     receivedInvalid: "読み込めないステッカー",
-    receivedAdded: (who: string) => `${who} がポケットに入った`,
+    receivedFrom: (who: string) => `${who} から`,
+    receivedSome: "シールが届いた",
     receivedDuplicate: "もう持ってる",
     nthPerson: (n: number) => `${n}人目`,
-    inviteCreate: "自分のも作る",
-    giveBack: "お返しのQR",
   },
 
   qr: {

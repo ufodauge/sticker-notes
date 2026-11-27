@@ -6,14 +6,9 @@ export type Highlight = {
   readonly nonce: number;
 };
 
-// what the toast's button opens: making one's own sticker, or one's own QR to give back (both
-// for the sticker that just came in)
-type ToastAction = { readonly kind: "create" | "return"; readonly from: string };
-
 export type Toast = {
   readonly id: number;
   readonly text: string;
-  readonly action?: ToastAction;
   readonly persistent?: boolean;
 };
 

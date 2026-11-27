@@ -1,7 +1,7 @@
+import { giveBack } from "./give-back.ts";
 import { Drawer } from "./album/Drawer.tsx";
 import { DrawerDialog } from "./album/DrawerDialog.tsx";
 import { lazy, Suspense, useReducer, useSyncExternalStore } from "react";
-import { isIos, isStandalone } from "../data/platform.ts";
 import { sortedPages } from "../core/album.ts";
 import { pagePosition } from "./album/page-position.ts";
 import { layoutAlbum } from "../core/print.ts";
@@ -15,7 +15,6 @@ import { initialState, reducer } from "./app-state.ts";
 import styles from "./App.module.css";
 import common from "./common.module.css";
 import { CreateDialog } from "./dialogs/create/CreateDialog.tsx";
-import { backupDue, backupMarkCache } from "./dialogs/menu/backup-mark.ts";
 import { MenuDialog } from "./dialogs/menu/MenuDialog.tsx";
 import { PrintDialog } from "./dialogs/print/PrintDialog.tsx";
 import { QrDialog } from "./dialogs/QrDialog.tsx";
@@ -56,13 +55,13 @@ const FlowPanel =
 
 export function App() {
   const snap = useSyncExternalStore(stickerStore.subscribe, stickerStore.getSnapshot);
-  const mark = useSyncExternalStore(backupMarkCache.subscribe, backupMarkCache.get);
   const { toast, highlight, stamp } = useSyncExternalStore(feedback.subscribe, feedback.get);
   const printing = useSyncExternalStore(printMode.subscribe, printMode.get);
   const [state, dispatch] = useReducer(reducer, initialState);
   const debugOn = useSyncExternalStore(debug.subscribe, () => debug.get().on);
   const day = useSyncExternalStore(daylight.subscribe, daylight.get);
   const flowsOpen = useSyncExternalStore(flowPanel.subscribe, flowPanel.open);
+  const answering = useSyncExternalStore(giveBack.subscribe, giveBack.get) !== null;
   const atOnce = useSyncExternalStore(tutorial.subscribe, makesAtOnce);
   const seenMaterials = useSyncExternalStore(materialsSeen.subscribe, materialsSeen.get);
   useSyncExternalStore(debug.subscribe, debug.get);
@@ -71,9 +70,10 @@ export function App() {
 
   const openCreate = (with_: { readonly file?: File; readonly returnTo?: string } = {}) => {
     events.emit({ type: "create.opened" });
-    // brought by a link, the tutorial's one is made to give back to the sticker that came
+    // made just after one came, it is given back to that one (in the tutorial, to the sticker
+    // that brought the person)
     const back = givesBack() ? stickers.find((s) => s.origin === "received")?.id : undefined;
-    const returnTo = with_.returnTo ?? back;
+    const returnTo = with_.returnTo ?? giveBack.get() ?? back;
     dispatch({
       type: "open",
       overlay: { kind: "create", ...with_, ...(returnTo ? { returnTo } : {}) },
@@ -113,7 +113,6 @@ export function App() {
   const pocket = stickers.filter((s) => !placed.has(s.id)).toReversed();
   const selectedPlacement = ready?.placements.find((p) => p.id === state.selected);
   const selectedSticker = stickers.find((s) => s.id === selectedPlacement?.stickerId);
-  const menuDot = (isIos() && !isStandalone()) || backupDue(stickers.length - mine.length, mark);
   const overlay = state.overlay;
   const qrSticker =
     overlay.kind === "qr" ? stickers.find((s) => s.id === overlay.stickerId) : undefined;
@@ -131,7 +130,7 @@ export function App() {
           aria-label={t.app.create.label}
           aria-description={newMaterial ? t.app.newMaterial : undefined}
           title={newMaterial ? t.app.newMaterial : t.app.create.tooltip}
-          data-dot={newMaterial || undefined}
+          data-beat={answering || undefined}
           onClick={() => openCreate()}
         >
           <PixelIcon name="create" />
@@ -163,7 +162,6 @@ export function App() {
           className={`${common.icon} ${styles.menu}`}
           aria-label={t.app.menu}
           title={t.app.menu}
-          data-dot={menuDot || undefined}
           onClick={() => dispatch({ type: "open", overlay: { kind: "menu" } })}
         >
           <PixelIcon name="menu" />
@@ -245,28 +243,7 @@ export function App() {
         </Suspense>
       )}
       {stamp && <Stamp key={stamp.id} stamp={stamp} onDone={() => feedback.unstamp(stamp.id)} />}
-      {toast && (
-        <Toast
-          key={toast.id}
-          toast={toast}
-          onAction={() => {
-            feedback.dismiss(toast.id);
-            const action = toast.action;
-            if (action?.kind === "create") {
-              openCreate({ returnTo: action.from });
-            }
-            // one's own sticker made last is the one most likely meant to be given
-            const latest = mine.toSorted((a, b) => b.addedSeq - a.addedSeq)[0];
-            if (action?.kind === "return" && latest) {
-              dispatch({
-                type: "open",
-                overlay: { kind: "qr", stickerId: latest.id, returnTo: action.from },
-              });
-            }
-          }}
-          onDismiss={() => feedback.dismiss(toast.id)}
-        />
-      )}
+      {toast && <Toast key={toast.id} toast={toast} onDismiss={() => feedback.dismiss(toast.id)} />}
 
       {overlay.kind === "create" && (
         <CreateDialog
@@ -288,6 +265,8 @@ export function App() {
           to={stickers.find((s) => s.id === overlay.returnTo)?.sticker}
           onClose={() => {
             events.emit({ type: "qr.closed" });
+            // given back: the create button stops beating
+            if (overlay.returnTo) giveBack.set(null);
             close();
           }}
         />

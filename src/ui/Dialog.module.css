@@ -72,16 +72,21 @@
   }
 }
 
+/* a big white sheet held up over the desk (the desk shows at its edges), taped at the top; the
+   QR needs white whatever the theme */
 .full {
-  inset: 0;
-  inline-size: 100%;
-  max-inline-size: 100%;
-  block-size: 100%;
-  max-block-size: 100%;
+  inset: var(--space-2);
+  inline-size: calc(100% - var(--space-2) * 2);
+  max-inline-size: none;
+  block-size: calc(100% - var(--space-2) * 2);
+  max-block-size: none;
   margin: 0;
   border: 0;
-  /* the QR needs white whatever the theme */
-  background: #ffffff;
+  border-radius: 3px;
+  background:
+    linear-gradient(rgb(236 226 196 / 0.85), rgb(236 226 196 / 0.85)) top center / 110px 16px
+      no-repeat,
+    #ffffff;
   color: #161616;
   color-scheme: light;
   --paper: #ffffff;

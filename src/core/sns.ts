@@ -82,6 +82,12 @@ export function snsProfileUrl(kind: SnsOrNone, id: string): string | undefined {
   return make && isValidSnsId(kind, id) ? make(id) : undefined;
 }
 
+// the ID as people write it ("@id", or a Bluesky domain as it is); none for no SNS
+export function snsHandle(kind: SnsOrNone, id: string): string | undefined {
+  if (kind === NO_SNS) return undefined;
+  return kind === 3 ? id : `@${id}`;
+}
+
 // how an SNS is written ("X @id"); none for no SNS
 export function snsDisplay(kind: SnsOrNone, id: string): string | undefined {
   if (kind === NO_SNS) return undefined;

@@ -32,8 +32,8 @@ test("a sticker pulled out of the pocket can lie on the bare desk; no page is ma
 
 test("a sticker on the desk is lifted by its edge and carried onto a page", async ({ page }) => {
   await receiveToPocket(page, "slime");
-  // the first receive's invitation lies at the foot of a phone's screen until it is closed
-  await page.getByRole("button", { name: "案内を閉じる" }).click();
+  // the note of who it came from lies at the foot of a phone's screen for a while
+  await expect(page.getByRole("status")).toHaveCount(0, { timeout: 9000 });
   const book = await page.locator("[data-open]").boundingBox();
   if (!book) throw new Error("no book");
   await pullFromPocketTo(page, { x: 70, y: Math.max(50, book.y - 50) });

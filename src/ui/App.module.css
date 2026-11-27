@@ -44,16 +44,24 @@
   position: relative;
 }
 
-.menu[data-dot]::after {
-  content: "";
-  position: absolute;
-  inset-block-start: 10px;
-  inset-inline-end: 10px;
-  inline-size: 9px;
-  block-size: 9px;
-  border: 2px solid #ffffff;
-  border-radius: 50%;
-  background: rgb(var(--stamp-ink));
+/* a sticker just came: the create button beats, to make one back (give-back.ts) */
+@media (prefers-reduced-motion: no-preference) {
+  .menu[data-beat] {
+    animation: beat 1.3s ease-out infinite;
+  }
+}
+
+@keyframes beat {
+  0% {
+    box-shadow: 0 0 0 0 rgb(255 255 255 / 0.95);
+  }
+  100% {
+    box-shadow: 0 0 0 14px rgb(255 255 255 / 0);
+  }
+}
+
+.menu[data-beat] {
+  border-radius: 999px;
 }
 
 .error {

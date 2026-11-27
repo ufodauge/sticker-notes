@@ -7,7 +7,7 @@ const SLIME = "X @sticker_fan2026";
 
 test("a link drops into the pocket, survives reload, and is stuck from there", async ({ page }) => {
   await receiveToPocket(page, "slime");
-  await expect(page.getByRole("status")).toContainText("がポケットに入った");
+  await expect(page.getByRole("status")).toContainText("から");
   await expect(pocketButton(page)).toHaveAccessibleName("ポケット(1枚)");
   await expect(page.getByRole("button", { name: SLIME, exact: true })).toHaveCount(0);
   await page.reload();
@@ -28,7 +28,7 @@ test("a link drops into the pocket, survives reload, and is stuck from there", a
 
 test("a sticker received is a gift: nothing to undo", async ({ page }) => {
   await receiveToPocket(page, "slime");
-  await expect(page.getByRole("status")).toContainText("がポケットに入った");
+  await expect(page.getByRole("status")).toContainText("から");
   await expect(page.getByRole("button", { name: "元に戻す" })).toHaveCount(0);
 });
 
@@ -47,67 +47,17 @@ test("a second link arriving during the first is not lost", async ({ page }) => 
 
 const createButton = (page: Page) =>
   page.getByRole("navigation").getByRole("button", { name: "画像からステッカーを作る" });
-const invitation = (page: Page) => page.getByRole("button", { name: "自分のも作る" });
 
-test("the first receive invites the visitor to make their own and stays until used", async ({
+test("a sticker received: the note says from whom, and the create button beats to make one back", async ({
   page,
 }) => {
   await receiveToPocket(page, "slime");
-  await expect(invitation(page)).toBeVisible();
-  await expect(createButton(page)).toHaveText("");
-  await page.waitForTimeout(7000);
-  await expect(page.getByRole("status")).toContainText("がポケットに入った");
-  await invitation(page).click();
-  await expect(page.getByRole("dialog", { name: "ステッカーを作る" })).toBeVisible();
-  await expect(page.getByRole("status")).toHaveCount(0);
-});
-
-test("the persistent toast can be dismissed", async ({ page }) => {
-  await receiveToPocket(page, "slime");
-  await page.getByRole("button", { name: "案内を閉じる" }).click();
-  await expect(page.getByRole("status")).toHaveCount(0);
-});
-
-test("a later receive shows the usual short toast", async ({ page }) => {
-  await receiveToPocket(page, "slime");
-  // the invitation is saved as shown just before it appears
-  await expect(page.getByRole("button", { name: "案内を閉じる" })).toBeVisible();
-  await page.reload();
-  await page.goto(`/${fragmentOf("noise")}`);
-  await expect(page.getByRole("status")).toContainText("がポケットに入った");
-  await expect(page.getByRole("button", { name: "案内を閉じる" })).toHaveCount(0);
+  await expect(page.getByRole("status")).toHaveText("@sticker_fan2026 から");
+  // one thing to do next, and only one: no button on the note, no dots
+  await expect(page.getByRole("status").getByRole("button")).toHaveCount(0);
+  await expect(createButton(page)).toHaveAttribute("data-beat", "true");
+  // the note goes by itself
   await expect(page.getByRole("status")).toHaveCount(0, { timeout: 9000 });
-});
-
-test("with an own sticker there is no invitation and the create button is icon-only", async ({
-  page,
-}) => {
-  await page.goto("/");
-  await createButton(page).click();
-  await page.locator('input[type="file"]').setInputFiles("test/fixtures/sample.png");
-  await expect(page.getByRole("img", { name: "作成中のステッカー" })).toBeVisible();
-  await page.getByRole("button", { name: "シール帳に貼る" }).click();
-  await expect(page.getByRole("dialog")).toHaveCount(0);
-  await expect(createButton(page)).toHaveText("");
-  await page.goto(`/${fragmentOf("slime")}`);
-  await expect(page.getByRole("status")).toContainText("がポケットに入った");
-  await expect(invitation(page)).toHaveCount(0);
-});
-
-test("the labelled create button and the persistent toast fit 320px", async ({ page }) => {
-  await page.setViewportSize({ width: 320, height: 640 });
-  await receiveToPocket(page, "slime");
-  const nav = await page.getByRole("navigation").boundingBox();
-  const button = await createButton(page).boundingBox();
-  const toast = await page.getByRole("status").boundingBox();
-  expect(button && nav && button.x >= nav.x && button.x + button.width <= nav.x + nav.width).toBe(
-    true,
-  );
-  const dismiss = await page.getByRole("button", { name: "案内を閉じる" }).boundingBox();
-  expect(toast && toast.x >= 0 && toast.x + toast.width <= 320).toBe(true);
-  expect(
-    toast && dismiss && dismiss.x >= toast.x && dismiss.x + dismiss.width <= toast.x + toast.width,
-  ).toBe(true);
 });
 
 // sample.png, or the same picture turned upside down (another sticker)
@@ -131,42 +81,30 @@ async function makeOwn(page: Page, upsideDown: boolean): Promise<void> {
   await page.getByRole("button", { name: "シール帳に貼る" }).click();
 }
 
-test("a sticker received gets one given back: the toast opens one's own QR for them", async ({
+test("one made just after a sticker came is given back to it, and one's own can be chosen instead", async ({
   page,
 }) => {
   await page.goto("/");
   await makeOwn(page, false);
   await expect(page.getByRole("dialog")).toHaveCount(0);
-  await makeOwn(page, true);
-  await expect(page.getByRole("dialog")).toHaveCount(0);
   await page.goto(`/${fragmentOf("slime")}`);
-  await page.getByRole("button", { name: "お返しのQR" }).click();
+  await expect(createButton(page)).toHaveAttribute("data-beat", "true");
+  await makeOwn(page, true);
   const dialog = page.getByRole("dialog", { name: "交換用のQR" });
   await expect(dialog).toContainText(`${SLIME} にお返し`);
-  // the one made last comes first; the others can be chosen instead
+  // the one just made comes first; the others can be chosen instead
   const choices = dialog.getByRole("group", { name: "QRにするステッカー" }).getByRole("button");
   await expect(choices).toHaveCount(2);
   await expect(choices.and(page.locator('[aria-pressed="true"]'))).toHaveCount(1);
   const last = await readQr(page);
-  const other = choices.and(page.locator('[aria-pressed="false"]'));
-  await other.click();
-  await expect(choices.and(page.locator('[aria-pressed="true"]'))).toHaveCount(1);
+  await choices.and(page.locator('[aria-pressed="false"]')).click();
   await expect.poll(async () => (await readQr(page))?.pixels).not.toEqual(last?.pixels);
-});
-
-test("with none of one's own yet, the one made from the invitation is given back at once", async ({
-  page,
-}) => {
-  await receiveToPocket(page, "slime");
-  await invitation(page).click();
-  await page.locator('input[type="file"]').setInputFiles("test/fixtures/sample.png");
-  await expect(page.getByRole("img", { name: "作成中のステッカー" })).toBeVisible();
-  await page.getByRole("button", { name: "シール帳に貼る" }).click();
-  const dialog = page.getByRole("dialog", { name: "交換用のQR" });
-  await expect(dialog).toContainText(`${SLIME} にお返し`);
   await dialog.getByRole("button", { name: /のSNS$/ }).click();
   await dialog.getByLabel("ID", { exact: true }).fill("mine_1");
   expect((await readQr(page))?.snsId).toBe("mine_1");
+  // given back: the create button is still again
+  await page.keyboard.press("Escape");
+  await expect(createButton(page)).not.toHaveAttribute("data-beat");
 });
 
 test("the debug menu tries an exchange: someone's sticker arrives as by a link", async ({
@@ -176,7 +114,7 @@ test("the debug menu tries an exchange: someone's sticker arrives as by a link",
   await page.getByRole("button", { name: "デバッグ" }).click();
   await page.getByRole("button", { name: "交換をためす" }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
-  await expect(page.getByRole("status")).toContainText("がポケットに入った");
+  await expect(page.getByRole("status")).toContainText("から");
   await expect(pocketButton(page)).toHaveAccessibleName("ポケット(1枚)");
   await expect.poll(() => new URL(page.url()).hash).toBe("");
   await page.getByRole("button", { name: "デバッグ" }).click();
@@ -186,10 +124,9 @@ test("the debug menu tries an exchange: someone's sticker arrives as by a link",
 
 test("someone new is met with a stamp: the nth person met", async ({ page }) => {
   await receiveToPocket(page, "slime");
-  await expect(page.getByRole("status")).toContainText("・1人目");
+  await expect(page.locator('[class*="stamp"]').first()).toHaveText("1人目");
   await page.goto(`/${fragmentOf("discord")}`);
-  await expect(page.getByRole("status")).toContainText("・2人目");
   await expect(page.locator('[class*="stamp"]').first()).toHaveText("2人目");
   await page.goto(`/${fragmentOf("noise")}`);
-  await expect(page.getByRole("status")).toContainText("・3人目");
+  await expect(page.locator('[class*="stamp"]').first()).toHaveText("3人目");
 });

@@ -207,3 +207,11 @@
   align-items: flex-start;
   gap: var(--space-2);
 }
+
+/* the backup button, when many have come since the last one: underlined in ink, like a note to
+   oneself */
+.due[data-due] {
+  border-color: var(--ink);
+  text-decoration: underline 2px;
+  text-underline-offset: 4px;
+}

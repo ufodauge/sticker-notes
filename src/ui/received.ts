@@ -1,28 +1,12 @@
 import { peopleOf } from "../core/people.ts";
-import { planReceiveToast } from "../core/receive-toast.ts";
-import { nameOf } from "./sticker-name.ts";
+import { snsHandle } from "../core/sns.ts";
+import { giveBack } from "./give-back.ts";
 import { vibrateReceived } from "../data/platform.ts";
 import type { Received } from "../data/receive.ts";
 import { events } from "../data/events.ts";
-import { settings, stickerStore } from "../data/sticker-store.ts";
+import { stickerStore } from "../data/sticker-store.ts";
 import { feedback } from "./feedback.ts";
 import { t } from "./messages.ts";
-
-function ownStickerCount(): number {
-  const snap = stickerStore.getSnapshot();
-  return snap.status === "ready" ? snap.stickers.filter((s) => s.origin === "mine").length : 0;
-}
-
-async function invitationShown(): Promise<boolean> {
-  try {
-    return (await settings.get("invitationShown")) === true;
-  } catch {
-    return true;
-  }
-}
-
-const markInvitationShown = (): Promise<void> =>
-  settings.set("invitationShown", true).catch(() => undefined);
 
 // The number of the person this sticker came from, if it is the first from them (so they are met
 // just now); undefined for someone already met.
@@ -42,20 +26,11 @@ async function announceAdded(r: Exclude<Received, { kind: "invalid" }>): Promise
     stickerId: r.stickerId,
     ...(met === undefined ? {} : { met }),
   });
-  const ownCount = ownStickerCount();
-  const plan = planReceiveToast({
-    outcome: "added",
-    ownCount,
-    invitationShown: ownCount > 0 || (await invitationShown()),
-  });
-  // saved before it shows: a reload right after must not invite again
-  if (plan.persistent) await markInvitationShown();
+  // one thing to do next: make one back (the create button beats; giveBack)
+  giveBack.set(r.stickerId);
+  const who = snsHandle(r.sticker.snsKind, r.sticker.snsId);
   feedback.landed(r.stickerId, "pocket", {
-    text:
-      t.feedback.receivedAdded(nameOf(r.sticker)) +
-      (met === undefined ? "" : `・${t.feedback.nthPerson(met)}`),
-    action: { kind: plan.invite ? "create" : "return", from: r.stickerId },
-    persistent: plan.persistent,
+    text: who ? t.feedback.receivedFrom(who) : t.feedback.receivedSome,
   });
 }
 

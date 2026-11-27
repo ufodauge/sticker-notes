@@ -128,7 +128,10 @@ test("brought by a shared sticker: stick it from the pocket, then make one to gi
   await page.mouse.move(paper.x + paper.width * 0.3, paper.y + paper.height * 0.4, { steps: 12 });
   await page.mouse.up();
   await expect(caption(page)).toHaveAttribute("data-tutorial", "tutorial.received:create");
-  await page.getByRole("button", { name: "自分のも作る" }).click();
+  await page
+    .getByRole("navigation")
+    .getByRole("button", { name: "画像からステッカーを作る" })
+    .click();
   // one's first, in one tap
   await page.locator('input[type="file"]').setInputFiles("test/fixtures/sample.png");
   const qr = page.getByRole("dialog", { name: "交換用のQR" });

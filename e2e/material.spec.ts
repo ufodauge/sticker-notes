@@ -20,9 +20,6 @@ test("materials open up as one exchanges with people, and travel in the QR", asy
   await expect(page.getByRole("dialog")).toHaveCount(0);
 
   await receiveToPocket(page, "slime");
-  await expect(
-    page.getByRole("navigation").getByRole("button", { name: "画像からステッカーを作る" }),
-  ).toHaveAttribute("data-dot");
   await openMaker(page);
   await expect(
     materials.getByRole("radio", { name: "ぷっくり(新しく使えるようになった)" }),
@@ -33,6 +30,9 @@ test("materials open up as one exchanges with people, and travel in the QR", asy
     "true",
   );
   await page.getByRole("button", { name: "シール帳に貼る" }).click();
+  // made just after one came: it is given back to it first
+  await expect(page.getByRole("dialog", { name: "交換用のQR" })).toContainText("にお返し");
+  await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).toHaveCount(0);
   const placed = page.getByRole("button", { name: "シール", exact: true });
   await expect(placed.locator('[data-material="puffy"]').first()).toBeAttached();

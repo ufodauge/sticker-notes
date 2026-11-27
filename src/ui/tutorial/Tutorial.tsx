@@ -46,7 +46,15 @@ const chosen: { id: string | null } = { id: null };
 const teased = (): Element | undefined => {
   const id = chosen.id;
   const now = id ? document.querySelector(`[data-facing] [data-grab="${CSS.escape(id)}"]`) : null;
-  return now ?? visibleElement("[data-facing] [data-grab]");
+  // the one nearest the middle of the screen: in the open, not in a corner's shadow
+  const mid = { x: innerWidth / 2, y: innerHeight / 2 };
+  const nearest = [...document.querySelectorAll("[data-facing] [data-grab]")]
+    .filter((el) => onScreen(el.getBoundingClientRect()))
+    .map((el) => ({ el, c: centre(el.getBoundingClientRect()) }))
+    .sort(
+      (a, b) => Math.hypot(a.c.x - mid.x, a.c.y - mid.y) - Math.hypot(b.c.x - mid.x, b.c.y - mid.y),
+    )[0];
+  return now ?? nearest?.el;
 };
 
 // a finger on the screen: the chosen sticker is not curled again until it is lifted

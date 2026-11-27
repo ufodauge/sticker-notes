@@ -38,7 +38,7 @@ import { settings, stickerStore } from "../../../data/sticker-store.ts";
 import common from "../../common.module.css";
 import { Dialog } from "../../Dialog.tsx";
 import { t } from "../../messages.ts";
-import { backupMarkCache } from "./backup-mark.ts";
+import { backupDue, backupMarkCache } from "./backup-mark.ts";
 import { MySnsField } from "../../MySnsField.tsx";
 import { soundPref } from "../../sound-pref.ts";
 import { tutorial } from "../../tutorial/tutorial-store.ts";
@@ -138,6 +138,12 @@ async function importBackupFile(file: File): Promise<string> {
 
 function Backup() {
   const [state, set] = useReducer((_: ImportState, next: ImportState) => next, { kind: "idle" });
+  // many received since the last backup: the button is marked (instead of a dot on the menu)
+  const mark = useSyncExternalStore(backupMarkCache.subscribe, backupMarkCache.get);
+  const snap = useSyncExternalStore(stickerStore.subscribe, stickerStore.getSnapshot);
+  const received =
+    snap.status === "ready" ? snap.stickers.filter((s) => s.origin === "received").length : 0;
+  const due = backupDue(received, mark);
   const onFile = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.currentTarget.files?.[0];
     e.currentTarget.value = "";
@@ -148,7 +154,12 @@ function Backup() {
   return (
     <Row icon={<DatabaseBackup aria-hidden="true" size={20} strokeWidth={1.5} />}>
       <div className={common.row}>
-        <button type="button" className={common.button} onClick={() => void exportBackup()}>
+        <button
+          type="button"
+          className={`${common.button} ${styles.due}`}
+          data-due={due || undefined}
+          onClick={() => void exportBackup()}
+        >
           <Download aria-hidden="true" size={18} strokeWidth={1.5} />
           {t.menu.backup}
         </button>
