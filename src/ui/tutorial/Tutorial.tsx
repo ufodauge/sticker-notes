@@ -43,13 +43,26 @@ const visible = (selector: string): DOMRect | undefined =>
 // the one chosen for this cue
 const chosen: { id: string | null } = { id: null };
 
+// a sticker really in sight: on the screen, and not under another leaf (what is at its middle is
+// its own touch area)
+const inSight = (el: Element): boolean => {
+  const r = el.getBoundingClientRect();
+  if (!onScreen(r)) return false;
+  const c = centre(r);
+  const top = document.elementFromPoint(c.x, c.y);
+  return !!top && (el.contains(top) || top.closest("[data-grab]") === el);
+};
+
 const teased = (): Element | undefined => {
   const id = chosen.id;
-  const now = id ? document.querySelector(`[data-facing] [data-grab="${CSS.escape(id)}"]`) : null;
+  // the one chosen, while it is on the screen (the desk may have moved since)
+  const now = id
+    ? [...document.querySelectorAll(`[data-facing] [data-grab="${CSS.escape(id)}"]`)].find(inSight)
+    : undefined;
   // the one nearest the middle of the screen: in the open, not in a corner's shadow
   const mid = { x: innerWidth / 2, y: innerHeight / 2 };
   const nearest = [...document.querySelectorAll("[data-facing] [data-grab]")]
-    .filter((el) => onScreen(el.getBoundingClientRect()))
+    .filter(inSight)
     .map((el) => ({ el, c: centre(el.getBoundingClientRect()) }))
     .sort(
       (a, b) => Math.hypot(a.c.x - mid.x, a.c.y - mid.y) - Math.hypot(b.c.x - mid.x, b.c.y - mid.y),
@@ -64,8 +77,9 @@ function cueOf(flow: TutorialFlow, stateId: string): Cue | null {
   if (stateId === "peel") {
     const el = teased();
     if (!el) return null;
-    // chosen once; touched, it lies flat (PageCanvas) and curls again only once let go
-    chosen.id ??= el.getAttribute("data-grab");
+    // chosen while it is in view; touched, it lies flat (PageCanvas) and curls again only once
+    // let go
+    if (!pressing.down) chosen.id = el.getAttribute("data-grab");
     if (!pressing.down) tease.set(chosen.id);
     const s = el.getBoundingClientRect();
     // the finger takes it by the edge that curls up (marked, turned with the sticker), and pulls
