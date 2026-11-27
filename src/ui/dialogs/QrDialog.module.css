@@ -30,12 +30,33 @@
   }
 }
 
+/* a paper tag: the sticker and who it says it is from */
 .who {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
+  min-block-size: var(--tap);
+  padding: var(--space-1) var(--space-3) var(--space-1) var(--space-1);
+  border: 1px solid #d6d6d6;
+  border-radius: 4px;
+  background: #ffffff;
+  color: inherit;
+  font: inherit;
   font-size: var(--text-small);
   overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.who:disabled {
+  border-color: transparent;
+  cursor: default;
+}
+
+.noSns {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: #8a8a8a;
 }
 
 .sns {
@@ -115,9 +136,8 @@
   position: absolute;
   inset-inline: 15%;
   inset-block-start: 20%;
-  block-size: 3px;
-  background: rgb(var(--stamp-ink));
-  box-shadow: 0 0 10px rgb(var(--stamp-ink));
+  block-size: 14px;
+  background: linear-gradient(transparent, rgb(0 0 0 / 0.18), transparent);
   opacity: 0;
 }
 

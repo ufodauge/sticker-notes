@@ -135,11 +135,11 @@ export const stickerStore = {
     }
   },
 
-  // a sample into the pocket, as one received; its ID
-  pocketSample: async (sticker: Sticker): Promise<string> => {
+  // the tutorial's friend's sticker into the pocket, received (it names no one); its ID
+  pocketFromFriend: async (sticker: Sticker): Promise<string> => {
     const body = encodeBody(sticker);
     const id = await stickerIdOf(body);
-    await stickerStore.add(id, body, "sample");
+    await stickerStore.add(id, body, "received");
     return id;
   },
 

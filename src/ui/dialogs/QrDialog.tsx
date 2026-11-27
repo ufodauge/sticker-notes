@@ -1,4 +1,4 @@
-import { ArrowRight, Check, Copy, Maximize, Share2 } from "lucide-react";
+import { ArrowRight, AtSign, Check, Copy, Maximize, Share2 } from "lucide-react";
 import { useReducer, useRef, useSyncExternalStore } from "react";
 import { encodeBody, type Sticker } from "../../core/payload.ts";
 import {
@@ -43,6 +43,7 @@ export function QrDialog({ initial, mine, to, friendReads, onClose }: Props) {
   const [id, choose] = useReducer((_: string, next: string) => next, initial.id);
   const shown = mine.find((s) => s.id === id) ?? initial;
   const sns = useSyncExternalStore(mySns.subscribe, mySns.get);
+  const [editing, toggleEditing] = useReducer((on: boolean) => !on, false);
   return (
     <Dialog label={t.qr.dialog} variant="full" onClose={onClose}>
       <div className={styles.frame}>
@@ -58,11 +59,15 @@ export function QrDialog({ initial, mine, to, friendReads, onClose }: Props) {
           key={shown.id}
           sticker={withMySns(shown.sticker, sns)}
           friendReads={!!friendReads}
+          editing={editing}
+          onEdit={toggleEditing}
         />
-        {/* the SNS every QR of one's own carries: set here, where it is seen */}
-        <div className={styles.mySns}>
-          <MySnsField />
-        </div>
+        {/* the SNS the QR carries, written here when the tag above is tapped */}
+        {editing && !friendReads && (
+          <div className={styles.mySns}>
+            <MySnsField />
+          </div>
+        )}
         {mine.length > 1 && (
           <div className={styles.pick} role="group" aria-label={t.qr.pick}>
             {mine.map((s) => (
@@ -88,9 +93,13 @@ export function QrDialog({ initial, mine, to, friendReads, onClose }: Props) {
 function QrBody({
   sticker,
   friendReads,
+  editing,
+  onEdit,
 }: {
   readonly sticker: Sticker;
   readonly friendReads: boolean;
+  readonly editing: boolean;
+  readonly onEdit: () => void;
 }) {
   const root = useRef<HTMLDivElement>(null);
   const viewport = useViewport();
@@ -117,12 +126,28 @@ function QrBody({
         aria-label={t.qr.code(nameOf(sticker))}
       />
       {friendReads && <FriendReads />}
-      <div className={styles.who}>
+      {/* who the QR says it is from: the sticker and the maker's SNS (tapped, it can be changed) */}
+      <button
+        type="button"
+        className={styles.who}
+        aria-expanded={editing}
+        aria-label={t.qr.from(nameOf(sticker))}
+        title={t.qr.from(nameOf(sticker))}
+        disabled={friendReads}
+        onClick={onEdit}
+      >
         <StickerView sticker={sticker} scale={1} label="" decorative />
         <span className={styles.sns}>
-          <SnsHandle kind={sticker.snsKind} id={sticker.snsId} size={16} />
+          {sticker.snsKind === 0 ? (
+            <span className={styles.noSns}>
+              <AtSign aria-hidden="true" size={14} strokeWidth={1.5} />
+              {t.sns.field}
+            </span>
+          ) : (
+            <SnsHandle kind={sticker.snsKind} id={sticker.snsId} size={16} />
+          )}
         </span>
-      </div>
+      </button>
       <div className={common.row}>
         <ShareLink url={url} title={nameOf(sticker)} />
         {document.fullscreenEnabled && (

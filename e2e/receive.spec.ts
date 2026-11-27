@@ -164,6 +164,7 @@ test("with none of one's own yet, the one made from the invitation is given back
   await page.getByRole("button", { name: "ポケットに入れる" }).click();
   const dialog = page.getByRole("dialog", { name: "交換用のQR" });
   await expect(dialog).toContainText(`${SLIME} にお返し`);
+  await dialog.getByRole("button", { name: /のSNS$/ }).click();
   await dialog.getByLabel("ID", { exact: true }).fill("mine_1");
   expect((await readQr(page))?.snsId).toBe("mine_1");
 });

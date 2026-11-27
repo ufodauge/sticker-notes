@@ -28,6 +28,8 @@ export function Backing({ sticker, small, className, children }: Props) {
           <span>{t.pocket.made}</span>
         ) : sticker.origin === "sample" ? (
           <span>{t.pocket.sample}</span>
+        ) : s.snsKind === 0 ? (
+          <span>{t.pocket.friend}</span>
         ) : (
           <span className={styles.from}>
             <span className={styles.fromWord}>{t.pocket.from}</span>

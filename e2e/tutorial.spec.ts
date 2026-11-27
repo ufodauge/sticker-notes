@@ -74,10 +74,12 @@ test("a first visit learns on the samples: peel, stick, turn, take a friend's fr
 
   // the friend's sticker comes back into the pocket, to be stuck from there
   await expect(caption(page)).toHaveAttribute("data-tutorial", "tutorial.start:pocket");
-  await expect(pocketButton(page)).toHaveAccessibleName(/ポケット\(\d枚\)/);
+  await expect(pocketButton(page)).toHaveAccessibleName("ポケット(1枚)");
   await expect(page.getByRole("dialog", { name: "シールの交換" })).toHaveCount(0);
   await page.getByRole("button", { name: /^ポケット/ }).click();
-  await page.getByRole("button", { name: "X @sticker_notes を手に取る", exact: true }).click();
+  // only the friend's is in it: one's own went on the page
+  await expect(page.getByRole("button", { name: /を手に取る$/ })).toHaveCount(1);
+  await page.getByRole("button", { name: "シール を手に取る", exact: true }).click();
   await page.getByRole("button", { name: "はがしてページに貼る" }).click();
   await expect(caption(page)).toHaveAttribute("data-tutorial", "tutorial.start:outro");
   await page

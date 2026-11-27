@@ -2,6 +2,7 @@ import type { FlowAt } from "./flows.ts";
 import { madeUpSticker } from "./made-up.ts";
 import type { MaterialKind } from "./material.ts";
 import type { Sticker } from "./payload.ts";
+import { NO_SNS } from "./sns.ts";
 
 // The first time through, shown by doing (the flows "tutorial.start" and "tutorial.received" in
 // flows.ts). Two ways in: opened as it is (the album starts with a few sample stickers to learn
@@ -51,5 +52,9 @@ export type Samples = {
 
 export function sampleStickers(): Samples {
   const all = SAMPLES.map(sample);
-  return { pages: [all.slice(0, 2), all.slice(2)], friend: sample(FRIEND) };
+  // the friend is made up: their sticker names no one, so it counts no person
+  return {
+    pages: [all.slice(0, 2), all.slice(2)],
+    friend: { ...sample(FRIEND), snsKind: NO_SNS, snsId: "" },
+  };
 }

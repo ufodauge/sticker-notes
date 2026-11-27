@@ -58,6 +58,8 @@ export const t = {
     back: "ポケットに戻す",
     made: "自分で作った",
     from: "from",
+    // received, naming no one
+    friend: "友だちから",
     date: (iso: string) => iso.replaceAll("-", "."),
   },
 
@@ -95,6 +97,8 @@ export const t = {
     dialog: "交換用のQR",
     // the tutorial's friend, reading the QR
     read: "読み取り",
+    // who the QR says it is from (tapped: the SNS can be changed)
+    from: (who: string) => `${who} のSNS`,
     giveBackTo: (who: string) => `${who} にお返し`,
     pick: "QRにするステッカー",
     code: (who: string) => `${who} のQRコード`,

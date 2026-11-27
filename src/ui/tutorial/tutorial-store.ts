@@ -50,15 +50,23 @@ events.on((e) => {
   if (next === s) return;
   publish(stateOf(next)?.on === undefined ? DONE : { ...s, at: next.at });
   if (s.flow === "tutorial.start" && stateOf(next)?.id === "pocket") arrive();
+  // one's own, just made, goes on the page while its QR is up: the pocket is for what others
+  // give (placed before the pocket step, which waits for a sticker placed)
+  if (s.flow === "tutorial.start" && e.type === "sticker.created") {
+    const own = e.stickerId;
+    void stickerStore
+      .place(own, { near: undefined })
+      .then(() => feedback.landed(own, "arrive", null));
+  }
 });
 
 // the friend who read the QR sends one back: it flies into the pocket
 function arrive(): void {
   setTimeout(() => {
     void stickerStore
-      .pocketSample(sampleStickers().friend)
+      .pocketFromFriend(sampleStickers().friend)
       .then((id) => feedback.landed(id, "pocket", null));
-  }, 500);
+  }, 700);
 }
 
 // whether the QR on screen is the tutorial's, which a friend (made up) reads

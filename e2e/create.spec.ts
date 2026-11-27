@@ -52,7 +52,19 @@ async function openMaker(page: Page, name: string, buffer: Buffer) {
 async function openOwnQr(page: Page, id: string) {
   await page.getByRole("button", { name: "シール", exact: true }).click();
   await page.getByRole("button", { name: "交換用のQR", exact: true }).click();
-  await page.getByRole("dialog").getByLabel("ID", { exact: true }).fill(id);
+  await writeSns(page, id);
+}
+
+// the SNS under the QR: its tag opens the field
+async function writeSns(page: Page, id: string) {
+  const field = page.getByRole("dialog").getByLabel("ID", { exact: true });
+  if (!(await field.isVisible())) {
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: /のSNS$/ })
+      .click();
+  }
+  await field.fill(id);
 }
 
 async function save(page: Page) {
