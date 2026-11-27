@@ -60,13 +60,13 @@ function cueOf(flow: TutorialFlow, stateId: string): Cue | null {
     chosen.id ??= el.getAttribute("data-grab");
     if (!pressing.down) tease.set(chosen.id);
     const s = el.getBoundingClientRect();
-    // the finger takes it by the edge that curls up (marked, turned with the sticker), and draws
-    // it off toward the middle and beyond
+    // the finger takes it by the edge that curls up (marked, turned with the sticker), and pulls
+    // it off, away from the middle
     const mark = el.querySelector("[data-tease-grip]")?.getBoundingClientRect();
     const edge = mark ? { x: mark.left, y: mark.top } : centre(s);
     const c = centre(s);
     const out = Math.hypot(c.x - edge.x, c.y - edge.y) || 1;
-    const to = { x: edge.x + ((c.x - edge.x) / out) * 90, y: edge.y + ((c.y - edge.y) / out) * 90 };
+    const to = { x: edge.x - ((c.x - edge.x) / out) * 70, y: edge.y - ((c.y - edge.y) / out) * 70 };
     return { mark: "none", at: s, from: edge, to };
   }
   if (stateId === "turn") {
@@ -94,11 +94,13 @@ function cueOf(flow: TutorialFlow, stateId: string): Cue | null {
     const c = centre(b);
     return { mark: "ring", at: b, from: c, to: c };
   }
-  if (flow === "tutorial.received" && stateId === "place") {
+  if (stateId === "pocket" || (flow === "tutorial.received" && stateId === "place")) {
     const pocket = visible("[data-pocket]");
     const paper = visible("[data-facing]");
     if (!pocket || !paper) return null;
-    return { mark: "ring", at: pocket, from: centre(pocket), to: centre(paper) };
+    // onto the lower part of the page, clear of what is stuck there already
+    const to = { x: paper.left + paper.width * 0.5, y: paper.top + paper.height * 0.75 };
+    return { mark: "ring", at: pocket, from: centre(pocket), to };
   }
   return null;
 }
@@ -191,7 +193,7 @@ export function Tutorial() {
       {s.at > 0 && (
         // a tick for the step just done, popping and fading
         <span key={s.at} className={styles.done} role="img" aria-label={t.tutorial.done}>
-          <Check aria-hidden="true" size={18} strokeWidth={2.5} />
+          <Check aria-hidden="true" size={30} strokeWidth={3} />
         </span>
       )}
       <button

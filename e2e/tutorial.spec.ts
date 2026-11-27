@@ -22,7 +22,7 @@ const savedTutorial = (page: Page) =>
       }),
   );
 
-test("a first visit learns on the sample stickers: peel, stick, turn, make one's own", async ({
+test("a first visit learns on the samples: peel, stick, turn, take a friend's from the pocket, make one", async ({
   page,
 }) => {
   await page.goto("/");
@@ -30,7 +30,7 @@ test("a first visit learns on the sample stickers: peel, stick, turn, make one's
   await expect(caption(page)).toHaveAttribute("data-tutorial", "tutorial.start:peel");
   await expect(page.locator("[data-teased]")).toHaveCount(1);
   const samples = page.locator("[data-facing]").getByRole("button", { name: "X @sticker_notes" });
-  await expect(samples).toHaveCount(3);
+  await expect(samples).toHaveCount(2);
 
   // peeled by its edge, and put down on the desk above the book
   const sticker = samples.first();
@@ -45,20 +45,36 @@ test("a first visit learns on the sample stickers: peel, stick, turn, make one's
   await page.mouse.up();
   await expect(caption(page)).toHaveAttribute("data-tutorial", "tutorial.start:turn");
 
+  // the next page has one more sample waiting
   await turnPage(page, 1);
-  await expect(caption(page)).toHaveAttribute("data-tutorial", "tutorial.start:create");
-  // a tick for each step done
+  await expect(
+    page.locator("[data-facing]").getByRole("button", { name: "X @sticker_notes" }),
+  ).toHaveCount(1);
+  // then a friend's sticker arrives in the pocket, to be stuck from there
+  await expect(caption(page)).toHaveAttribute("data-tutorial", "tutorial.start:pocket");
   await expect(caption(page).getByLabel("できた")).toHaveCount(1);
+  await expect(pocketButton(page)).toHaveAccessibleName("ポケット(1枚)");
+  const pocket = await pocketButton(page).boundingBox();
+  const paper = await page.locator("[data-facing]").first().boundingBox();
+  if (!pocket || !paper) throw new Error("no box");
+  await page.mouse.move(pocket.x + pocket.width / 2, pocket.y + 20);
+  await page.mouse.down();
+  await page.mouse.move(paper.x + paper.width * 0.4, paper.y + paper.height * 0.7, { steps: 12 });
+  await page.mouse.up();
+  await expect(caption(page)).toHaveAttribute("data-tutorial", "tutorial.start:create");
   await page
     .getByRole("navigation")
     .getByRole("button", { name: "画像からステッカーを作る" })
     .click();
   // the last card waits until the making is put away
   await expect(caption(page)).toHaveAttribute("data-tutorial", "tutorial.start:making");
-  await expect(page.getByRole("dialog", { name: "これで準備ばっちり" })).toHaveCount(0);
-  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog", { name: "シールの交換" })).toHaveCount(0);
+  await page.locator('input[type="file"]').setInputFiles("test/fixtures/sample.png");
+  await expect(page.getByRole("img", { name: "作成中のステッカー" })).toBeVisible();
+  await page.getByLabel("ID", { exact: true }).fill("mine_1");
+  await page.getByRole("button", { name: "ポケットに入れる" }).click();
   await expect(caption(page)).toHaveAttribute("data-tutorial", "tutorial.start:outro");
-  await page.getByRole("button", { name: "はじめよう" }).click();
+  await page.getByRole("button", { name: "閉じる", exact: true }).click();
   await expect(caption(page)).toHaveCount(0);
   await expect.poll(() => savedTutorial(page)).toEqual({ done: true });
   await page.reload();
@@ -67,6 +83,31 @@ test("a first visit learns on the sample stickers: peel, stick, turn, make one's
   await expect(
     page.locator("[data-facing]").getByRole("button", { name: "X @sticker_notes" }),
   ).not.toHaveCount(0);
+});
+
+test("put away with nothing made, the making ends the tutorial quietly", async ({ page }) => {
+  await page.goto("/?debug");
+  await expect(caption(page)).toHaveAttribute("data-tutorial", "tutorial.start:peel");
+  // straight to the step of making one (the debug flow view puts a tutorial at a state)
+  await page.getByRole("button", { name: "デバッグ", exact: true }).click();
+  await page.getByRole("button", { name: "流れを見る" }).click();
+  const panel = page.getByRole("complementary", { name: "流れを見る" });
+  await panel
+    .locator('[data-flow="tutorial.start"]')
+    .getByRole("button", { name: /^create/ })
+    .click();
+  await panel.getByRole("button", { name: "流れを閉じる" }).click();
+  await expect(caption(page)).toHaveAttribute("data-tutorial", "tutorial.start:create");
+  await page
+    .getByRole("navigation")
+    .getByRole("button", { name: "画像からステッカーを作る" })
+    .click();
+  await expect(caption(page)).toHaveAttribute("data-tutorial", "tutorial.start:making");
+  await page.keyboard.press("Escape");
+  // no card about a sticker that was not made
+  await expect(caption(page)).toHaveCount(0);
+  await expect(page.getByRole("dialog", { name: "シールの交換" })).toHaveCount(0);
+  await expect.poll(() => savedTutorial(page)).toEqual({ done: true });
 });
 
 test("the tutorial can be closed at any time, and stays closed", async ({ page }) => {

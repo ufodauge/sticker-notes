@@ -17,7 +17,8 @@
   pointer-events: auto;
 }
 
-/* a tick for a step done: it pops at the top and fades */
+/* a tick for a step done, inked straight on the wood (no button-like circle): it pops at the
+   top and fades */
 .done {
   position: absolute;
   inset-block-start: max(var(--space-3), env(safe-area-inset-top));
@@ -27,11 +28,8 @@
   inline-size: 36px;
   block-size: 36px;
   margin-inline-start: -18px;
-  border: 2px solid #ffffff;
-  border-radius: 50%;
-  background: rgb(var(--stamp-ink));
-  color: #ffffff;
-  box-shadow: 0 3px 8px rgb(0 0 0 / 0.25);
+  color: var(--sheet);
+  filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.45));
   animation: tick 1.4s var(--ease-out) both;
 }
 

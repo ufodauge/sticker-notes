@@ -27,10 +27,19 @@ const tutorialStart: FlowDef = {
   states: [
     { id: "peel", note: "見本の一枚の角がめくれかけている: 剥がす", on: "sticker.peeled" },
     { id: "place", note: "好きな所に貼る", on: "sticker.placed" },
-    { id: "turn", note: "ページの角が折れかけている: めくる", on: "page.turned" },
-    { id: "create", note: "作るボタンが脈打つ: 押す", on: "create.opened" },
-    { id: "making", note: "作っている(作る画面を閉じるまで待つ)", on: "create.closed" },
-    { id: "outro", note: "できた。交換しよう", on: "tutorial.finish" },
+    {
+      id: "turn",
+      note: "ページの角が折れかけている: めくる(次のページに見本がもう一枚)",
+      on: "page.turned",
+    },
+    { id: "pocket", note: "友だちのシールがポケットに届く: 引き出して貼る", on: "sticker.placed" },
+    { id: "create", note: "作るボタンが脈打つ: お返しを作る", on: "create.opened" },
+    {
+      id: "making",
+      note: "作っている: 閉じたら最後のカード(何も作らずに閉じたら静かに終わる)",
+      on: "create.closed",
+    },
+    { id: "outro", note: "交換のしかた(QR を読んでもらう)", on: "tutorial.finish" },
     { id: "done", note: "おわり" },
   ],
 };
@@ -43,7 +52,7 @@ const tutorialReceived: FlowDef = {
     { id: "place", note: "届いたシールでポケットが揺れる: 引き出して貼る", on: "sticker.placed" },
     { id: "create", note: "作るボタンが脈打つ: お返しを作る", on: "sticker.created" },
     { id: "give", note: "お返しのQRを見せる", on: "qr.closed" },
-    { id: "outro", note: "交換できた", on: "tutorial.finish" },
+    { id: "outro", note: "お返しは相手が QR を読むと届く", on: "tutorial.finish" },
     { id: "done", note: "おわり" },
   ],
 };

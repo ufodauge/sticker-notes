@@ -118,13 +118,29 @@ export const stickerStore = {
   },
 
   // The stickers the album starts with, stuck one after another on its first page.
-  seedSamples: async (samples: readonly Sticker[]): Promise<void> => {
-    for (const sticker of samples) {
-      const body = encodeBody(sticker);
-      const id = await stickerIdOf(body);
-      await stickerStore.add(id, body, "sample");
-      await stickerStore.place(id, { near: undefined });
+  // by page: the first page's stickers, then a new page's (each on its left half, where a phone
+  // looks first)
+  seedSamples: async (pages: readonly (readonly Sticker[])[]): Promise<void> => {
+    for (const [i, samples] of pages.entries()) {
+      const pageId = crypto.randomUUID();
+      for (const [j, sticker] of samples.entries()) {
+        const body = encodeBody(sticker);
+        const id = await stickerIdOf(body);
+        await stickerStore.add(id, body, "sample");
+        await stickerStore.place(
+          id,
+          i === 0 ? { near: undefined } : { pageId, change: { x: 0.25, y: 0.3 + j * 0.2 } },
+        );
+      }
     }
+  },
+
+  // a sample into the pocket, as one received; its ID
+  pocketSample: async (sticker: Sticker): Promise<string> => {
+    const body = encodeBody(sticker);
+    const id = await stickerIdOf(body);
+    await stickerStore.add(id, body, "sample");
+    return id;
   },
 
   // Out of the pocket and onto a page: at a point on a page (a page that does not exist yet is

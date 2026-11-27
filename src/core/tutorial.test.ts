@@ -26,9 +26,13 @@ describe("tutorial", () => {
   });
 
   test("the samples are real stickers, each in another material, from no one", () => {
-    const samples = sampleStickers();
-    expect(samples.map((s) => s.material?.kind)).toEqual(["puffy", "holo", "glitter"]);
-    for (const s of samples) {
+    const { pages, friend } = sampleStickers();
+    // two on the first page, one waiting on the second for the turn, and one to arrive
+    expect(pages.map((p) => p.map((s) => s.material?.kind))).toEqual([
+      ["puffy", "holo"],
+      ["glitter"],
+    ]);
+    for (const s of [...pages.flat(), friend]) {
       const r = decodeBody(encodeBody(s));
       expect(r.ok && r.sticker).toEqual(s);
     }

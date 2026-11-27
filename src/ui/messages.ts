@@ -33,13 +33,13 @@ export const t = {
 
   tutorial: {
     "tutorial.start": {
-      title: "これで準備ばっちり",
-      text: "作ったシールは QR で交換できる\n友だちに読んでもらおう",
-      go: "はじめよう",
+      title: "シールの交換",
+      text: "作ったシールの QR を友だちが読むと\n友だちのポケットに届く",
+      go: "閉じる",
     },
     "tutorial.received": {
-      title: "交換できた",
-      text: "もらったシールはシール帳に\nあなたのシールは相手のポケットに",
+      title: "お返しの QR",
+      text: "相手が読むと\n相手のポケットに届く",
       go: "閉じる",
     },
     done: "できた",

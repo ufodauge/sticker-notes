@@ -4,6 +4,7 @@ import { events } from "../../data/events.ts";
 import { settings, stickerStore, type Ready } from "../../data/sticker-store.ts";
 import { testFlag } from "../../data/test-flags.ts";
 import { DEBUG_BUILD } from "../debug-build.ts";
+import { feedback } from "../feedback.ts";
 
 // The first time through: which flow (core/flows.ts) and how far it has got. It moves on by the
 // album's own events (data/events.ts), as each thing is done.
@@ -43,8 +44,31 @@ events.on((e) => {
   if (!s || "done" in s) return;
   const next = step(s, e.type);
   if (next === s) return;
+  // the making put away with nothing made: nothing to say about it, the tutorial just ends
+  if (e.type === "create.closed" && stateOf(s)?.id === "making" && !made.now) {
+    publish(DONE);
+    return;
+  }
   publish(stateOf(next)?.on === undefined ? DONE : { ...s, at: next.at });
+  if (s.flow === "tutorial.start" && stateOf(next)?.id === "pocket") arrive();
 });
+
+// whether a sticker was made since the making began
+const made = { now: false };
+events.on((e) => {
+  if (e.type === "create.opened") made.now = false;
+  if (e.type === "sticker.created") made.now = true;
+});
+
+// a friend's sticker comes into the pocket, flying in as a received one does, once the page
+// has settled from its turn (one thing at a time)
+function arrive(): void {
+  setTimeout(() => {
+    void stickerStore
+      .pocketSample(sampleStickers().friend)
+      .then((id) => feedback.landed(id, "pocket", null));
+  }, 900);
+}
 
 const readyStore = (): Promise<Ready> =>
   new Promise((resolve) => {
@@ -69,7 +93,7 @@ export function startTutorial(arrivedByLink: boolean): void {
     async ([saved, snap]) => {
       const first = chooseFlow({ saved, stickers: snap.stickers.length, arrivedByLink });
       if (!saved && "flow" in first && first.flow === "tutorial.start") {
-        await stickerStore.seedSamples(sampleStickers());
+        await stickerStore.seedSamples(sampleStickers().pages);
       }
       publish(first);
     },
