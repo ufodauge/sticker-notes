@@ -39,6 +39,6 @@ test("materials open up as one exchanges with people, and travel in the QR", asy
   const placed = page.getByRole("button", { name: "X @puffy_maker", exact: true });
   await expect(placed.locator('[data-material="puffy"]').first()).toBeAttached();
   await placed.click();
-  await page.getByRole("button", { name: "QRを出す", exact: true }).click();
+  await page.getByRole("button", { name: "交換用のQR", exact: true }).click();
   expect((await readQr(page))?.material).toEqual({ kind: "puffy", tone: 0 });
 });

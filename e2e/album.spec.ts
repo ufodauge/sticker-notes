@@ -64,7 +64,7 @@ test("pulled outward from its corner, a sticker stays stuck", async ({ page }) =
 test("a full spread adds the next spread of the notebook", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "メニュー" }).click();
-  await page.getByLabel("読み込む").setInputFiles({
+  await page.getByLabel("復元").setInputFiles({
     name: "b.json",
     mimeType: "application/json",
     buffer: Buffer.from(await bigBackup(25, 0)),
@@ -93,9 +93,9 @@ test("backup export → import into a fresh browser", async ({ page, browser }) 
   await p2.goto("/");
   await p2.getByRole("button", { name: "メニュー" }).click();
   const file = { name: "backup.json", mimeType: "application/json", buffer: Buffer.from(json) };
-  await p2.getByLabel("読み込む").setInputFiles(file);
+  await p2.getByLabel("復元").setInputFiles(file);
   await expect(p2.getByRole("status")).toContainText("2枚を読み込んだ");
-  await p2.getByLabel("読み込む").setInputFiles(file);
+  await p2.getByLabel("復元").setInputFiles(file);
   await expect(p2.getByRole("status")).toContainText("0枚を読み込んだ");
   await fresh.close();
 });

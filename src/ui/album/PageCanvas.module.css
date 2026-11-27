@@ -58,43 +58,33 @@
   visibility: hidden;
 }
 
-/* the tutorial's sample sticker that wants to come off: now and then it lifts from its lower right
-   edge, as a sticker not quite pressed down does, and settles again */
-.grab[data-tease] .art {
-  transform-origin: 20% 20%;
-  animation: tease 2.6s ease-in-out infinite;
+/* the tutorial's sample sticker that wants to come off: drawn curling on its own canvas
+   (TeaseCanvas.tsx) in place of the art, with room around it for the roll and its shadow */
+.art[data-teased] {
+  visibility: hidden;
 }
 
-@keyframes tease {
-  0%,
-  45%,
-  100% {
-    rotate: 0deg;
-    translate: 0 0;
-    filter: none;
-  }
-  60% {
-    rotate: -5deg;
-    translate: 2% -4%;
-    filter: drop-shadow(4px 8px 5px rgb(0 0 0 / 0.28));
-  }
-  70% {
-    rotate: -2deg;
-    translate: 1% -2%;
-    filter: drop-shadow(2px 4px 3px rgb(0 0 0 / 0.2));
-  }
-  80% {
-    rotate: -5deg;
-    translate: 2% -4%;
-    filter: drop-shadow(4px 8px 5px rgb(0 0 0 / 0.28));
-  }
+.tease {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .grab[data-tease] .art {
-    animation: none;
-    filter: drop-shadow(3px 6px 4px rgb(0 0 0 / 0.25));
-  }
+.tease canvas {
+  position: absolute;
+  inset-block-start: var(--m);
+  inset-inline-start: var(--m);
+  inline-size: var(--box);
+  block-size: var(--box);
+}
+
+/* where the edge lifts (turned with the sticker), for the tutorial's finger */
+.teaseGrip {
+  position: absolute;
+  inset-block-start: var(--gy);
+  inset-inline-start: var(--gx);
+  inline-size: 0;
+  block-size: 0;
 }
 
 /* the outline grown by the grace dots, on a box grown to match */

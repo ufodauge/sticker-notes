@@ -60,7 +60,7 @@ test("let go over the toolbar, the peeled sticker goes back into the hand", asyn
 test("stickers without a place in a backup come back into the pocket", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "メニュー" }).click();
-  await page.getByLabel("読み込む").setInputFiles({
+  await page.getByLabel("復元").setInputFiles({
     name: "b.json",
     mimeType: "application/json",
     buffer: Buffer.from(await pocketBackup(5)),

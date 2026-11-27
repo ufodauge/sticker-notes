@@ -5,6 +5,7 @@ import type { TutorialFlow } from "../../core/tutorial.ts";
 import common from "../common.module.css";
 import { t } from "../messages.ts";
 import styles from "./Tutorial.module.css";
+import { tease } from "../album/tease.ts";
 import { tutorial } from "./tutorial-store.ts";
 
 // The first time through, shown rather than told. Each step shows itself on the real thing: one
@@ -38,19 +39,35 @@ const visibleElement = (selector: string): Element | undefined =>
 const visible = (selector: string): DOMRect | undefined =>
   visibleElement(selector)?.getBoundingClientRect();
 
-// the sample sticker that wants to come off (it lifts a little, now and then: PageCanvas.module.css)
-const teased = (): Element | undefined =>
-  document.querySelector("[data-tease]") ?? visibleElement("[data-facing] [data-grab]");
+// the sample sticker that wants to come off (its edge curls up now and then: album/tease.ts)
+// the one chosen for this cue
+const chosen: { id: string | null } = { id: null };
+
+const teased = (): Element | undefined => {
+  const id = chosen.id;
+  const now = id ? document.querySelector(`[data-facing] [data-grab="${CSS.escape(id)}"]`) : null;
+  return now ?? visibleElement("[data-facing] [data-grab]");
+};
+
+// a finger on the screen: the chosen sticker is not curled again until it is lifted
+const pressing: { down: boolean } = { down: false };
 
 function cueOf(flow: TutorialFlow, stateId: string): Cue | null {
   if (stateId === "peel") {
     const el = teased();
     if (!el) return null;
-    el.setAttribute("data-tease", "");
+    // chosen once; touched, it lies flat (PageCanvas) and curls again only once let go
+    chosen.id ??= el.getAttribute("data-grab");
+    if (!pressing.down) tease.set(chosen.id);
     const s = el.getBoundingClientRect();
-    // the finger takes it by the edge that lifts (its lower right), and draws it off
-    const edge = { x: s.right - s.width * 0.28, y: s.bottom - s.height * 0.28 };
-    return { mark: "none", at: s, from: edge, to: { x: edge.x - 40, y: edge.y - 80 } };
+    // the finger takes it by the edge that curls up (marked, turned with the sticker), and draws
+    // it off toward the middle and beyond
+    const mark = el.querySelector("[data-tease-grip]")?.getBoundingClientRect();
+    const edge = mark ? { x: mark.left, y: mark.top } : centre(s);
+    const c = centre(s);
+    const out = Math.hypot(c.x - edge.x, c.y - edge.y) || 1;
+    const to = { x: edge.x + ((c.x - edge.x) / out) * 90, y: edge.y + ((c.y - edge.y) / out) * 90 };
+    return { mark: "none", at: s, from: edge, to };
   }
   if (stateId === "turn") {
     // the page on the right that is in view: its corner folds, as a page starting to turn
@@ -113,9 +130,20 @@ function Cue({ flow, stateId }: { readonly flow: TutorialFlow; readonly stateId:
     const stop = new AbortController();
     addEventListener("resize", measure, { signal: stop.signal });
     addEventListener("scroll", measure, { signal: stop.signal, capture: true });
+    addEventListener("pointerdown", () => (pressing.down = true), {
+      signal: stop.signal,
+      capture: true,
+    });
+    const up = () => {
+      pressing.down = false;
+      measure();
+    };
+    addEventListener("pointerup", up, { signal: stop.signal, capture: true });
+    addEventListener("pointercancel", up, { signal: stop.signal, capture: true });
     return () => {
       cancelAnimationFrame(frame);
-      document.querySelector("[data-tease]")?.removeAttribute("data-tease");
+      tease.set(null);
+      chosen.id = null;
       clearInterval(again);
       stop.abort();
     };

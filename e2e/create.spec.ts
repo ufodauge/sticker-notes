@@ -49,7 +49,7 @@ async function openMaker(page: Page, name: string, buffer: Buffer) {
 
 async function openOwnQr(page: Page, label: string) {
   await page.getByRole("button", { name: label, exact: true }).click();
-  await page.getByRole("button", { name: "QRを出す", exact: true }).click();
+  await page.getByRole("button", { name: "交換用のQR", exact: true }).click();
 }
 
 async function save(page: Page, id: string) {
@@ -65,7 +65,7 @@ test("palette art lands on the album and its QR round-trips", async ({ page }) =
   const placed = page.getByRole("button", { name: "X @sticker_fan2026", exact: true });
   await expect(placed).toBeVisible();
   await placed.click();
-  await page.getByRole("button", { name: "QRを出す", exact: true }).click();
+  await page.getByRole("button", { name: "交換用のQR", exact: true }).click();
   expect(await readQr(page)).toEqual(FIXTURES.slime);
 });
 
@@ -125,7 +125,7 @@ test("the dither toggle changes the preview and the saved sticker round-trips", 
   page,
 }) => {
   await openMaker(page, "photo.png", photoPng());
-  const toggle = page.getByRole("button", { name: "網点でなめらかに" });
+  const toggle = page.getByRole("button", { name: "網点" });
   await expect(toggle).toHaveAttribute("aria-pressed", "false");
   const plain = await previewPixels(page);
   await toggle.click();
@@ -140,7 +140,7 @@ test("the dither toggle changes the preview and the saved sticker round-trips", 
 
 test("the dither toggle is absent for pixel art", async ({ page }) => {
   await openMaker(page, "slime.png", slimePng(1));
-  await expect(page.getByRole("button", { name: "網点でなめらかに" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "網点" })).toHaveCount(0);
 });
 
 test("an invalid ID keeps the dialog open and marks the field", async ({ page }) => {

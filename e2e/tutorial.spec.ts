@@ -26,9 +26,9 @@ test("a first visit learns on the sample stickers: peel, stick, turn, make one's
   page,
 }) => {
   await page.goto("/");
-  // no words: it begins at once, one sample sticker lifting now and then as if it would come off
+  // no words: it begins at once, one sample sticker's edge curling up now and then, as if it would come off
   await expect(caption(page)).toHaveAttribute("data-tutorial", "tutorial.start:peel");
-  await expect(page.locator("[data-tease]")).toHaveCount(1);
+  await expect(page.locator("[data-teased]")).toHaveCount(1);
   const samples = page.locator("[data-facing]").getByRole("button", { name: "X @sticker_notes" });
   await expect(samples).toHaveCount(3);
 
@@ -116,6 +116,6 @@ test("it can be shown again from the menu", async ({ page }) => {
   await page.getByRole("button", { name: "チュートリアルを閉じる" }).click();
   await expect(caption(page)).toHaveCount(0);
   await page.getByRole("button", { name: "メニュー" }).click();
-  await page.getByRole("button", { name: "使い方をもう一度" }).click();
+  await page.getByRole("button", { name: "チュートリアル" }).click();
   await expect(caption(page)).toHaveAttribute("data-tutorial", "tutorial.start:peel");
 });

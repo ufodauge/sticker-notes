@@ -44,7 +44,7 @@ export const t = {
     },
     done: "できた",
     close: "チュートリアルを閉じる",
-    replay: "使い方をもう一度",
+    replay: "チュートリアル",
   },
 
   desk: { desk: "机" } satisfies Readonly<Record<SurfaceKind, string>>,
@@ -63,7 +63,7 @@ export const t = {
   },
 
   back: {
-    show: "裏を見る",
+    show: "シールの裏",
     dialog: "シールの裏",
     flip: "ひっくり返す",
     fromPerson: (n: number) => `この人からのシール ${n}枚`,
@@ -78,7 +78,7 @@ export const t = {
   },
 
   actionBar: {
-    showQr: "QRを出す",
+    showQr: "交換用のQR",
     discard: "捨てる",
   },
 
@@ -121,17 +121,17 @@ export const t = {
       foil: "箔",
     } satisfies Readonly<Record<MaterialKind, string>>,
     materialNew: (name: string) => `${name}(新しく使えるようになった)`,
-    foilTone: "箔にする色",
+    foilTone: "箔の色",
     palette: "パレット",
     paletteNatural: "自然な色",
     paletteFilter: "フィルター",
-    transparent: "透明にする色",
+    transparent: "透明色",
     transparentNone: "透明なし",
     transparentColor: (hex: string) => `#${hex} を透明に`,
     snsKind: "SNSの種類",
     sns: "SNS",
     snsId: "ID",
-    dither: "網点でなめらかに",
+    dither: "網点",
   },
 
   menu: {
@@ -139,7 +139,7 @@ export const t = {
     sound: "音",
     iosInstall: "共有からホーム画面に追加\n追加しないと、しばらく開かないときに消えることがある",
     backup: "バックアップ",
-    restore: "読み込む",
+    restore: "復元",
     restoreFailed: "読み込めなかった",
     restored: (stickers: number, skipped: number) =>
       `${stickers}枚を読み込んだ${skipped > 0 ? `\n読めない項目${skipped}件は飛ばした` : ""}`,
@@ -149,7 +149,7 @@ export const t = {
       "newer-version": "新しい版のアプリで作ったファイル\nアプリを更新してから読み込む",
       "too-large": "ファイルが大きすぎる",
     } satisfies Readonly<Record<BackupError, string>>,
-    keepData: "データを自動削除されないようにする",
+    keepData: "自動削除の防止",
     keepUnsupported: "このブラウザは非対応",
     keepFailed: "失敗しました",
     keepAllowInSettings: "ブラウザの設定でこのアプリのデータ保存を許可してください",
@@ -165,7 +165,7 @@ export const t = {
   print: {
     dialog: "印刷",
     modeGroup: "印刷のしかた",
-    mode: { album: "シール帳", grid: "ならべる" },
+    mode: { album: "シール帳", grid: "一覧" },
     cutLine: "カットライン",
     sheet: (n: number) => `印刷シート ${n}`,
     submit: "印刷",

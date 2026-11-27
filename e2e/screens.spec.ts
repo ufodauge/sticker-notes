@@ -37,7 +37,7 @@ for (const scheme of ["light", "dark"] as const) {
     await shot("03-selected");
 
     await page.getByRole("button", { name: "X @sample_user", exact: true }).click();
-    await page.getByRole("button", { name: "QRを出す", exact: true }).click();
+    await page.getByRole("button", { name: "交換用のQR", exact: true }).click();
     await page.waitForTimeout(400);
     await shot("04-qr");
     await page.keyboard.press("Escape");
@@ -54,7 +54,7 @@ for (const scheme of ["light", "dark"] as const) {
     await page.getByTitle("カットライン").click();
     await page.waitForTimeout(300);
     await shot("06-print-album");
-    await page.getByRole("radio", { name: "ならべる" }).click();
+    await page.getByRole("radio", { name: "一覧" }).click();
     await page.getByRole("button", { name: "X @sticker_fan2026 を増やす" }).click();
     await page.getByRole("button", { name: "X @sample_user を増やす" }).click();
     await page.waitForTimeout(300);

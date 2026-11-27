@@ -9,7 +9,7 @@ test("the back of a received sticker says who gave it, and leads to that person"
   await receive(page, "slime", SLIME);
   await receive(page, "discord", "Discord @pixel.trader");
   await page.getByRole("button", { name: SLIME, exact: true }).click();
-  await page.getByRole("button", { name: "裏を見る" }).click();
+  await page.getByRole("button", { name: "シールの裏" }).click();
   const back = page.getByRole("dialog", { name: "シールの裏" });
   await expect(back).toContainText("sticker_fan2026");
   await back.getByRole("button", { name: "この人からのシール 1枚" }).click();

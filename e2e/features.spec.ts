@@ -7,7 +7,7 @@ const SLIME = "X @sticker_fan2026";
 test("a sticker held at the edge goes over to the next page", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "メニュー" }).click();
-  await page.getByLabel("読み込む").setInputFiles({
+  await page.getByLabel("復元").setInputFiles({
     name: "b.json",
     mimeType: "application/json",
     buffer: Buffer.from(await bigBackup(25, 0)),
@@ -83,7 +83,7 @@ test("print the album as it is: one A4 per page, stickers rotated in place", asy
 test("grid printing keeps the element count flat as copies grow", async ({ page }) => {
   await receive(page, "noise", "Instagram @noise.maker_01");
   await page.getByRole("button", { name: "印刷" }).click();
-  await page.getByRole("radio", { name: "ならべる" }).click();
+  await page.getByRole("radio", { name: "一覧" }).click();
   const more = page.getByRole("button", { name: "Instagram @noise.maker_01 を増やす" });
   for (let i = 0; i < 29; i++) await more.click();
   const count = page.getByRole("spinbutton", { name: "Instagram @noise.maker_01 の枚数" });
@@ -103,7 +103,7 @@ test("grid printing keeps the element count flat as copies grow", async ({ page 
 test("the keep-data switch asks the browser and shows the answer", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "メニュー" }).click();
-  const toggle = page.getByRole("switch", { name: "データを自動削除されないようにする" });
+  const toggle = page.getByRole("switch", { name: "自動削除の防止" });
   await expect(toggle).toBeVisible();
   if (await toggle.isEnabled()) {
     await toggle.click();

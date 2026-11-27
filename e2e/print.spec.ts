@@ -27,7 +27,7 @@ async function rasterise(sheet: Locator): Promise<Buffer> {
 test("print: copies, SVG preview, one A4 page", async ({ page, browserName }) => {
   await receive(page, "slime", "X @sticker_fan2026");
   await page.getByRole("button", { name: "印刷" }).click();
-  await page.getByRole("radio", { name: "ならべる" }).click();
+  await page.getByRole("radio", { name: "一覧" }).click();
   const more = page.getByRole("button", { name: "X @sticker_fan2026 を増やす" });
   for (let i = 0; i < 4; i++) await more.click();
   const sheet = page.getByRole("img", { name: "印刷シート 1" });
@@ -62,13 +62,13 @@ test("print: own QR block sits on the sheet and decodes to the QR dialog URL", a
   await stickFromPocket(page, "X @sticker_fan2026");
 
   await page.getByRole("button", { name: "X @sticker_fan2026", exact: true }).click();
-  await page.getByRole("button", { name: "QRを出す", exact: true }).click();
+  await page.getByRole("button", { name: "交換用のQR", exact: true }).click();
   const dialogUrl = await readQrUrl(page);
   await page.getByRole("button", { name: "閉じる" }).click();
   await expect(page.locator("dialog")).toHaveCount(0);
 
   await page.getByRole("button", { name: "印刷" }).click();
-  await page.getByRole("radio", { name: "ならべる" }).click();
+  await page.getByRole("radio", { name: "一覧" }).click();
   const sheet = page.getByRole("img", { name: "印刷シート 1" });
   await expect(sheet.locator("use")).toHaveCount(0);
   await page.getByRole("checkbox", { name: "自分のQR" }).check();

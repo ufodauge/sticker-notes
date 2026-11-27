@@ -1,6 +1,7 @@
 import { RotateCw } from "lucide-react";
 import {
   useRef,
+  useSyncExternalStore,
   type CSSProperties,
   type KeyboardEvent,
   type PointerEvent,
@@ -27,6 +28,8 @@ import {
 } from "./gesture.ts";
 import { showPage } from "./page-position.ts";
 import { startPeel, type PeelView } from "./sticker-peel.ts";
+import { tease } from "./tease.ts";
+import { TeaseCanvas } from "./TeaseCanvas.tsx";
 import { GRACE_DOTS, onEdge, touchShape } from "./sticker-touch.ts";
 import styles from "./PageCanvas.module.css";
 import { paperSound } from "./paper-sound.ts";
@@ -151,6 +154,7 @@ export function PageCanvas(props: Props) {
     props;
   const owns = (p: Placement) => (p.x < 0.5 ? 0 : 1) === half;
   const pageRef = useRef<HTMLDivElement>(null);
+  const teased = useSyncExternalStore(tease.subscribe, tease.get);
   const hold = useRef<Peel | Hold | Pinch | null>(null);
   const spin = useRef<Spin | null>(null);
   const frame = useRef(0);
@@ -183,6 +187,8 @@ export function PageCanvas(props: Props) {
 
   const onPointerDown = (p: Placement, s: StoredSticker) => (e: PointerEvent<HTMLElement>) => {
     e.stopPropagation();
+    // the tutorial's curling sample lies flat as soon as it is touched: the real peel takes over
+    if (tease.get() === p.id) tease.set(null);
     (e.target as Element).setPointerCapture(e.pointerId);
     const box = pageBox();
     if (!box) return;
@@ -463,12 +469,14 @@ export function PageCanvas(props: Props) {
                   ref={hl && owns(p) ? revealPage : undefined}
                   className={styles.art}
                   data-effect={leaving === p.id ? "leave" : hl?.effect}
+                  data-teased={(teased === p.id && owns(p)) || undefined}
                   onAnimationEnd={(e) => {
                     if (leaving === p.id && e.animationName.includes("peel")) onLeft();
                   }}
                 >
                   <StickerView sticker={s.sticker} scale={0} label="" decorative />
                 </span>
+                {teased === p.id && owns(p) && <TeaseCanvas sticker={s.sticker} />}
                 <span
                   className={styles.touch}
                   style={
