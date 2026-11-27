@@ -32,7 +32,7 @@ export const t = {
   tutorial: {
     "tutorial.start": {
       title: "シールの交換",
-      text: "QR を読んでもらうと届く\n友だちのシールはポケットに",
+      text: "自分のシールを押すと交換用の QR\n友だちのシールはポケットに",
       go: "閉じる",
     },
     "tutorial.received": {
@@ -100,8 +100,6 @@ export const t = {
 
   qr: {
     dialog: "交換用のQR",
-    // the tutorial's friend, reading the QR
-    read: "読み取り",
     // who the QR says it is from (tapped: the SNS can be changed)
     from: (who: string) => `${who} のSNS`,
     giveBackTo: (who: string) => `${who} にお返し`,
@@ -120,7 +118,7 @@ export const t = {
     preview: "作成中のステッカー",
     exactMatch: "パレットと完全一致",
     saveFailed: "保存できなかった",
-    submit: "ポケットに入れる",
+    submit: "シール帳に貼る",
     material: "素材",
     materials: {
       matte: "ふつう",

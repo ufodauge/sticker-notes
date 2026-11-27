@@ -86,7 +86,7 @@ test("with an own sticker there is no invitation and the create button is icon-o
   await createButton(page).click();
   await page.locator('input[type="file"]').setInputFiles("test/fixtures/sample.png");
   await expect(page.getByRole("img", { name: "作成中のステッカー" })).toBeVisible();
-  await page.getByRole("button", { name: "ポケットに入れる" }).click();
+  await page.getByRole("button", { name: "シール帳に貼る" }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(createButton(page)).toHaveText("");
   await page.goto(`/${fragmentOf("slime")}`);
@@ -128,7 +128,7 @@ async function makeOwn(page: Page, upsideDown: boolean): Promise<void> {
     .locator('input[type="file"]')
     .setInputFiles({ name: "sample.png", mimeType: "image/png", buffer: samplePng(upsideDown) });
   await expect(page.getByRole("img", { name: "作成中のステッカー" })).toBeVisible();
-  await page.getByRole("button", { name: "ポケットに入れる" }).click();
+  await page.getByRole("button", { name: "シール帳に貼る" }).click();
 }
 
 test("a sticker received gets one given back: the toast opens one's own QR for them", async ({
@@ -161,7 +161,7 @@ test("with none of one's own yet, the one made from the invitation is given back
   await invitation(page).click();
   await page.locator('input[type="file"]').setInputFiles("test/fixtures/sample.png");
   await expect(page.getByRole("img", { name: "作成中のステッカー" })).toBeVisible();
-  await page.getByRole("button", { name: "ポケットに入れる" }).click();
+  await page.getByRole("button", { name: "シール帳に貼る" }).click();
   const dialog = page.getByRole("dialog", { name: "交換用のQR" });
   await expect(dialog).toContainText(`${SLIME} にお返し`);
   await dialog.getByRole("button", { name: /のSNS$/ }).click();

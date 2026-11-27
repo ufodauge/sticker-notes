@@ -19,7 +19,6 @@ import { appBaseUrl, copyText, enterFullscreen } from "../../data/platform.ts";
 import type { StoredSticker } from "../../data/sticker-store.ts";
 import common from "../common.module.css";
 import { Dialog } from "../Dialog.tsx";
-import { useCloseDialog } from "../dialog-context.ts";
 import { useViewport } from "../effects/useViewport.ts";
 import { t } from "../messages.ts";
 import { StickerView } from "../StickerView.tsx";
@@ -34,12 +33,10 @@ type Props = {
   readonly mine: readonly StoredSticker[];
   // given back for this sticker, just received
   readonly to: Sticker | undefined;
-  // the first time through: a friend (made up) reads the QR, and it is put away
-  readonly friendReads?: boolean;
   readonly onClose: () => void;
 };
 
-export function QrDialog({ initial, mine, to, friendReads, onClose }: Props) {
+export function QrDialog({ initial, mine, to, onClose }: Props) {
   const [id, choose] = useReducer((_: string, next: string) => next, initial.id);
   const shown = mine.find((s) => s.id === id) ?? initial;
   const sns = useSyncExternalStore(mySns.subscribe, mySns.get);
@@ -58,12 +55,11 @@ export function QrDialog({ initial, mine, to, friendReads, onClose }: Props) {
         <QrBody
           key={shown.id}
           sticker={withMySns(shown.sticker, sns)}
-          friendReads={!!friendReads}
           editing={editing}
           onEdit={toggleEditing}
         />
         {/* the SNS the QR carries, written here when the tag above is tapped */}
-        {editing && !friendReads && (
+        {editing && (
           <div className={styles.mySns}>
             <MySnsField />
           </div>
@@ -92,12 +88,10 @@ export function QrDialog({ initial, mine, to, friendReads, onClose }: Props) {
 
 function QrBody({
   sticker,
-  friendReads,
   editing,
   onEdit,
 }: {
   readonly sticker: Sticker;
-  readonly friendReads: boolean;
   readonly editing: boolean;
   readonly onEdit: () => void;
 }) {
@@ -125,7 +119,6 @@ function QrBody({
         role="img"
         aria-label={t.qr.code(nameOf(sticker))}
       />
-      {friendReads && <FriendReads />}
       {/* who the QR says it is from: a label, not a button to look at (the sticker and the maker's
           SNS, nothing when none); a little pencil says it can be written */}
       <button
@@ -134,7 +127,6 @@ function QrBody({
         aria-expanded={editing}
         aria-label={t.qr.from(nameOf(sticker))}
         title={t.qr.from(nameOf(sticker))}
-        disabled={friendReads}
         onClick={onEdit}
       >
         <StickerView sticker={sticker} scale={1} label="" decorative />
@@ -142,12 +134,11 @@ function QrBody({
           <SnsHandle kind={sticker.snsKind} id={sticker.snsId} size={16} />
         </span>
         {/* with an SNS, a pencil to change it; without, the @ that one can be written here */}
-        {!friendReads &&
-          (sticker.snsKind === 0 ? (
-            <AtSign aria-hidden="true" className={styles.pencil} size={16} strokeWidth={1.5} />
-          ) : (
-            <Pencil aria-hidden="true" className={styles.pencil} size={14} strokeWidth={1.5} />
-          ))}
+        {sticker.snsKind === 0 ? (
+          <AtSign aria-hidden="true" className={styles.pencil} size={16} strokeWidth={1.5} />
+        ) : (
+          <Pencil aria-hidden="true" className={styles.pencil} size={14} strokeWidth={1.5} />
+        )}
       </button>
       <div className={common.row}>
         <ShareLink url={url} title={nameOf(sticker)} />
@@ -223,25 +214,4 @@ function paintQr(canvas: HTMLCanvasElement, qr: QrMatrix, scale: number, sticker
   const { crop, pixel } = art;
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(tmp, crop.x, crop.y, crop.w, crop.h, art.x, art.y, crop.w * pixel, crop.h * pixel);
-}
-
-// The tutorial's friend reading the QR: a while to look at it, a line sweeping across it as a
-// camera would, the mark of it read, and the QR put away (the friend's sticker comes back after).
-function FriendReads() {
-  const close = useCloseDialog();
-  const run = (el: HTMLElement | null) => {
-    if (!el) return undefined;
-    const timers = [
-      setTimeout(() => el.setAttribute("data-phase", "reading"), 2200),
-      setTimeout(() => el.setAttribute("data-phase", "read"), 3600),
-      setTimeout(close, 5000),
-    ];
-    return () => timers.forEach(clearTimeout);
-  };
-  return (
-    <span ref={run} className={styles.reader} aria-hidden="true">
-      <span className={styles.scanLine} />
-      <span className={styles.readMark}>{t.qr.read}</span>
-    </span>
-  );
 }

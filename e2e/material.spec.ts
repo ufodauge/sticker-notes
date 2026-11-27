@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { readQr, receiveToPocket, stickFromPocket } from "./helpers.ts";
+import { readQr, receiveToPocket } from "./helpers.ts";
 
 async function openMaker(page: import("@playwright/test").Page) {
   await page
@@ -32,9 +32,8 @@ test("materials open up as one exchanges with people, and travel in the QR", asy
     "aria-checked",
     "true",
   );
-  await page.getByRole("button", { name: "ポケットに入れる" }).click();
+  await page.getByRole("button", { name: "シール帳に貼る" }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
-  await stickFromPocket(page, "シール");
   const placed = page.getByRole("button", { name: "シール", exact: true });
   await expect(placed.locator('[data-material="puffy"]').first()).toBeAttached();
   await placed.click();

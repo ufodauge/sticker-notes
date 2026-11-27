@@ -23,7 +23,7 @@ for (const scheme of ["light", "dark"] as const) {
     });
     await page.waitForTimeout(300);
     await shot("02-create-edit");
-    await page.getByRole("button", { name: "ポケットに入れる" }).click();
+    await page.getByRole("button", { name: "シール帳に貼る" }).click();
     await expect(page.getByRole("dialog")).toHaveCount(0);
 
     for (const n of ["slime", "discord", "noise", "allTransparent", "longestId"]) {

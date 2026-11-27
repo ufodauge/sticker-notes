@@ -62,13 +62,9 @@ test("a first visit learns on the samples: peel, stick, turn, take a friend's fr
   await page.locator('input[type="file"]').setInputFiles("test/fixtures/sample.png");
   await expect(page.getByRole("img", { name: "作成中のステッカー" })).toHaveCount(0);
 
-  // its QR comes up, a friend reads it (made up), and it is put away by itself
-  const qr = page.getByRole("dialog", { name: "交換用のQR" });
-  await expect(qr).toBeVisible();
-  await expect(caption(page)).toHaveAttribute("data-tutorial", "tutorial.start:give");
-  await expect(qr).toHaveCount(0, { timeout: 10_000 });
-
-  // the friend's sticker comes back into the pocket, to be stuck from there
+  // it goes straight on the page; then a friend's sticker comes into the pocket
+  await expect(page.getByRole("dialog", { name: "交換用のQR" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "シール", exact: true })).toBeVisible();
   await expect(caption(page)).toHaveAttribute("data-tutorial", "tutorial.start:pocket");
   await expect(pocketButton(page)).toHaveAccessibleName("ポケット(1枚)");
   await expect(page.getByRole("dialog", { name: "シールの交換" })).toHaveCount(0);
@@ -92,9 +88,7 @@ test("a first visit learns on the samples: peel, stick, turn, take a friend's fr
   ).not.toHaveCount(0);
 });
 
-test("making may be declined: a sample's QR is read instead, and the friend's comes back", async ({
-  page,
-}) => {
+test("making may be declined: the friend's sticker comes all the same", async ({ page }) => {
   await page.goto("/?debug");
   await expect(caption(page)).toHaveAttribute("data-tutorial", "tutorial.start:peel");
   // straight to the step of making one (the debug flow view puts a tutorial at a state)
@@ -112,10 +106,6 @@ test("making may be declined: a sample's QR is read instead, and the friend's co
     .click();
   await expect(caption(page)).toHaveAttribute("data-tutorial", "tutorial.start:making");
   await page.keyboard.press("Escape");
-  const qr = page.getByRole("dialog", { name: "交換用のQR" });
-  await expect(qr).toBeVisible();
-  await expect(caption(page)).toHaveAttribute("data-tutorial", "tutorial.start:give");
-  await expect(qr).toHaveCount(0, { timeout: 10_000 });
   await expect(caption(page)).toHaveAttribute("data-tutorial", "tutorial.start:pocket");
   await expect(pocketButton(page)).toHaveAccessibleName("ポケット(1枚)");
 });

@@ -6,7 +6,7 @@ import { rankPalettes } from "../src/core/quantize.ts";
 import { decodeFragment } from "../src/core/payload.ts";
 import { renderRgba } from "../src/core/render.ts";
 import { FIXTURES } from "../src/core/testing/fixtures.ts";
-import { readQr, stickFromPocket } from "./helpers.ts";
+import { readQr } from "./helpers.ts";
 import { decodeRgba, encodeRgba } from "../test/png.ts";
 
 function slimePng(scale: number): Buffer {
@@ -68,9 +68,8 @@ async function writeSns(page: Page, id: string) {
 }
 
 async function save(page: Page) {
-  await page.getByRole("button", { name: "ポケットに入れる" }).click();
+  await page.getByRole("button", { name: "シール帳に貼る" }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
-  await stickFromPocket(page, "シール");
 }
 
 test("palette art lands on the album and its QR round-trips", async ({ page }) => {

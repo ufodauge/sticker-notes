@@ -42,13 +42,13 @@ events.on((e) => {
   const s = state.value;
   if (!s || "done" in s) return;
   // making may be declined. Put away with nothing made (a sticker made moves the flow on before
-  // its dialog goes): the first visit goes on with a sample's QR read instead; someone brought by
-  // a link has stuck what they came with, and is done
+  // its dialog goes): the first visit goes on all the same; someone brought by a link has stuck
+  // what they came with, and is done
   if (e.type === "create.closed") {
     const id = stateOf(s)?.id;
     if (s.flow === "tutorial.start" && id === "making") {
-      demo.qr = true;
       publish({ ...s, at: s.at + 1 });
+      arrive();
       return;
     }
     if (s.flow === "tutorial.received" && id === "create") {
@@ -56,36 +56,29 @@ events.on((e) => {
       return;
     }
   }
+  // one's own, just made, is put on the page by itself: that is not the person sticking one
+  if (e.type === "sticker.created") made.id = e.stickerId;
+  if (e.type === "sticker.placed" && e.stickerId === made.id) {
+    made.id = null;
+    return;
+  }
   const next = step(s, e.type);
   if (next === s) return;
   publish(stateOf(next)?.on === undefined ? DONE : { ...s, at: next.at });
   if (s.flow === "tutorial.start" && stateOf(next)?.id === "pocket") arrive();
-  // one's own, just made, goes on the page while its QR is up: the pocket is for what others
-  // give (placed before the pocket step, which waits for a sticker placed)
-  if (e.type === "sticker.created") {
-    const own = e.stickerId;
-    void stickerStore
-      .place(own, { near: undefined })
-      .then(() => feedback.landed(own, "arrive", null));
-  }
 });
 
-// the friend who read the QR sends one back: it flies into the pocket
+// the sticker just made (its own placing is passed over)
+const made: { id: string | null } = { id: null };
+
+// a friend's sticker comes: it flies into the pocket, a moment after one's own is on the page
 function arrive(): void {
   setTimeout(() => {
     void stickerStore
       .pocketFromFriend(sampleStickers().friend)
       .then((id) => feedback.landed(id, "pocket", null));
-  }, 700);
+  }, 1100);
 }
-
-// whether a sample's QR is to come up, the making having been declined (asked once)
-const demo = { qr: false };
-export const takeDemoQr = (): boolean => {
-  const want = demo.qr;
-  demo.qr = false;
-  return want;
-};
 
 // whether one made now is given back to the sticker that brought the person (the link's flow)
 export const givesBack = (): boolean => {
@@ -102,12 +95,6 @@ export const makesAtOnce = (): boolean => {
     (s.flow === "tutorial.start" && id === "making") ||
     (s.flow === "tutorial.received" && id === "create")
   );
-};
-
-// whether the QR on screen is the tutorial's, which a friend (made up) reads
-export const friendReads = (): boolean => {
-  const s = state.value;
-  return !!s && "flow" in s && s.flow === "tutorial.start" && stateOf(s)?.id === "give";
 };
 
 const readyStore = (): Promise<Ready> =>

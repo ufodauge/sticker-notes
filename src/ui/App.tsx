@@ -3,6 +3,7 @@ import { DrawerDialog } from "./album/DrawerDialog.tsx";
 import { lazy, Suspense, useReducer, useSyncExternalStore } from "react";
 import { isIos, isStandalone } from "../data/platform.ts";
 import { sortedPages } from "../core/album.ts";
+import { pagePosition } from "./album/page-position.ts";
 import { layoutAlbum } from "../core/print.ts";
 import { stickerStore, type AddResult } from "../data/sticker-store.ts";
 import { ActionBar } from "./ActionBar.tsx";
@@ -35,13 +36,7 @@ import { printMode } from "./print-mode.ts";
 import { PixelIcon } from "./PixelIcon.tsx";
 import { Stamp } from "./Stamp.tsx";
 import { Tutorial } from "./tutorial/Tutorial.tsx";
-import {
-  friendReads,
-  givesBack,
-  makesAtOnce,
-  takeDemoQr,
-  tutorial,
-} from "./tutorial/tutorial-store.ts";
+import { givesBack, makesAtOnce, tutorial } from "./tutorial/tutorial-store.ts";
 import { flowPanel } from "./flows/flow-panel.ts";
 import { events } from "../data/events.ts";
 import { Toast } from "./Toast.tsx";
@@ -68,7 +63,6 @@ export function App() {
   const debugOn = useSyncExternalStore(debug.subscribe, () => debug.get().on);
   const day = useSyncExternalStore(daylight.subscribe, daylight.get);
   const flowsOpen = useSyncExternalStore(flowPanel.subscribe, flowPanel.open);
-  const tutorialReads = useSyncExternalStore(tutorial.subscribe, friendReads);
   const atOnce = useSyncExternalStore(tutorial.subscribe, makesAtOnce);
   const seenMaterials = useSyncExternalStore(materialsSeen.subscribe, materialsSeen.get);
   useSyncExternalStore(debug.subscribe, debug.get);
@@ -88,12 +82,16 @@ export function App() {
 
   const onSaved = (stickerId: string, result: AddResult) => {
     events.emit({ type: "sticker.created", stickerId });
-    feedback.landed(stickerId, result.kind === "added" ? "pocket" : "wiggle", null);
+    // one's own goes straight onto the page in view (the pocket is for what others give)
+    if (result.kind === "added") {
+      const open = ready ? sortedPages(ready.pages)[pagePosition.spread()]?.id : undefined;
+      void stickerStore
+        .place(stickerId, { near: open })
+        .then(() => feedback.landed(stickerId, "arrive", null));
+    } else feedback.landed(stickerId, "wiggle", null);
     // made to give back for one just received: its QR comes up at once
     const returnTo = state.overlay.kind === "create" ? state.overlay.returnTo : undefined;
     if (returnTo) dispatch({ type: "open", overlay: { kind: "qr", stickerId, returnTo } });
-    // the first time through: one's first sticker comes up as its QR, for a friend to read
-    else if (friendReads()) dispatch({ type: "open", overlay: { kind: "qr", stickerId } });
   };
 
   const onLeft = () => {
@@ -277,11 +275,6 @@ export function App() {
           onClose={() => {
             events.emit({ type: "create.closed" });
             close();
-            // the tutorial's making put away with nothing made: a sample stands in, its QR read
-            const demo = stickers.find((s) => s.origin === "sample");
-            if (takeDemoQr() && demo) {
-              dispatch({ type: "open", overlay: { kind: "qr", stickerId: demo.id } });
-            }
           }}
           onSaved={onSaved}
           quick={atOnce}
@@ -293,7 +286,6 @@ export function App() {
           initial={qrSticker}
           mine={overlay.returnTo ? mine : []}
           to={stickers.find((s) => s.id === overlay.returnTo)?.sticker}
-          friendReads={tutorialReads}
           onClose={() => {
             events.emit({ type: "qr.closed" });
             close();
