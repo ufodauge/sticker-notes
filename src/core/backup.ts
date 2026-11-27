@@ -19,6 +19,8 @@ export type BackupSticker = {
   readonly origin: StickerOrigin;
   // the day it came into this album: received, or (for one's own) made
   readonly receivedAt: string | null;
+  // put away in the desk's drawer (thrown off the album, kept to take out again)
+  readonly drawer?: true;
 };
 
 export type BackupData = {
@@ -52,6 +54,7 @@ const StickerEntrySchema = v.object({
   body: v.string(),
   origin: StickerOriginSchema,
   receivedAt: v.nullish(v.string()),
+  drawer: v.optional(v.literal(true)),
 });
 
 export function serializeBackup(data: BackupData, exportedAt: Date): string {
@@ -64,6 +67,7 @@ export function serializeBackup(data: BackupData, exportedAt: Date): string {
       body: toBase64(s.body),
       origin: s.origin,
       receivedAt: s.receivedAt,
+      ...(s.drawer ? { drawer: true } : {}),
     })),
     pages: data.pages.map((p) => ({ id: p.id, order: p.order })),
     placements: data.placements,
@@ -85,7 +89,7 @@ async function checkSticker(raw: unknown): Promise<BackupSticker | undefined> {
   const id = await stickerIdOf(body);
   if (s.id !== id) return undefined;
   const receivedAt = v.is(LocalDateSchema, s.receivedAt) ? s.receivedAt : null;
-  return { id, body, origin: s.origin, receivedAt };
+  return { id, body, origin: s.origin, receivedAt, ...(s.drawer ? { drawer: true as const } : {}) };
 }
 
 export async function parseBackup(text: string): Promise<ParseResult> {

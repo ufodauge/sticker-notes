@@ -28,10 +28,18 @@ test("drag persists; discard peels off and undo puts it back", async ({ page }) 
     "href",
     "https://x.com/sticker_fan2026",
   );
+  // thrown off the album, it goes into the desk's drawer, kept (also across a reload)
   await page.getByRole("button", { name: "捨てる" }).click();
   await expect(page.getByRole("button", { name: SLIME, exact: true })).toHaveCount(0);
-  await page.getByRole("button", { name: "元に戻す" }).click();
-  await expect(page.getByRole("button", { name: SLIME, exact: true })).toBeVisible();
+  const drawer = page.getByRole("button", { name: "引き出し(1枚)" });
+  await expect(drawer).toBeVisible();
+  await page.reload();
+  await expect(drawer).toBeVisible();
+  // taken out, it is back in the pocket, and the drawer, empty, is gone
+  await drawer.click();
+  await page.getByRole("button", { name: `${SLIME} を取り出す` }).click();
+  await expect(page.getByRole("button", { name: /^引き出し/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "ポケット(1枚)" })).toBeVisible();
 });
 
 test("pulled outward from its corner, a sticker stays stuck", async ({ page }) => {

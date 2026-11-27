@@ -51,7 +51,15 @@ export type AddResult =
 export async function addToPocket(db: Db, rec: BackupSticker): Promise<AddResult> {
   const tx = db.transaction(ALBUM, "readwrite");
   const stickers = tx.objectStore("stickers");
-  if (await stickers.get(rec.id)) {
+  const known = await stickers.get(rec.id);
+  // one in the drawer, come again: out of the drawer, into the pocket as new
+  if (known?.drawer) {
+    const { drawer: _, ...rest } = known;
+    await stickers.put(rest);
+    await tx.done;
+    return { kind: "added" };
+  }
+  if (known) {
     const placement = await tx.objectStore("placements").index("byStickerId").get(rec.id);
     await tx.done;
     return { kind: "duplicate", placement };
@@ -62,32 +70,30 @@ export async function addToPocket(db: Db, rec: BackupSticker): Promise<AddResult
   return { kind: "added" };
 }
 
-export type Discarded = {
-  readonly sticker: StickerRecord;
-  readonly placement: Placement | undefined;
-};
-
-export async function discard(db: Db, stickerId: string): Promise<Discarded | undefined> {
+// Thrown off the album: into the desk's drawer, kept, with its placement gone (pages stay,
+// even left empty: the person decides about pages, see deleteEmptyPage).
+export async function toDrawer(db: Db, stickerId: string): Promise<boolean> {
   const tx = db.transaction(ALBUM, "readwrite");
   const sticker = await tx.objectStore("stickers").get(stickerId);
   if (!sticker) {
     await tx.done;
-    return undefined;
+    return false;
   }
   const placement = await tx.objectStore("placements").index("byStickerId").get(stickerId);
-  await tx.objectStore("stickers").delete(stickerId);
+  await tx.objectStore("stickers").put({ ...sticker, drawer: true });
   if (placement) await tx.objectStore("placements").delete(placement.id);
   await tx.done;
-  // pages stay, even when left empty: the person decides about pages (see deleteEmptyPage)
-  return { sticker, placement };
+  return true;
 }
 
-export async function restore(db: Db, d: Discarded): Promise<void> {
-  const tx = db.transaction(ALBUM, "readwrite");
-  await Promise.all([
-    tx.objectStore("stickers").put(d.sticker),
-    d.placement ? tx.objectStore("placements").put(d.placement) : undefined,
-  ]);
+// Taken out of the drawer: back in the pocket.
+export async function fromDrawer(db: Db, stickerId: string): Promise<void> {
+  const tx = db.transaction(["stickers"], "readwrite");
+  const sticker = await tx.objectStore("stickers").get(stickerId);
+  if (sticker?.drawer) {
+    const { drawer: _, ...rest } = sticker;
+    await tx.objectStore("stickers").put(rest);
+  }
   await tx.done;
 }
 

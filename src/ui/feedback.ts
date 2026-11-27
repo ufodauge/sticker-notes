@@ -1,13 +1,10 @@
-import type { Discarded } from "../data/sticker-store.ts";
-
 export type Highlight = {
   readonly stickerId: string;
   // pocket: dropped into the pocket; lifted: just put on a page, not yet pressed down
-  readonly effect: "arrive" | "wiggle" | "pocket" | "lifted" | "pressed";
+  // drawer: put away in the desk's drawer
+  readonly effect: "arrive" | "wiggle" | "pocket" | "lifted" | "pressed" | "drawer";
   readonly nonce: number;
 };
-
-export type Undo = { readonly kind: "restore"; readonly discarded: Discarded };
 
 // what the toast's button opens: making one's own sticker, or one's own QR to give back (both
 // for the sticker that just came in)
@@ -16,7 +13,6 @@ type ToastAction = { readonly kind: "create" | "return"; readonly from: string }
 export type Toast = {
   readonly id: number;
   readonly text: string;
-  readonly undo: Undo | null;
   readonly action?: ToastAction;
   readonly persistent?: boolean;
 };

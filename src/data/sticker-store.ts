@@ -14,16 +14,15 @@ import { decodeBody, encodeBody, stickerIdOf, type Sticker } from "../core/paylo
 import {
   addToPocket,
   applyMerge,
-  discard,
   openStickerDb,
   deleteEmptyPage,
   forgetPlacements,
+  fromDrawer,
+  toDrawer,
   readAll,
-  restore,
   savePlacement,
   todayLocal,
   type AddResult,
-  type Discarded,
   type StickerOrigin,
   type StickerRecord,
 } from "./db.ts";
@@ -32,7 +31,7 @@ import { requestPersist } from "./platform.ts";
 import { SETTINGS, type SettingKey, type SettingValue } from "./settings.ts";
 import { isSurface } from "../core/surface.ts";
 
-export type { AddResult, Discarded };
+export type { AddResult };
 
 export type StoredSticker = StickerRecord & { readonly sticker: Sticker };
 
@@ -40,7 +39,10 @@ export type StoreSnapshot =
   | { readonly status: "loading" }
   | {
       readonly status: "ready";
+      // the album's: on its pages, the desk, or in the pocket
       readonly stickers: readonly StoredSticker[];
+      // put away in the desk's drawer
+      readonly drawer: readonly StoredSticker[];
       readonly pages: readonly Page[];
       readonly placements: readonly Placement[];
     }
@@ -68,15 +70,17 @@ function publish(next: StoreSnapshot): void {
 async function refresh(): Promise<void> {
   try {
     const all = await readAll(await dbPromise());
-    const stickers = all.stickers.flatMap((r) => {
+    const decoded = all.stickers.flatMap((r) => {
       const d = decodeBody(r.body);
       return d.ok ? [{ ...r, sticker: d.sticker }] : [];
     });
+    const stickers = decoded.filter((s) => !s.drawer);
+    const drawer = decoded.filter((s) => s.drawer);
     // a sticker placed somewhere that is no more (a page or surface gone) is back in the pocket
     const pageIds = new Set(all.pages.map((p) => p.id));
     const lost = all.placements.filter((p) => !pageIds.has(p.pageId) && !isSurface(p.pageId));
     const placements = all.placements.filter((p) => !lost.includes(p));
-    publish({ status: "ready", stickers, pages: all.pages, placements });
+    publish({ status: "ready", stickers, drawer, pages: all.pages, placements });
     if (lost.length > 0)
       await forgetPlacements(
         await dbPromise(),
@@ -187,13 +191,14 @@ export const stickerStore = {
     await savePlacement(await dbPromise(), placement, newPage);
   },
 
-  discard: async (stickerId: string): Promise<Discarded | undefined> => {
-    const d = await discard(await dbPromise(), stickerId);
+  // thrown off the album: into the drawer, to be taken out again if wanted
+  toDrawer: async (stickerId: string): Promise<boolean> => {
+    const done = await toDrawer(await dbPromise(), stickerId);
     await refresh();
-    return d;
+    return done;
   },
-  restore: async (d: Discarded): Promise<void> => {
-    await restore(await dbPromise(), d);
+  fromDrawer: async (stickerId: string): Promise<void> => {
+    await fromDrawer(await dbPromise(), stickerId);
     await refresh();
   },
 

@@ -54,7 +54,6 @@ async function announceAdded(r: Exclude<Received, { kind: "invalid" }>): Promise
     text:
       t.feedback.receivedAdded(nameOf(r.sticker)) +
       (met === undefined ? "" : `・${t.feedback.nthPerson(met)}`),
-    undo: null,
     action: { kind: plan.invite ? "create" : "return", from: r.stickerId },
     persistent: plan.persistent,
   });
@@ -63,13 +62,13 @@ async function announceAdded(r: Exclude<Received, { kind: "invalid" }>): Promise
 export function reportReceived(r: Received): void {
   switch (r.kind) {
     case "invalid":
-      feedback.toast({ text: t.feedback.receivedInvalid, undo: null });
+      feedback.toast({ text: t.feedback.receivedInvalid });
       return;
     case "added":
       void announceAdded(r);
       return;
     case "duplicate":
-      feedback.landed(r.stickerId, "wiggle", { text: t.feedback.receivedDuplicate, undo: null });
+      feedback.landed(r.stickerId, "wiggle", { text: t.feedback.receivedDuplicate });
       return;
   }
 }

@@ -43,6 +43,16 @@ describe("backup", () => {
     expect(r).toEqual({ ok: true, data, skipped: 0 });
   });
 
+  test("a sticker in the drawer stays in the drawer", async () => {
+    const data = await sample();
+    const [first, ...rest] = data.stickers;
+    if (!first) throw new Error("no sticker");
+    const withDrawer = { ...data, stickers: [{ ...first, drawer: true as const }, ...rest] };
+    const r = await parseBackup(serializeBackup(withDrawer, new Date("2026-11-27T00:00:00Z")));
+    expect(r.ok && r.data.stickers[0]?.drawer).toBe(true);
+    expect(r.ok && r.data.stickers[1]?.drawer).toBeUndefined();
+  });
+
   test("rejects non-backups and newer versions", async () => {
     expect(await parseBackup("nope")).toEqual({ ok: false, reason: "not-json" });
     expect(await parseBackup("{}")).toEqual({ ok: false, reason: "not-backup" });

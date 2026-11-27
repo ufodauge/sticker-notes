@@ -1,3 +1,5 @@
+import { Drawer } from "./album/Drawer.tsx";
+import { DrawerDialog } from "./album/DrawerDialog.tsx";
 import { lazy, Suspense, useReducer, useSyncExternalStore } from "react";
 import { isIos, isStandalone } from "../data/platform.ts";
 import { sortedPages } from "../core/album.ts";
@@ -37,7 +39,7 @@ import { friendReads, makesAtOnce, takeDemoQr, tutorial } from "./tutorial/tutor
 import { flowPanel } from "./flows/flow-panel.ts";
 import { events } from "../data/events.ts";
 import { Toast } from "./Toast.tsx";
-import { discardSticker, undo } from "./undo.ts";
+import { putInDrawer } from "./drawer.ts";
 
 const hasImage = (dt: DataTransfer) =>
   Array.from(dt.items).some(
@@ -85,7 +87,7 @@ export function App() {
   const onLeft = () => {
     const leaving = state.leaving;
     dispatch({ type: "left" });
-    if (leaving) void discardSticker(leaving.stickerId);
+    if (leaving) void putInDrawer(leaving.stickerId);
   };
 
   if (snap.status === "error") {
@@ -189,6 +191,13 @@ export function App() {
             onLeft={onLeft}
           />
         )}
+        {ready && (
+          <Drawer
+            stickers={ready.drawer}
+            highlight={highlight}
+            onOpen={() => dispatch({ type: "open", overlay: { kind: "drawer" } })}
+          />
+        )}
         {ready && stickers.length > 0 && (
           <Pocket
             stickers={pocket}
@@ -230,9 +239,6 @@ export function App() {
         <Toast
           key={toast.id}
           toast={toast}
-          onUndo={() => {
-            if (toast.undo) void undo(toast.undo);
-          }}
           onAction={() => {
             feedback.dismiss(toast.id);
             const action = toast.action;
@@ -305,6 +311,9 @@ export function App() {
         <PeopleDialog key={opened} stickers={stickers} focus={overlay.focus} onClose={close} />
       )}
       {DEBUG_BUILD && overlay.kind === "debug" && <DebugDialog key={opened} onClose={close} />}
+      {ready && overlay.kind === "drawer" && (
+        <DrawerDialog key={opened} stickers={ready.drawer} onClose={close} />
+      )}
       {ready && overlay.kind === "pocket" && (
         <PocketDialog
           key={opened}

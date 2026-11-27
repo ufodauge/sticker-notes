@@ -10,7 +10,6 @@ import type { MaterialKind } from "../core/material.ts";
 export const t = {
   common: {
     close: "閉じる",
-    undo: "元に戻す",
     dismiss: "案内を閉じる",
   },
 
@@ -46,6 +45,13 @@ export const t = {
   },
 
   desk: { desk: "机" } satisfies Readonly<Record<SurfaceKind, string>>,
+
+  // the desk's drawer: stickers thrown off the album, kept to be taken out again
+  drawer: {
+    open: (n: number) => `引き出し(${n}枚)`,
+    dialog: "引き出し",
+    takeOut: (who: string) => `${who} を取り出す`,
+  },
 
   pocket: {
     sample: "見本",
@@ -83,7 +89,7 @@ export const t = {
   },
 
   feedback: {
-    discarded: "ポイした",
+    discarded: "引き出しにしまった",
     receivedInvalid: "読み込めないステッカー",
     receivedAdded: (who: string) => `${who} がポケットに入った`,
     receivedDuplicate: "もう持ってる",
