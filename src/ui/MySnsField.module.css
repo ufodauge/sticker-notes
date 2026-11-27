@@ -1,0 +1,49 @@
+.field {
+  display: grid;
+  gap: var(--space-1);
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.sns {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: stretch;
+  gap: var(--space-2);
+}
+
+.kinds {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.kind {
+  display: grid;
+  place-items: center;
+  min-inline-size: var(--tap);
+  min-block-size: var(--tap);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: scale var(--t-fast) var(--ease-out);
+}
+
+.kind:active {
+  scale: 0.95;
+}
+
+.kind[aria-checked="true"] {
+  border-color: var(--ink);
+  outline: 1px solid var(--ink);
+  color: var(--ink);
+}
+
+@container (max-width: 420px) {
+  .sns {
+    grid-template-columns: 1fr;
+  }
+}

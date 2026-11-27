@@ -1,10 +1,11 @@
 import { FlipHorizontal2, QrCode, Trash2 } from "lucide-react";
-import { snsDisplay, snsProfileUrl, type SnsKind } from "../core/sns.ts";
+import { snsProfileUrl, type SnsOrNone } from "../core/sns.ts";
 import type { StoredSticker } from "../data/sticker-store.ts";
 import styles from "./ActionBar.module.css";
 import common from "./common.module.css";
 import { t } from "./messages.ts";
-import { SnsIcon } from "./SnsIcon.tsx";
+import { SnsHandle } from "./SnsIcon.tsx";
+import { nameOf } from "./sticker-name.ts";
 
 type Props = {
   readonly sticker: StoredSticker;
@@ -17,7 +18,7 @@ export function ActionBar({ sticker, onQr, onBack, onDiscard }: Props) {
   const { snsKind, snsId } = sticker.sticker;
   const url = snsProfileUrl(snsKind, snsId);
   return (
-    <div className={styles.bar} role="toolbar" aria-label={snsDisplay(snsKind, snsId)}>
+    <div className={styles.bar} role="toolbar" aria-label={nameOf(sticker.sticker)}>
       <WhoLink kind={snsKind} id={snsId} url={url} />
       {sticker.origin === "mine" && (
         <button
@@ -57,16 +58,16 @@ function WhoLink({
   id,
   url,
 }: {
-  readonly kind: SnsKind;
+  readonly kind: SnsOrNone;
   readonly id: string;
   readonly url: string | undefined;
 }) {
+  if (kind === 0) return <span className={styles.who} />;
   const inner = (
     <>
-      <span className={styles.kind}>
-        <SnsIcon kind={kind} size={18} />
+      <span className={styles.id}>
+        <SnsHandle kind={kind} id={id} size={18} />
       </span>
-      <span className={styles.id}>{kind === 3 ? id : `@${id}`}</span>
     </>
   );
   return url ? (

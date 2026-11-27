@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vite-plus/test";
 import { madeUpSticker } from "./made-up.ts";
 import { decodeBody, encodeBody } from "./payload.ts";
-import { isValidSnsId } from "./sns.ts";
+import { isValidSns } from "./sns.ts";
 
 describe("madeUpSticker", () => {
   const seeds = Array.from({ length: 200 }, (_, i) => i * 7919 + 1);
@@ -9,7 +9,7 @@ describe("madeUpSticker", () => {
   test("every one is a valid sticker that survives the trip through a link", () => {
     for (const seed of seeds) {
       const s = madeUpSticker(seed);
-      expect(isValidSnsId(s.snsKind, s.snsId)).toBe(true);
+      expect(isValidSns(s.snsKind, s.snsId)).toBe(true);
       const r = decodeBody(encodeBody(s));
       expect(r.ok && r.sticker).toEqual(s);
     }

@@ -47,41 +47,41 @@ async function openMaker(page: Page, name: string, buffer: Buffer) {
   await expect(page.getByRole("img", { name: "作成中のステッカー" })).toBeVisible();
 }
 
-async function openOwnQr(page: Page, label: string) {
-  await page.getByRole("button", { name: label, exact: true }).click();
+// one's own sticker names no one until its QR is made: the QR carries the maker's SNS, written
+// under it
+async function openOwnQr(page: Page, id: string) {
+  await page.getByRole("button", { name: "シール", exact: true }).click();
   await page.getByRole("button", { name: "交換用のQR", exact: true }).click();
+  await page.getByRole("dialog").getByLabel("ID", { exact: true }).fill(id);
 }
 
-async function save(page: Page, id: string) {
-  await page.getByLabel("ID", { exact: true }).fill(id);
+async function save(page: Page) {
   await page.getByRole("button", { name: "ポケットに入れる" }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
-  await stickFromPocket(page, `X @${id}`);
+  await stickFromPocket(page, "シール");
 }
 
 test("palette art lands on the album and its QR round-trips", async ({ page }) => {
   await openMaker(page, "slime.png", slimePng(1));
-  await save(page, "sticker_fan2026");
-  const placed = page.getByRole("button", { name: "X @sticker_fan2026", exact: true });
-  await expect(placed).toBeVisible();
-  await placed.click();
-  await page.getByRole("button", { name: "交換用のQR", exact: true }).click();
+  await save(page);
+  await expect(page.getByRole("button", { name: "シール", exact: true })).toBeVisible();
+  await openOwnQr(page, "sticker_fan2026");
   expect(await readQr(page)).toEqual(FIXTURES.slime);
 });
 
 test("upscaled pixel art is restored dot for dot, without the cropper", async ({ page }) => {
   await openMaker(page, "slime8.png", slimePng(8));
   await expect(page.locator(".reactEasyCrop_Container")).toHaveCount(0);
-  await save(page, "sticker_fan2026");
-  await openOwnQr(page, "X @sticker_fan2026");
+  await save(page);
+  await openOwnQr(page, "sticker_fan2026");
   expect(await readQr(page)).toEqual(FIXTURES.slime);
 });
 
 test("sample.png keeps its dots and its distinct colours", async ({ page }) => {
   const buffer = readFileSync("test/fixtures/sample.png");
   await openMaker(page, "sample.png", buffer);
-  await save(page, "sample_user");
-  await openOwnQr(page, "X @sample_user");
+  await save(page);
+  await openOwnQr(page, "sample_user");
   const got = await readQr(page);
   const fit = importPixelArt(decodeRgba(buffer));
   const best = fit && rankPalettes(fit.image)[0];
@@ -117,8 +117,8 @@ test("filter palettes sit in their own group and can be chosen and saved", async
       return foreign.size;
     })
     .toBeLessThanOrEqual(1);
-  await save(page, "filter_fan2026");
-  await expect(page.getByRole("button", { name: "X @filter_fan2026", exact: true })).toBeVisible();
+  await save(page);
+  await expect(page.getByRole("button", { name: "シール", exact: true })).toBeVisible();
 });
 
 test("the dither toggle changes the preview and the saved sticker round-trips", async ({
@@ -132,8 +132,8 @@ test("the dither toggle changes the preview and the saved sticker round-trips", 
   await expect(toggle).toHaveAttribute("aria-pressed", "true");
   await expect.poll(() => previewPixels(page)).not.toEqual(plain);
   const dithered = await previewPixels(page);
-  await save(page, "dither_fan2026");
-  await openOwnQr(page, "X @dither_fan2026");
+  await save(page);
+  await openOwnQr(page, "dither_fan2026");
   const got = await readQr(page);
   expect(got && Array.from(renderRgba(got).rgba)).toEqual(dithered);
 });
@@ -143,12 +143,20 @@ test("the dither toggle is absent for pixel art", async ({ page }) => {
   await expect(page.getByRole("button", { name: "網点" })).toHaveCount(0);
 });
 
-test("an invalid ID keeps the dialog open and marks the field", async ({ page }) => {
+test("no ID, or one the service would not take: the QR carries no SNS", async ({ page }) => {
   await openMaker(page, "slime.png", slimePng(1));
-  await page.getByLabel("ID", { exact: true }).fill("bad id!");
-  await page.getByRole("button", { name: "ポケットに入れる" }).click();
-  await expect(page.getByLabel("ID", { exact: true })).toHaveAttribute("aria-invalid", "true");
-  await expect(page.getByRole("dialog")).toBeVisible();
+  await save(page);
+  await openOwnQr(page, "");
+  expect(await readQr(page)).toEqual({ ...FIXTURES.slime, snsKind: 0, snsId: "" });
+  const id = page.getByRole("dialog").getByLabel("ID", { exact: true });
+  await id.fill("bad id!");
+  await expect(id).toHaveAttribute("aria-invalid", "true");
+  expect((await readQr(page))?.snsKind).toBe(0);
+  // the SNS is one setting: kept for the next QR
+  await id.fill("sticker_fan2026");
+  await page.keyboard.press("Escape");
+  await openOwnQr(page, "sticker_fan2026");
+  expect(await readQr(page)).toEqual(FIXTURES.slime);
 });
 
 test("the QR dialog hands out the same sticker as a link", async ({
@@ -160,8 +168,8 @@ test("the QR dialog hands out the same sticker as a link", async ({
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.addInitScript(() => Object.defineProperty(navigator, "share", { value: undefined }));
   await openMaker(page, "slime.png", slimePng(1));
-  await save(page, "sticker_fan2026");
-  await openOwnQr(page, "X @sticker_fan2026");
+  await save(page);
+  await openOwnQr(page, "sticker_fan2026");
   await page.getByRole("button", { name: "リンクをコピー" }).click();
   await expect(page.getByRole("button", { name: "コピーした" })).toBeVisible();
   const link = await page.evaluate(() => navigator.clipboard.readText());

@@ -71,7 +71,6 @@ test("a first visit learns on the samples: peel, stick, turn, take a friend's fr
   await expect(page.getByRole("dialog", { name: "シールの交換" })).toHaveCount(0);
   await page.locator('input[type="file"]').setInputFiles("test/fixtures/sample.png");
   await expect(page.getByRole("img", { name: "作成中のステッカー" })).toBeVisible();
-  await page.getByLabel("ID", { exact: true }).fill("mine_1");
   await page.getByRole("button", { name: "ポケットに入れる" }).click();
   await expect(caption(page)).toHaveAttribute("data-tutorial", "tutorial.start:outro");
   await page.getByRole("button", { name: "閉じる", exact: true }).click();
@@ -141,7 +140,6 @@ test("brought by a shared sticker: stick it from the pocket, then make one to gi
   await page.getByRole("button", { name: "自分のも作る" }).click();
   await page.locator('input[type="file"]').setInputFiles("test/fixtures/sample.png");
   await expect(page.getByRole("img", { name: "作成中のステッカー" })).toBeVisible();
-  await page.getByLabel("ID", { exact: true }).fill("mine_1");
   await page.getByRole("button", { name: "ポケットに入れる" }).click();
   const qr = page.getByRole("dialog", { name: "交換用のQR" });
   await expect(qr).toBeVisible();

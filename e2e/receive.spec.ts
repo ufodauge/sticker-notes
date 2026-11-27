@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { decodeRgba, encodeRgba } from "../test/png.ts";
 import { expect, test, type Page } from "@playwright/test";
 import { fragmentOf, pocketButton, readQr, receiveToPocket, savedPositions } from "./helpers.ts";
 
@@ -84,7 +86,6 @@ test("with an own sticker there is no invitation and the create button is icon-o
   await createButton(page).click();
   await page.locator('input[type="file"]').setInputFiles("test/fixtures/sample.png");
   await expect(page.getByRole("img", { name: "作成中のステッカー" })).toBeVisible();
-  await page.getByLabel("ID", { exact: true }).fill("mine_1");
   await page.getByRole("button", { name: "ポケットに入れる" }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(createButton(page)).toHaveText("");
@@ -109,11 +110,24 @@ test("the labelled create button and the persistent toast fit 320px", async ({ p
   ).toBe(true);
 });
 
-async function makeOwn(page: Page, id: string): Promise<void> {
+// sample.png, or the same picture turned upside down (another sticker)
+function samplePng(upsideDown: boolean): Buffer {
+  const buffer = readFileSync("test/fixtures/sample.png");
+  if (!upsideDown) return buffer;
+  const { width, height, data } = decodeRgba(buffer);
+  const flipped = new Uint8Array(data.length);
+  for (let y = 0; y < height; y++) {
+    flipped.set(data.subarray(y * width * 4, (y + 1) * width * 4), (height - 1 - y) * width * 4);
+  }
+  return Buffer.from(encodeRgba(width, height, flipped));
+}
+
+async function makeOwn(page: Page, upsideDown: boolean): Promise<void> {
   await createButton(page).click();
-  await page.locator('input[type="file"]').setInputFiles("test/fixtures/sample.png");
+  await page
+    .locator('input[type="file"]')
+    .setInputFiles({ name: "sample.png", mimeType: "image/png", buffer: samplePng(upsideDown) });
   await expect(page.getByRole("img", { name: "作成中のステッカー" })).toBeVisible();
-  await page.getByLabel("ID", { exact: true }).fill(id);
   await page.getByRole("button", { name: "ポケットに入れる" }).click();
 }
 
@@ -121,25 +135,23 @@ test("a sticker received gets one given back: the toast opens one's own QR for t
   page,
 }) => {
   await page.goto("/");
-  await makeOwn(page, "mine_1");
+  await makeOwn(page, false);
   await expect(page.getByRole("dialog")).toHaveCount(0);
-  await makeOwn(page, "mine_2");
+  await makeOwn(page, true);
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await page.goto(`/${fragmentOf("slime")}`);
   await page.getByRole("button", { name: "お返しのQR" }).click();
   const dialog = page.getByRole("dialog", { name: "交換用のQR" });
   await expect(dialog).toContainText(`${SLIME} にお返し`);
   // the one made last comes first; the others can be chosen instead
-  expect((await readQr(page))?.snsId).toBe("mine_2");
-  await dialog
-    .getByRole("group", { name: "QRにするステッカー" })
-    .getByRole("button", { name: "X @mine_1" })
-    .click();
-  await expect(dialog.getByRole("button", { name: "X @mine_1" })).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
-  expect((await readQr(page))?.snsId).toBe("mine_1");
+  const choices = dialog.getByRole("group", { name: "QRにするステッカー" }).getByRole("button");
+  await expect(choices).toHaveCount(2);
+  await expect(choices.and(page.locator('[aria-pressed="true"]'))).toHaveCount(1);
+  const last = await readQr(page);
+  const other = choices.and(page.locator('[aria-pressed="false"]'));
+  await other.click();
+  await expect(choices.and(page.locator('[aria-pressed="true"]'))).toHaveCount(1);
+  await expect.poll(async () => (await readQr(page))?.pixels).not.toEqual(last?.pixels);
 });
 
 test("with none of one's own yet, the one made from the invitation is given back at once", async ({
@@ -149,10 +161,10 @@ test("with none of one's own yet, the one made from the invitation is given back
   await invitation(page).click();
   await page.locator('input[type="file"]').setInputFiles("test/fixtures/sample.png");
   await expect(page.getByRole("img", { name: "作成中のステッカー" })).toBeVisible();
-  await page.getByLabel("ID", { exact: true }).fill("mine_1");
   await page.getByRole("button", { name: "ポケットに入れる" }).click();
   const dialog = page.getByRole("dialog", { name: "交換用のQR" });
   await expect(dialog).toContainText(`${SLIME} にお返し`);
+  await dialog.getByLabel("ID", { exact: true }).fill("mine_1");
   expect((await readQr(page))?.snsId).toBe("mine_1");
 });
 

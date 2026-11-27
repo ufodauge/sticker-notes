@@ -12,8 +12,8 @@ import {
   type QrBlock,
   type QrSizeMm,
 } from "../../../core/print.ts";
-import { snsDisplay } from "../../../core/sns.ts";
-import { SnsIcon } from "../../SnsIcon.tsx";
+import { nameOf } from "../../sticker-name.ts";
+import { SnsHandle } from "../../SnsIcon.tsx";
 import type { Ready, StoredSticker } from "../../../data/sticker-store.ts";
 import common from "../../common.module.css";
 import { Dialog } from "../../Dialog.tsx";
@@ -204,13 +204,12 @@ function GridOptions({
       <ul className={styles.list} aria-label={t.print.stickers}>
         {stickers.map((s) => {
           const n = state.copies[s.id] ?? 0;
-          const name = snsDisplay(s.sticker.snsKind, s.sticker.snsId);
+          const name = nameOf(s.sticker);
           return (
             <li key={s.id} className={styles.row} data-on={n > 0 || undefined}>
               <StickerView sticker={s.sticker} scale={1} label="" decorative />
               <span className={styles.name} aria-hidden="true">
-                <SnsIcon kind={s.sticker.snsKind} size={16} />{" "}
-                {s.sticker.snsKind === 3 ? s.sticker.snsId : `@${s.sticker.snsId}`}
+                <SnsHandle kind={s.sticker.snsKind} id={s.sticker.snsId} size={16} />
               </span>
               <span className={styles.stepper}>
                 <button
@@ -302,7 +301,7 @@ function QrOption({
             >
               {mine.map((s) => (
                 <option key={s.id} value={s.id}>
-                  {snsDisplay(s.sticker.snsKind, s.sticker.snsId)}
+                  {nameOf(s.sticker)}
                 </option>
               ))}
             </select>

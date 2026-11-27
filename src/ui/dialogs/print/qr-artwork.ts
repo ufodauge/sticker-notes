@@ -3,6 +3,7 @@ import { opaqueBox, qrDrawing, qrForUrl, qrPathData, stickerUrl } from "../../..
 import { renderRgba } from "../../../core/render.ts";
 import { appBaseUrl } from "../../../data/platform.ts";
 import type { StoredSticker } from "../../../data/sticker-store.ts";
+import { mySns, snsOf, withMySns } from "../../my-sns.ts";
 
 const UNITS_PER_MODULE = 16;
 
@@ -19,9 +20,12 @@ type QrArtwork = {
 
 const qrCache = new Map<string, QrArtwork>();
 export function qrArtworkOf(s: StoredSticker): QrArtwork {
-  const hit = qrCache.get(s.id);
+  // one's own sticker carries the maker's SNS as it is now
+  const sns = snsOf(mySns.get());
+  const key = `${s.id}:${sns.kind}:${sns.id}`;
+  const hit = qrCache.get(key);
   if (hit) return hit;
-  const qr = qrForUrl(stickerUrl(appBaseUrl(), encodeBody(s.sticker)));
+  const qr = qrForUrl(stickerUrl(appBaseUrl(), encodeBody(withMySns(s.sticker, mySns.get()))));
   const { size, rgba } = renderRgba(s.sticker);
   const drawing = qrDrawing(qr, UNITS_PER_MODULE, true, opaqueBox(rgba, size));
   const { art } = drawing;
@@ -35,6 +39,6 @@ export function qrArtworkOf(s: StoredSticker): QrArtwork {
       size: size * art.pixel,
     },
   };
-  qrCache.set(s.id, made);
+  qrCache.set(key, made);
   return made;
 }

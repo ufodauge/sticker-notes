@@ -1,11 +1,11 @@
 import type { StickerOrigin } from "./backup.ts";
-import type { SnsKind } from "./sns.ts";
+import { NO_SNS, type SnsKind, type SnsOrNone } from "./sns.ts";
 
 type Held = {
   readonly id: string;
   readonly origin: StickerOrigin;
   readonly receivedAt: string | null;
-  readonly sticker: { readonly snsKind: SnsKind; readonly snsId: string };
+  readonly sticker: { readonly snsKind: SnsOrNone; readonly snsId: string };
 };
 
 export type Person = {
@@ -26,13 +26,17 @@ const earlier = (a: string | null, b: string | null) =>
 // The people stickers came from, the earliest first (undated ones last, in the order received).
 export function peopleOf(stickers: readonly Held[]): readonly Person[] {
   const byKey = stickers
-    .filter((s) => s.origin === "received")
+    // a sticker that names no one is no one's
+    .flatMap((s) => {
+      const kind = s.sticker.snsKind;
+      return s.origin === "received" && kind !== NO_SNS ? [{ ...s, kind }] : [];
+    })
     .reduce((map, s) => {
-      const key = personKey(s.sticker.snsKind, s.sticker.snsId);
+      const key = personKey(s.kind, s.sticker.snsId);
       const known = map.get(key);
       map.set(key, {
         key,
-        kind: s.sticker.snsKind,
+        kind: s.kind,
         id: known?.id ?? s.sticker.snsId,
         stickerIds: [...(known?.stickerIds ?? []), s.id],
         first: known ? earlier(known.first, s.receivedAt) : s.receivedAt,

@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { applyChange, type Placement } from "../../core/album.ts";
-import { snsDisplay } from "../../core/sns.ts";
+import { nameOf } from "../sticker-name.ts";
 import { stickerStore, type StoredSticker } from "../../data/sticker-store.ts";
 import { feedback, type Highlight } from "../feedback.ts";
 import { t } from "../messages.ts";
@@ -450,7 +450,7 @@ export function PageCanvas(props: Props) {
                 data-grab={p.id}
                 data-sticker={p.stickerId}
                 data-empty={shape === "" || undefined}
-                aria-label={snsDisplay(s.sticker.snsKind, s.sticker.snsId)}
+                aria-label={nameOf(s.sticker)}
                 aria-pressed={selected === p.id}
                 aria-hidden={!owns(p) || undefined}
                 tabIndex={owns(p) ? undefined : -1}

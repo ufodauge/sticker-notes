@@ -92,3 +92,10 @@
 .choice[aria-pressed="true"] {
   border-color: #000000;
 }
+
+/* the maker's SNS under the QR: the QR changes as it is written */
+.mySns {
+  container-type: inline-size;
+  inline-size: min(100%, 420px);
+  margin-inline: auto;
+}

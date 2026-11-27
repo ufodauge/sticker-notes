@@ -13,16 +13,14 @@ import { PALETTES, type PaletteKind } from "../../../core/palette.ts";
 import type { PaletteCandidate } from "../../../core/quantize.ts";
 import { encodeBody, stickerIdOf } from "../../../core/payload.ts";
 import { importPixelArt } from "../../../core/pixelart.ts";
-import { SNS, SNS_KINDS } from "../../../core/sns.ts";
+import { NO_SNS } from "../../../core/sns.ts";
 import { loadImageFile } from "../../../data/image.ts";
-import type { SettingValue } from "../../../data/settings.ts";
-import { settings, stickerStore, type AddResult } from "../../../data/sticker-store.ts";
+import { stickerStore, type AddResult } from "../../../data/sticker-store.ts";
 import common from "../../common.module.css";
 import { debug } from "../../debug.ts";
 import { Dialog } from "../../Dialog.tsx";
 import { useCloseDialog } from "../../dialog-context.ts";
 import { t } from "../../messages.ts";
-import { SnsIcon } from "../../SnsIcon.tsx";
 import { StickerView } from "../../StickerView.tsx";
 import styles from "./CreateDialog.module.css";
 import {
@@ -35,11 +33,6 @@ import {
 import { analyze, derive, type Derived } from "./derive.ts";
 import { availableMaterials, materialsSeen } from "./materials-seen.ts";
 
-type LastSns = SettingValue<"lastSns"> | null;
-
-const lastSnsCache: { p?: Promise<LastSns> } = {};
-const lastSns = () => (lastSnsCache.p ??= settings.get("lastSns").catch(() => null));
-
 type Props = {
   readonly file: File | undefined;
   readonly onClose: () => void;
@@ -49,7 +42,7 @@ type Props = {
 export function CreateDialog({ file, onClose, onSaved }: Props) {
   return (
     <Dialog label={t.create.dialog} onClose={onClose}>
-      <CreateFlow last={lastSns()} file={file} onSaved={onSaved} />
+      <CreateFlow file={file} onSaved={onSaved} />
     </Dialog>
   );
 }
@@ -63,7 +56,6 @@ async function loadSource(file: File, signal: AbortSignal): Promise<Source | "fa
 
 async function load(
   picked: File | undefined,
-  last: Promise<LastSns>,
   loading: { current: AbortController | null },
   urls: { current: readonly string[] },
   dispatch: (a: CreateAction) => void,
@@ -73,22 +65,20 @@ async function load(
   const controller = new AbortController();
   loading.current = controller;
   dispatch({ type: "loading" });
-  const [source, sns] = await Promise.all([loadSource(picked, controller.signal), last]);
+  const source = await loadSource(picked, controller.signal);
   if (source === undefined) return;
   if (source === "failed") {
     dispatch({ type: "load-failed" });
     return;
   }
   urls.current = [...urls.current, source.url];
-  dispatch({ type: "loaded", source, sns });
+  dispatch({ type: "loaded", source });
 }
 
 function CreateFlow({
-  last,
   file,
   onSaved,
 }: {
-  readonly last: Promise<LastSns>;
   readonly file: File | undefined;
   readonly onSaved: Props["onSaved"];
 }) {
@@ -96,19 +86,19 @@ function CreateFlow({
   const loading = useRef<AbortController | null>(null);
   const urls = useRef<readonly string[]>([]);
 
-  const open = (picked: File | undefined) => void load(picked, last, loading, urls, dispatch);
+  const open = (picked: File | undefined) => void load(picked, loading, urls, dispatch);
 
   // unmount (dialog closed): stop decoding and release object URLs — a ref cleanup, not an
   // effect. The callback must keep its identity, or React would run the cleanup each render.
   const lifetime = useCallback(
     (el: HTMLDivElement | null) => {
-      if (el) void load(file, last, loading, urls, dispatch);
+      if (el) void load(file, loading, urls, dispatch);
       return () => {
         loading.current?.abort();
         urls.current.forEach((u) => URL.revokeObjectURL(u));
       };
     },
-    [file, last],
+    [file],
   );
 
   return (
@@ -167,8 +157,6 @@ async function saveSticker(d: Derived): Promise<{ id: string; result: AddResult 
   const body = encodeBody(d.sticker);
   const id = await stickerIdOf(body);
   const result = await stickerStore.add(id, body, "mine");
-  await settings.set("lastSns", { kind: d.sticker.snsKind, id: d.snsId });
-  lastSnsCache.p = undefined;
   return { id, result };
 }
 
@@ -180,10 +168,6 @@ function Editor({ state, dispatch, onSaved }: EditorProps) {
 
   const save = async () => {
     dispatch({ type: "saving" });
-    if (!d.snsValid) {
-      dispatch({ type: "save-failed" });
-      return;
-    }
     const saved = await saveSticker(d).catch(() => undefined);
     if (!saved) {
       dispatch({ type: "save-failed" });
@@ -215,8 +199,7 @@ function Editor({ state, dispatch, onSaved }: EditorProps) {
           <TransparentField d={d} dispatch={dispatch} />
           {!state.source.art && <DitherField state={state} dispatch={dispatch} />}
           <MaterialField state={state} d={d} dispatch={dispatch} />
-          <SnsField state={state} d={d} dispatch={dispatch} />
-          {state.failed && d.snsValid && <p className={common.warn}>{t.create.saveFailed}</p>}
+          {state.failed && <p className={common.warn}>{t.create.saveFailed}</p>}
           <button
             type="button"
             className={common.primary}
@@ -343,7 +326,7 @@ function PaletteGroup({
                   sticker={{
                     paletteId: c.paletteId,
                     transparentIndex: c.transparentIndex,
-                    snsKind: 1,
+                    snsKind: NO_SNS,
                     snsId: "",
                     pixels: c.result.indices,
                   }}
@@ -498,52 +481,5 @@ function DitherField({ state, dispatch }: Pick<EditorProps, "state" | "dispatch"
     >
       <Grid2x2 aria-hidden="true" size={18} strokeWidth={1.5} />
     </button>
-  );
-}
-
-function SnsField({
-  state,
-  d,
-  dispatch,
-}: Pick<EditorProps, "state" | "dispatch"> & { readonly d: Derived }) {
-  const showError = state.snsTouched && !d.snsValid;
-  return (
-    <fieldset className={styles.field}>
-      <legend className={common.visuallyHidden}>{t.create.sns}</legend>
-      <div className={styles.sns}>
-        <div className={styles.kinds} role="radiogroup" aria-label={t.create.snsKind}>
-          {SNS_KINDS.map((k) => (
-            <button
-              key={k}
-              type="button"
-              role="radio"
-              aria-checked={state.snsKind === k}
-              aria-label={SNS[k].label}
-              title={SNS[k].label}
-              className={styles.kind}
-              onClick={() => dispatch({ type: "sns-kind", kind: k })}
-            >
-              <SnsIcon kind={k} size={18} />
-            </button>
-          ))}
-        </div>
-        <input
-          className={common.input}
-          aria-label={t.create.snsId}
-          placeholder={t.create.snsId}
-          value={state.snsInput}
-          autoComplete="off"
-          autoCapitalize="none"
-          spellCheck={false}
-          aria-invalid={showError}
-          aria-describedby="sns-hint"
-          onChange={(e) => dispatch({ type: "sns-input", value: e.currentTarget.value })}
-          onBlur={() => dispatch({ type: "sns-blur" })}
-        />
-      </div>
-      <p id="sns-hint" className={showError ? common.warn : common.muted}>
-        {SNS[state.snsKind].hint}
-      </p>
-    </fieldset>
   );
 }

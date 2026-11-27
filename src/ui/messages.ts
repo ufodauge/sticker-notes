@@ -128,11 +128,19 @@ export const t = {
     transparent: "透明色",
     transparentNone: "透明なし",
     transparentColor: (hex: string) => `#${hex} を透明に`,
-    snsKind: "SNSの種類",
-    sns: "SNS",
-    snsId: "ID",
     dither: "網点",
   },
+
+  // the maker's SNS, one for all of one's own stickers (put in each QR)
+  sns: {
+    field: "SNS",
+    kind: "SNSの種類",
+    id: "ID",
+    invalid: "このSNSのIDにならない",
+  },
+
+  // a sticker that names no one
+  noName: "シール",
 
   menu: {
     dialog: "メニュー",

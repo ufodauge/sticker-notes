@@ -1,6 +1,6 @@
 import { useRef, type CSSProperties, type PointerEvent } from "react";
 import type { Placement } from "../../core/album.ts";
-import { snsDisplay } from "../../core/sns.ts";
+import { nameOf } from "../sticker-name.ts";
 import { SURFACES, dotsOf, localOf, screenOf, type SurfaceKind } from "../../core/surface.ts";
 import { stickerStore, type Ready, type StoredSticker } from "../../data/sticker-store.ts";
 import { carry, dropTarget } from "../album/carry.ts";
@@ -172,7 +172,7 @@ function StickersOn(props: {
           <button
             type="button"
             className={styles.grab}
-            aria-label={snsDisplay(s.sticker.snsKind, s.sticker.snsId)}
+            aria-label={nameOf(s.sticker)}
             aria-pressed={selected === p.id}
             onPointerDown={down(p, s)}
             onPointerMove={move}

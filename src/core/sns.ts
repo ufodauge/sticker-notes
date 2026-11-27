@@ -48,6 +48,16 @@ export const SNS = {
 export type SnsKind = keyof typeof SNS;
 export const SNS_KINDS = Object.keys(SNS).map(Number) as readonly SnsKind[];
 
+// No SNS: a sticker that names no one (kind 0 with an empty ID). One's own stickers are kept this
+// way, and get the maker's SNS (one setting for all of them) put in when their QR is made.
+export const NO_SNS = 0;
+export type SnsOrNone = SnsKind | typeof NO_SNS;
+
+// whether a kind and an ID go together: a known service with a valid ID, or none with none
+export function isValidSns(kind: number, id: string): boolean {
+  return kind === NO_SNS ? id === "" : isSnsKind(kind) && isValidSnsId(kind, id);
+}
+
 export function isSnsKind(n: number): n is SnsKind {
   return Object.hasOwn(SNS, n);
 }
@@ -66,11 +76,14 @@ export function normalizeSnsInput(kind: SnsKind, raw: string): string {
   return SNS[kind].lowercase ? trimmed.toLowerCase() : trimmed;
 }
 
-export function snsProfileUrl(kind: SnsKind, id: string): string | undefined {
+export function snsProfileUrl(kind: SnsOrNone, id: string): string | undefined {
+  if (kind === NO_SNS) return undefined;
   const make: ((id: string) => string) | null = SNS[kind].profileUrl;
   return make && isValidSnsId(kind, id) ? make(id) : undefined;
 }
 
-export function snsDisplay(kind: SnsKind, id: string): string {
+// how an SNS is written ("X @id"); none for no SNS
+export function snsDisplay(kind: SnsOrNone, id: string): string | undefined {
+  if (kind === NO_SNS) return undefined;
   return `${SNS[kind].label} ${kind === 3 ? id : `@${id}`}`;
 }

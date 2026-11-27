@@ -21,7 +21,6 @@ for (const scheme of ["light", "dark"] as const) {
       mimeType: "image/png",
       buffer: readFileSync("test/fixtures/sample.png"),
     });
-    await page.getByLabel("ID", { exact: true }).fill("sample_user");
     await page.waitForTimeout(300);
     await shot("02-create-edit");
     await page.getByRole("button", { name: "ポケットに入れる" }).click();
@@ -36,7 +35,7 @@ for (const scheme of ["light", "dark"] as const) {
     await page.getByRole("button", { name: "X @sticker_fan2026", exact: true }).click();
     await shot("03-selected");
 
-    await page.getByRole("button", { name: "X @sample_user", exact: true }).click();
+    await page.getByRole("button", { name: "シール", exact: true }).click();
     await page.getByRole("button", { name: "交換用のQR", exact: true }).click();
     await page.waitForTimeout(400);
     await shot("04-qr");
@@ -56,7 +55,7 @@ for (const scheme of ["light", "dark"] as const) {
     await shot("06-print-album");
     await page.getByRole("radio", { name: "一覧" }).click();
     await page.getByRole("button", { name: "X @sticker_fan2026 を増やす" }).click();
-    await page.getByRole("button", { name: "X @sample_user を増やす" }).click();
+    await page.getByRole("button", { name: "シール を増やす" }).click();
     await page.waitForTimeout(300);
     await shot("07-print-grid");
   });

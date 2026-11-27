@@ -1,4 +1,5 @@
 import {
+  AtSign,
   ChevronDown,
   DatabaseBackup,
   Download,
@@ -38,6 +39,7 @@ import common from "../../common.module.css";
 import { Dialog } from "../../Dialog.tsx";
 import { t } from "../../messages.ts";
 import { backupMarkCache } from "./backup-mark.ts";
+import { MySnsField } from "../../MySnsField.tsx";
 import { soundPref } from "../../sound-pref.ts";
 import { tutorial } from "../../tutorial/tutorial-store.ts";
 import styles from "./MenuDialog.module.css";
@@ -65,6 +67,9 @@ export function MenuDialog({ onClose, onPeople }: Props) {
   return (
     <Dialog label={t.menu.dialog} onClose={onClose}>
       <div className={styles.body}>
+        <Row icon={<AtSign aria-hidden="true" size={20} strokeWidth={1.5} />}>
+          <MySnsField />
+        </Row>
         <Row icon={<Users aria-hidden="true" size={20} strokeWidth={1.5} />}>
           <button type="button" className={common.button} onClick={onPeople}>
             {t.people.open}

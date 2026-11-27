@@ -1,5 +1,5 @@
 import { ArrowRight, Check, Copy, Maximize, Share2 } from "lucide-react";
-import { useReducer, useRef } from "react";
+import { useReducer, useRef, useSyncExternalStore } from "react";
 import { encodeBody, type Sticker } from "../../core/payload.ts";
 import {
   QUIET_ZONE,
@@ -11,8 +11,10 @@ import {
   type QrMatrix,
 } from "../../core/qr.ts";
 import { renderRgba } from "../../core/render.ts";
-import { snsDisplay } from "../../core/sns.ts";
-import { SnsIcon } from "../SnsIcon.tsx";
+import { nameOf } from "../sticker-name.ts";
+import { mySns, withMySns } from "../my-sns.ts";
+import { MySnsField } from "../MySnsField.tsx";
+import { SnsHandle } from "../SnsIcon.tsx";
 import { appBaseUrl, copyText, enterFullscreen } from "../../data/platform.ts";
 import type { StoredSticker } from "../../data/sticker-store.ts";
 import common from "../common.module.css";
@@ -37,6 +39,7 @@ type Props = {
 export function QrDialog({ initial, mine, to, onClose }: Props) {
   const [id, choose] = useReducer((_: string, next: string) => next, initial.id);
   const shown = mine.find((s) => s.id === id) ?? initial;
+  const sns = useSyncExternalStore(mySns.subscribe, mySns.get);
   return (
     <Dialog label={t.qr.dialog} variant="full" onClose={onClose}>
       <div className={styles.frame}>
@@ -45,10 +48,14 @@ export function QrDialog({ initial, mine, to, onClose }: Props) {
             <StickerView sticker={shown.sticker} scale={1} label="" decorative />
             <ArrowRight aria-hidden="true" size={18} strokeWidth={1.5} />
             <StickerView sticker={to} scale={1} label="" decorative />
-            <span>{t.qr.giveBackTo(snsDisplay(to.snsKind, to.snsId))}</span>
+            <span>{t.qr.giveBackTo(nameOf(to))}</span>
           </p>
         )}
-        <QrBody key={shown.id} sticker={shown.sticker} />
+        <QrBody key={shown.id} sticker={withMySns(shown.sticker, sns)} />
+        {/* the SNS every QR of one's own carries: set here, where it is seen */}
+        <div className={styles.mySns}>
+          <MySnsField />
+        </div>
         {mine.length > 1 && (
           <div className={styles.pick} role="group" aria-label={t.qr.pick}>
             {mine.map((s) => (
@@ -57,8 +64,8 @@ export function QrDialog({ initial, mine, to, onClose }: Props) {
                 type="button"
                 className={styles.choice}
                 aria-pressed={s.id === shown.id}
-                aria-label={snsDisplay(s.sticker.snsKind, s.sticker.snsId)}
-                title={snsDisplay(s.sticker.snsKind, s.sticker.snsId)}
+                aria-label={nameOf(s.sticker)}
+                title={nameOf(s.sticker)}
                 onClick={() => choose(s.id)}
               >
                 <StickerView sticker={s.sticker} scale={1} label="" decorative />
@@ -94,17 +101,16 @@ function QrBody({ sticker }: { readonly sticker: Sticker }) {
         height={canvasPx}
         style={{ inlineSize: canvasPx / viewport.dpr, blockSize: canvasPx / viewport.dpr }}
         role="img"
-        aria-label={t.qr.code(snsDisplay(sticker.snsKind, sticker.snsId))}
+        aria-label={t.qr.code(nameOf(sticker))}
       />
       <div className={styles.who}>
         <StickerView sticker={sticker} scale={1} label="" decorative />
         <span className={styles.sns}>
-          <SnsIcon kind={sticker.snsKind} size={16} />
-          {sticker.snsKind === 3 ? sticker.snsId : `@${sticker.snsId}`}
+          <SnsHandle kind={sticker.snsKind} id={sticker.snsId} size={16} />
         </span>
       </div>
       <div className={common.row}>
-        <ShareLink url={url} title={snsDisplay(sticker.snsKind, sticker.snsId)} />
+        <ShareLink url={url} title={nameOf(sticker)} />
         {document.fullscreenEnabled && (
           <button
             type="button"

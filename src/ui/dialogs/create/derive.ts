@@ -11,7 +11,7 @@ import {
   type PaletteCandidate,
   type Rgba,
 } from "../../../core/quantize.ts";
-import { isValidSnsId, normalizeSnsInput } from "../../../core/sns.ts";
+import { NO_SNS } from "../../../core/sns.ts";
 import type { EditState } from "./create-state.ts";
 
 export type Derived = {
@@ -21,8 +21,6 @@ export type Derived = {
   readonly paletteId: number;
   readonly imageHasAlpha: boolean;
   readonly transparentIndex: number | null;
-  readonly snsId: string;
-  readonly snsValid: boolean;
   // the colours the art uses, most used first (foil can only be one of these)
   readonly used: readonly number[];
   readonly sticker: Sticker;
@@ -89,15 +87,14 @@ export function derive(s: EditState, image: Analysis): Derived {
     quantizeDistinct(base, palette, transparentIndex)?.indices ??
     quantize(base, palette, transparentIndex, undefined, s.dither && !s.source.art).indices;
 
-  const snsId = normalizeSnsInput(s.snsKind, s.snsInput);
-  const snsValid = isValidSnsId(s.snsKind, snsId);
   const used = usedColours(pixels, transparentIndex);
   const material = materialOf(s, used);
   const sticker: Sticker = {
     paletteId,
     transparentIndex,
-    snsKind: s.snsKind,
-    snsId,
+    // one's own: it names no one until its QR is made (my-sns.ts)
+    snsKind: NO_SNS,
+    snsId: "",
     pixels,
     ...(material ? { material } : {}),
   };
@@ -109,8 +106,6 @@ export function derive(s: EditState, image: Analysis): Derived {
     paletteId,
     imageHasAlpha,
     transparentIndex,
-    snsId,
-    snsValid,
     used,
     sticker,
   };

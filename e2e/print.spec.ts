@@ -56,12 +56,11 @@ test("print: own QR block sits on the sheet and decodes to the QR dialog URL", a
     mimeType: "image/png",
     buffer: readFileSync("test/fixtures/sample.png"),
   });
-  await page.getByLabel("ID", { exact: true }).fill("sticker_fan2026");
   await page.getByRole("button", { name: "ポケットに入れる" }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
-  await stickFromPocket(page, "X @sticker_fan2026");
+  await stickFromPocket(page, "シール");
 
-  await page.getByRole("button", { name: "X @sticker_fan2026", exact: true }).click();
+  await page.getByRole("button", { name: "シール", exact: true }).click();
   await page.getByRole("button", { name: "交換用のQR", exact: true }).click();
   const dialogUrl = await readQrUrl(page);
   await page.getByRole("button", { name: "閉じる" }).click();

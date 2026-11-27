@@ -1,3 +1,4 @@
+import { NO_SNS } from "../../../core/sns.ts";
 import { Repeat2, Users } from "lucide-react";
 import { useReducer } from "react";
 import { peopleOf, personKey } from "../../../core/people.ts";
@@ -19,9 +20,10 @@ type Props = {
 // The sticker turns over as the dialog opens; the back says who it came from and when.
 export function BackDialog({ sticker, all, onPerson, onClose }: Props) {
   const [front, flip] = useReducer((f: boolean) => !f, false);
-  const key = personKey(sticker.sticker.snsKind, sticker.sticker.snsId);
+  const { snsKind, snsId } = sticker.sticker;
+  const key = snsKind === NO_SNS ? null : personKey(snsKind, snsId);
   const person =
-    sticker.origin === "received" ? peopleOf(all).find((p) => p.key === key) : undefined;
+    sticker.origin === "received" && key ? peopleOf(all).find((p) => p.key === key) : undefined;
   return (
     <Dialog label={t.back.dialog} onClose={onClose}>
       <div className={styles.body}>

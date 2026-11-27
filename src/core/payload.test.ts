@@ -88,6 +88,21 @@ describe("rejects", () => {
     expect(decodeBody(zeroId)).toEqual({ ok: false, reason: "bad-length" });
   });
 
+  test("no SNS: kind 0 with no ID survives the trip; either alone is refused", () => {
+    const fixture = FIXTURES["allTransparent"];
+    if (!fixture) throw new Error("no fixture");
+    const none = { ...fixture, snsKind: 0 as const, snsId: "" };
+    const body = encodeBody(none);
+    expect(body[2]).toBe(0);
+    const r = decodeFragment(frag(body));
+    expect(r.ok && r.sticker).toEqual(none);
+    // a service with no ID, and no service with an ID
+    const noId = body.slice();
+    noId[1] = ((noId[1] ?? 0) & ~0x3f) | 1;
+    expect(decodeBody(noId)).toEqual({ ok: false, reason: "bad-length" });
+    expect(() => encodeBody({ ...none, snsId: "someone" })).toThrow();
+  });
+
   test("decompression bomb", () => {
     const bomb = deflateSync(new Uint8Array(10_000_000));
     expect(decodeFragment(`v1.${encodeAlnum43(bomb)}`)).toEqual({ ok: false, reason: "too-large" });

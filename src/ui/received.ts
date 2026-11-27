@@ -1,6 +1,6 @@
 import { peopleOf } from "../core/people.ts";
 import { planReceiveToast } from "../core/receive-toast.ts";
-import { snsDisplay } from "../core/sns.ts";
+import { nameOf } from "./sticker-name.ts";
 import { vibrateReceived } from "../data/platform.ts";
 import type { Received } from "../data/receive.ts";
 import { events } from "../data/events.ts";
@@ -52,7 +52,7 @@ async function announceAdded(r: Exclude<Received, { kind: "invalid" }>): Promise
   if (plan.persistent) await markInvitationShown();
   feedback.landed(r.stickerId, "pocket", {
     text:
-      t.feedback.receivedAdded(snsDisplay(r.sticker.snsKind, r.sticker.snsId)) +
+      t.feedback.receivedAdded(nameOf(r.sticker)) +
       (met === undefined ? "" : `・${t.feedback.nthPerson(met)}`),
     undo: { kind: "unreceive", stickerId: r.stickerId },
     action: { kind: plan.invite ? "create" : "return", from: r.stickerId },

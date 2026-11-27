@@ -32,11 +32,10 @@ test("materials open up as one exchanges with people, and travel in the QR", asy
     "aria-checked",
     "true",
   );
-  await page.getByLabel("ID", { exact: true }).fill("puffy_maker");
   await page.getByRole("button", { name: "ポケットに入れる" }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
-  await stickFromPocket(page, "X @puffy_maker");
-  const placed = page.getByRole("button", { name: "X @puffy_maker", exact: true });
+  await stickFromPocket(page, "シール");
+  const placed = page.getByRole("button", { name: "シール", exact: true });
   await expect(placed.locator('[data-material="puffy"]').first()).toBeAttached();
   await placed.click();
   await page.getByRole("button", { name: "交換用のQR", exact: true }).click();

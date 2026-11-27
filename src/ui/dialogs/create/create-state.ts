@@ -1,7 +1,6 @@
 import type { Fit } from "../../../core/pixelart.ts";
 import type { CropRect, Rgba } from "../../../core/quantize.ts";
 import type { MaterialKind } from "../../../core/material.ts";
-import type { SnsKind } from "../../../core/sns.ts";
 
 export type Source = {
   readonly file: Blob;
@@ -20,9 +19,6 @@ export type EditState = {
   readonly transparentOn: boolean | null;
   readonly dither: boolean;
   readonly transparentPick: { readonly paletteId: number; readonly index: number } | null;
-  readonly snsKind: SnsKind;
-  readonly snsInput: string;
-  readonly snsTouched: boolean;
   readonly material: MaterialKind;
   // the colour that turns to foil; null: the most used colour
   readonly foilTone: number | null;
@@ -37,19 +33,12 @@ export type CreateState =
 export type CreateAction =
   | { readonly type: "loading" }
   | { readonly type: "load-failed" }
-  | {
-      readonly type: "loaded";
-      readonly source: Source;
-      readonly sns: { readonly kind: SnsKind; readonly id: string } | null;
-    }
+  | { readonly type: "loaded"; readonly source: Source }
   | { readonly type: "crop-commit"; readonly crop: CropRect }
   | { readonly type: "palette"; readonly paletteId: number }
   | { readonly type: "dither"; readonly on: boolean }
   | { readonly type: "transparent-on"; readonly on: boolean }
   | { readonly type: "transparent-pick"; readonly paletteId: number; readonly index: number }
-  | { readonly type: "sns-kind"; readonly kind: SnsKind }
-  | { readonly type: "sns-input"; readonly value: string }
-  | { readonly type: "sns-blur" }
   | { readonly type: "material"; readonly kind: MaterialKind }
   | { readonly type: "foil-tone"; readonly tone: number }
   | { readonly type: "saving" }
@@ -80,9 +69,6 @@ export function createReducer(state: CreateState, action: CreateAction): CreateS
           transparentOn: null,
           dither: false,
           transparentPick: null,
-          snsKind: action.sns?.kind ?? 1,
-          snsInput: action.sns?.id ?? "",
-          snsTouched: false,
           material: "matte",
           foilTone: null,
           saving: false,
@@ -107,18 +93,12 @@ export function createReducer(state: CreateState, action: CreateAction): CreateS
         transparentOn: true,
         transparentPick: { paletteId: action.paletteId, index: action.index },
       };
-    case "sns-kind":
-      return { ...state, snsKind: action.kind };
-    case "sns-input":
-      return { ...state, snsInput: action.value };
-    case "sns-blur":
-      return { ...state, snsTouched: true };
     case "material":
       return { ...state, material: action.kind };
     case "foil-tone":
       return { ...state, foilTone: action.tone };
     case "saving":
-      return { ...state, saving: true, failed: false, snsTouched: true };
+      return { ...state, saving: true, failed: false };
     case "save-failed":
       return { ...state, saving: false, failed: true };
     default:

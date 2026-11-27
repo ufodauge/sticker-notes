@@ -1,7 +1,7 @@
 import { ArrowLeft } from "lucide-react";
 import { useReducer, useRef, type CSSProperties, type PointerEvent } from "react";
 import { slotCenter } from "../../core/album.ts";
-import { snsDisplay } from "../../core/sns.ts";
+import { nameOf } from "../sticker-name.ts";
 import { stickerStore, type StoredSticker } from "../../data/sticker-store.ts";
 import common from "../common.module.css";
 import { Dialog } from "../Dialog.tsx";
@@ -43,7 +43,7 @@ function PocketBody({ stickers, pageIds }: Omit<Props, "onClose">) {
           key={s.id}
           type="button"
           className={styles.pick}
-          aria-label={t.pocket.pick(snsDisplay(s.sticker.snsKind, s.sticker.snsId))}
+          aria-label={t.pocket.pick(nameOf(s.sticker))}
           style={
             {
               "--i": i,
@@ -88,7 +88,7 @@ function Hand({
   const close = useCloseDialog();
   const peel = useRef<Peel | null>(null);
   const rotation = jumble(sticker.id, 16);
-  const who = snsDisplay(sticker.sticker.snsKind, sticker.sticker.snsId);
+  const who = nameOf(sticker.sticker);
 
   const stickNear = async () => {
     paperSound.wake();

@@ -2,7 +2,14 @@ import { Inflate, deflateSync } from "fflate";
 import { decodeAlnum43, encodeAlnum43 } from "./alnum43.ts";
 import { MATERIALS, materialOfCode, type Material } from "./material.ts";
 import { PALETTE_COUNT } from "./palette.ts";
-import { MAX_ID_BYTES, isSnsKind, isValidSnsId, type SnsKind } from "./sns.ts";
+import {
+  MAX_ID_BYTES,
+  NO_SNS,
+  isSnsKind,
+  isValidSns,
+  isValidSnsId,
+  type SnsOrNone,
+} from "./sns.ts";
 
 export const STICKER_SIZE = 32;
 export const PIXEL_COUNT = STICKER_SIZE * STICKER_SIZE;
@@ -13,7 +20,8 @@ const MAX_INFLATED_BYTES = 1024;
 export type Sticker = {
   readonly paletteId: number;
   readonly transparentIndex: number | null;
-  readonly snsKind: SnsKind;
+  // NO_SNS (0) with an empty ID: the sticker names no one (one's own, until its QR is made)
+  readonly snsKind: SnsOrNone;
   readonly snsId: string;
   readonly pixels: Uint8Array;
   // absent: matte (the v1 body exactly, without the material byte)
@@ -47,8 +55,7 @@ function isValidSticker(s: Sticker): boolean {
       (Number.isInteger(s.transparentIndex) &&
         s.transparentIndex >= 0 &&
         s.transparentIndex < 16)) &&
-    isSnsKind(s.snsKind) &&
-    isValidSnsId(s.snsKind, s.snsId) &&
+    isValidSns(s.snsKind, s.snsId) &&
     s.pixels.length === PIXEL_COUNT &&
     s.pixels.every((p) => p < 16) &&
     (s.material === undefined || isValidMaterial(s.material, s.transparentIndex))
@@ -93,19 +100,27 @@ export function decodeBody(body: Uint8Array): DecodeResult {
   if (body.length < 3) return fail("bad-length");
   const n = body[2] ?? 0;
   const plain = 3 + n + PIXEL_BYTES;
-  if (n < 1 || n > MAX_ID_BYTES || (body.length !== plain && body.length !== plain + 1)) {
+  const header = ((body[0] ?? 0) << 8) | (body[1] ?? 0);
+  const kind = header & 0x3f;
+  // no SNS is written as kind 0 with no ID at all; any service has an ID of 1 byte or more
+  const none = kind === NO_SNS && n === 0;
+  if (
+    (n < 1 && !none) ||
+    n > MAX_ID_BYTES ||
+    (body.length !== plain && body.length !== plain + 1)
+  ) {
     return fail("bad-length");
   }
-  const header = ((body[0] ?? 0) << 8) | (body[1] ?? 0);
   const paletteId = header >> 11;
   const hasTransparent = (header >> 10) & 1;
   const tIndex = (header >> 6) & 0xf;
-  const kind = header & 0x3f;
   if (paletteId >= PALETTE_COUNT) return fail("bad-palette");
   if (!hasTransparent && tIndex !== 0) return fail("bad-transparent");
-  if (!isSnsKind(kind)) return fail("bad-sns-kind");
-  const snsId = decodeUtf8(body.subarray(3, 3 + n));
-  if (snsId === undefined || !isValidSnsId(kind, snsId)) return fail("bad-sns-id");
+  if (!none && !isSnsKind(kind)) return fail("bad-sns-kind");
+  const snsId = none ? "" : decodeUtf8(body.subarray(3, 3 + n));
+  if (snsId === undefined || (!none && isSnsKind(kind) && !isValidSnsId(kind, snsId))) {
+    return fail("bad-sns-id");
+  }
   const pixels = new Uint8Array(PIXEL_COUNT);
   const base = 3 + n;
   for (let i = 0; i < PIXEL_BYTES; i++) {
@@ -122,7 +137,7 @@ export function decodeBody(body: Uint8Array): DecodeResult {
     sticker: {
       paletteId,
       transparentIndex,
-      snsKind: kind,
+      snsKind: none ? NO_SNS : (kind as SnsOrNone),
       snsId,
       pixels,
       ...(material ? { material } : {}),
