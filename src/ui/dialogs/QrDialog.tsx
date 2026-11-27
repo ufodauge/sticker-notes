@@ -1,4 +1,4 @@
-import { ArrowRight, AtSign, Check, Copy, Maximize, Share2 } from "lucide-react";
+import { ArrowRight, Check, Copy, Maximize, Pencil, Share2 } from "lucide-react";
 import { useReducer, useRef, useSyncExternalStore } from "react";
 import { encodeBody, type Sticker } from "../../core/payload.ts";
 import {
@@ -126,7 +126,8 @@ function QrBody({
         aria-label={t.qr.code(nameOf(sticker))}
       />
       {friendReads && <FriendReads />}
-      {/* who the QR says it is from: the sticker and the maker's SNS (tapped, it can be changed) */}
+      {/* who the QR says it is from: a label, not a button to look at (the sticker and the maker's
+          SNS, nothing when none); a little pencil says it can be written */}
       <button
         type="button"
         className={styles.who}
@@ -138,15 +139,11 @@ function QrBody({
       >
         <StickerView sticker={sticker} scale={1} label="" decorative />
         <span className={styles.sns}>
-          {sticker.snsKind === 0 ? (
-            <span className={styles.noSns}>
-              <AtSign aria-hidden="true" size={14} strokeWidth={1.5} />
-              {t.sns.field}
-            </span>
-          ) : (
-            <SnsHandle kind={sticker.snsKind} id={sticker.snsId} size={16} />
-          )}
+          <SnsHandle kind={sticker.snsKind} id={sticker.snsId} size={16} />
         </span>
+        {!friendReads && (
+          <Pencil aria-hidden="true" className={styles.pencil} size={14} strokeWidth={1.5} />
+        )}
       </button>
       <div className={common.row}>
         <ShareLink url={url} title={nameOf(sticker)} />
