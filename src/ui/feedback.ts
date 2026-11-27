@@ -7,9 +7,7 @@ export type Highlight = {
   readonly nonce: number;
 };
 
-export type Undo =
-  | { readonly kind: "unreceive"; readonly stickerId: string }
-  | { readonly kind: "restore"; readonly discarded: Discarded };
+export type Undo = { readonly kind: "restore"; readonly discarded: Discarded };
 
 // what the toast's button opens: making one's own sticker, or one's own QR to give back (both
 // for the sticker that just came in)

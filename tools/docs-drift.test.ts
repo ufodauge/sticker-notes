@@ -18,6 +18,7 @@ const RETIRED = [
   "ノート PC",
   "ノートPC",
   "机のマット",
+  "チュートリアルを閉じる",
 ];
 const SAYS_REMOVED = /削除|廃止|やめた|消した/;
 

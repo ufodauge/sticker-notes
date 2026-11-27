@@ -1,4 +1,4 @@
-import { Check, Pointer, X } from "lucide-react";
+import { Check, Pointer } from "lucide-react";
 import { useSyncExternalStore } from "react";
 import { stateOf } from "../../core/flows.ts";
 import type { TutorialFlow } from "../../core/tutorial.ts";
@@ -12,7 +12,7 @@ import { tutorial } from "./tutorial-store.ts";
 // sample sticker's corner lifting as if it would come off, the page's corner folding over, the
 // create button (or the pocket) beating. Only if nothing is done for a while does a ghostly
 // finger show how. A tick as each is done; at the end, one card says what comes next. It can be
-// put away at any time.
+// done by going through it.
 
 type Point = { readonly x: number; readonly y: number };
 type Cue = {
@@ -196,15 +196,6 @@ export function Tutorial() {
           <Check aria-hidden="true" size={30} strokeWidth={3} />
         </span>
       )}
-      <button
-        type="button"
-        className={`${common.icon} ${styles.close}`}
-        aria-label={t.tutorial.close}
-        title={t.tutorial.close}
-        onClick={tutorial.close}
-      >
-        <X aria-hidden="true" size={18} strokeWidth={1.5} />
-      </button>
       <Cue key={`${s.flow}:${state.id}`} flow={s.flow} stateId={state.id} />
     </div>
   );

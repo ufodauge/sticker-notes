@@ -26,10 +26,10 @@ test("a link drops into the pocket, survives reload, and is stuck from there", a
   await expect(page.getByRole("button", { name: SLIME, exact: true })).toBeVisible();
 });
 
-test("undo takes a just-received sticker back out of the pocket", async ({ page }) => {
+test("a sticker received is a gift: nothing to undo", async ({ page }) => {
   await receiveToPocket(page, "slime");
-  await page.getByRole("button", { name: "元に戻す" }).click();
-  await expect(pocketButton(page)).toHaveCount(0);
+  await expect(page.getByRole("status")).toContainText("がポケットに入った");
+  await expect(page.getByRole("button", { name: "元に戻す" })).toHaveCount(0);
 });
 
 test("an invalid link says so and leaves nothing behind", async ({ page }) => {

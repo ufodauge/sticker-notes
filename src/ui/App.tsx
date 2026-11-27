@@ -33,6 +33,7 @@ import { printMode } from "./print-mode.ts";
 import { PixelIcon } from "./PixelIcon.tsx";
 import { Stamp } from "./Stamp.tsx";
 import { Tutorial } from "./tutorial/Tutorial.tsx";
+import { friendReads, tutorial } from "./tutorial/tutorial-store.ts";
 import { flowPanel } from "./flows/flow-panel.ts";
 import { events } from "../data/events.ts";
 import { Toast } from "./Toast.tsx";
@@ -59,6 +60,7 @@ export function App() {
   const debugOn = useSyncExternalStore(debug.subscribe, () => debug.get().on);
   const day = useSyncExternalStore(daylight.subscribe, daylight.get);
   const flowsOpen = useSyncExternalStore(flowPanel.subscribe, flowPanel.open);
+  const tutorialReads = useSyncExternalStore(tutorial.subscribe, friendReads);
   const seenMaterials = useSyncExternalStore(materialsSeen.subscribe, materialsSeen.get);
   useSyncExternalStore(debug.subscribe, debug.get);
 
@@ -75,6 +77,8 @@ export function App() {
     // made to give back for one just received: its QR comes up at once
     const returnTo = state.overlay.kind === "create" ? state.overlay.returnTo : undefined;
     if (returnTo) dispatch({ type: "open", overlay: { kind: "qr", stickerId, returnTo } });
+    // the first time through: one's first sticker comes up as its QR, for a friend to read
+    else if (friendReads()) dispatch({ type: "open", overlay: { kind: "qr", stickerId } });
   };
 
   const onLeft = () => {
@@ -266,6 +270,7 @@ export function App() {
           initial={qrSticker}
           mine={overlay.returnTo ? mine : []}
           to={stickers.find((s) => s.id === overlay.returnTo)?.sticker}
+          friendReads={tutorialReads}
           onClose={() => {
             events.emit({ type: "qr.closed" });
             close();

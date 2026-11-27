@@ -4,10 +4,6 @@ import { t } from "./messages.ts";
 
 export async function undo(u: Undo): Promise<void> {
   feedback.toast(null);
-  if (u.kind === "unreceive") {
-    await stickerStore.discard(u.stickerId);
-    return;
-  }
   await stickerStore.restore(u.discarded);
   feedback.landed(u.discarded.sticker.id, "arrive", null);
 }

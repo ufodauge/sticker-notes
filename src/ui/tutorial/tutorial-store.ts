@@ -31,7 +31,6 @@ export const tutorial = {
   get: (): TutorialState | null => state.value,
   // the last card's button
   finish: (): void => events.emit({ type: "tutorial.finish" }),
-  close: (): void => publish(DONE),
   // from the menu: the first visit's way through, on the stickers there are
   replay: (): void => publish({ flow: "tutorial.start", at: 0 }),
   // debug only (the flow view): put a flow at a state
@@ -42,33 +41,31 @@ export const tutorial = {
 events.on((e) => {
   const s = state.value;
   if (!s || "done" in s) return;
-  const next = step(s, e.type);
-  if (next === s) return;
-  // the making put away with nothing made: nothing to say about it, the tutorial just ends
-  if (e.type === "create.closed" && stateOf(s)?.id === "making" && !made.now) {
-    publish(DONE);
+  // the making put away with nothing made: back to the step before, the button beating again
+  if (e.type === "create.closed" && stateOf(s)?.id === "making") {
+    publish({ ...s, at: s.at - 1 });
     return;
   }
+  const next = step(s, e.type);
+  if (next === s) return;
   publish(stateOf(next)?.on === undefined ? DONE : { ...s, at: next.at });
   if (s.flow === "tutorial.start" && stateOf(next)?.id === "pocket") arrive();
 });
 
-// whether a sticker was made since the making began
-const made = { now: false };
-events.on((e) => {
-  if (e.type === "create.opened") made.now = false;
-  if (e.type === "sticker.created") made.now = true;
-});
-
-// a friend's sticker comes into the pocket, flying in as a received one does, once the page
-// has settled from its turn (one thing at a time)
+// the friend who read the QR sends one back: it flies into the pocket
 function arrive(): void {
   setTimeout(() => {
     void stickerStore
       .pocketSample(sampleStickers().friend)
       .then((id) => feedback.landed(id, "pocket", null));
-  }, 900);
+  }, 500);
 }
+
+// whether the QR on screen is the tutorial's, which a friend (made up) reads
+export const friendReads = (): boolean => {
+  const s = state.value;
+  return !!s && "flow" in s && s.flow === "tutorial.start" && stateOf(s)?.id === "give";
+};
 
 const readyStore = (): Promise<Ready> =>
   new Promise((resolve) => {

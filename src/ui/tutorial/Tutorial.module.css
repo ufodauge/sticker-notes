@@ -6,17 +6,6 @@
   pointer-events: none;
 }
 
-/* the way out: a little paper tag at the top left, clear of the pocket */
-.close {
-  position: absolute;
-  inset-block-start: max(var(--space-2), env(safe-area-inset-top));
-  inset-inline-start: var(--space-2);
-  border-radius: 999px;
-  background: var(--paper);
-  box-shadow: 0 2px 5px rgb(0 0 0 / 0.18);
-  pointer-events: auto;
-}
-
 /* a tick for a step done, inked straight on the wood (no button-like circle): it pops at the
    top and fades */
 .done {

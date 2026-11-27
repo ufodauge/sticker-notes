@@ -1,4 +1,5 @@
 .body {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -98,4 +99,63 @@
   container-type: inline-size;
   inline-size: min(100%, 420px);
   margin-inline: auto;
+}
+
+/* the tutorial's friend reading the QR (QrDialog.tsx FriendReads): laid over the QR's place in
+   the middle of the body */
+.reader {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.scanLine {
+  position: absolute;
+  inset-inline: 15%;
+  inset-block-start: 20%;
+  block-size: 3px;
+  background: rgb(var(--stamp-ink));
+  box-shadow: 0 0 10px rgb(var(--stamp-ink));
+  opacity: 0;
+}
+
+.reader[data-phase="reading"] .scanLine {
+  animation: scan 1.4s ease-in-out both;
+}
+
+@keyframes scan {
+  0% {
+    opacity: 0;
+    translate: 0 0;
+  }
+  15%,
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    translate: 0 calc(60vmin);
+  }
+}
+
+.readMark {
+  padding: var(--space-1) var(--space-3);
+  border: 3px solid rgb(var(--stamp-ink));
+  border-radius: 6px;
+  color: rgb(var(--stamp-ink));
+  font-size: 1.5rem;
+  font-weight: 700;
+  rotate: -8deg;
+  opacity: 0;
+  scale: 1.6;
+  transition:
+    opacity var(--t-med) ease-out,
+    scale var(--t-med) var(--ease-out);
+}
+
+.reader[data-phase="read"] .readMark {
+  opacity: 0.9;
+  scale: 1;
 }

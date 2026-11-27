@@ -34,7 +34,7 @@ export const t = {
   tutorial: {
     "tutorial.start": {
       title: "シールの交換",
-      text: "作ったシールの QR を友だちが読むと\n友だちのポケットに届く",
+      text: "QR を読んでもらうと届く\nお返しはポケットに",
       go: "閉じる",
     },
     "tutorial.received": {
@@ -43,7 +43,6 @@ export const t = {
       go: "閉じる",
     },
     done: "できた",
-    close: "チュートリアルを閉じる",
     replay: "チュートリアル",
   },
 
@@ -94,6 +93,8 @@ export const t = {
 
   qr: {
     dialog: "交換用のQR",
+    // the tutorial's friend, reading the QR
+    read: "読み取り",
     giveBackTo: (who: string) => `${who} にお返し`,
     pick: "QRにするステッカー",
     code: (who: string) => `${who} のQRコード`,

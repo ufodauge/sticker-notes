@@ -114,3 +114,14 @@ test("the keep-data switch asks the browser and shows the answer", async ({ page
     await expect(toggle).toBeChecked();
   }
 });
+
+test("the tutorial can be gone through again from the menu", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.locator("[data-tutorial]")).toHaveCount(0);
+  await page.getByRole("button", { name: "メニュー" }).click();
+  await page.getByRole("button", { name: "チュートリアル" }).click();
+  await expect(page.locator("[data-tutorial]")).toHaveAttribute(
+    "data-tutorial",
+    "tutorial.start:peel",
+  );
+});

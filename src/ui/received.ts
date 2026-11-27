@@ -54,7 +54,7 @@ async function announceAdded(r: Exclude<Received, { kind: "invalid" }>): Promise
     text:
       t.feedback.receivedAdded(nameOf(r.sticker)) +
       (met === undefined ? "" : `・${t.feedback.nthPerson(met)}`),
-    undo: { kind: "unreceive", stickerId: r.stickerId },
+    undo: null,
     action: { kind: plan.invite ? "create" : "return", from: r.stickerId },
     persistent: plan.persistent,
   });
