@@ -166,25 +166,6 @@ function makeLaptop(): { group: THREE.Group; lid: THREE.Group; screen: THREE.Mes
   return { group, lid, screen };
 }
 
-function makeMug(): THREE.Group {
-  const g = new THREE.Group();
-  const cup = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.07, 0.065, 0.14, 24),
-    new THREE.MeshStandardMaterial({ color: "#f3efe6", roughness: 0.5 }),
-  );
-  cup.position.y = 0.07;
-  cup.castShadow = true;
-  g.add(cup);
-  const handle = new THREE.Mesh(
-    new THREE.TorusGeometry(0.04, 0.012, 8, 16, Math.PI),
-    new THREE.MeshStandardMaterial({ color: "#f3efe6", roughness: 0.5 }),
-  );
-  handle.position.set(0.075, 0.07, 0);
-  handle.rotation.z = -Math.PI / 2;
-  g.add(handle);
-  return g;
-}
-
 function makePlant(): THREE.Group {
   const g = new THREE.Group();
   const pot = new THREE.Mesh(
@@ -238,93 +219,129 @@ export function createRoom(host: HTMLElement, options: RoomOptions): Room {
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color("#2b2420");
-  const camera = new THREE.PerspectiveCamera(40, host.clientWidth / host.clientHeight, 0.1, 50);
-  camera.position.set(0, 3.2, 3.4);
+
+  // where things are: the desk pushed against the wall under a big window
+  const deskBackZ = -1.0;
+  const wallZ = deskBackZ - 0.08;
+  const deskCentreZ = deskBackZ + 0.05 + DESK.d / 2;
+  const deskFrontZ = deskBackZ + 0.1 + DESK.d;
+
+  // seen from above at a steep slant, as one sitting at the desk; no turning round, only
+  // coming closer (pinch, wheel) and moving across (drag)
+  const camera = new THREE.PerspectiveCamera(42, host.clientWidth / host.clientHeight, 0.1, 50);
+  const home = new THREE.Vector3(0, DESK.top + 3.1, deskFrontZ + 1.1);
+  camera.position.copy(home);
   const controls = new OrbitControls(camera, renderer.domElement);
-  controls.target.set(0, DESK.top, -0.2);
-  controls.enablePan = false;
-  controls.minPolarAngle = 0.35;
-  controls.maxPolarAngle = 1.05;
-  controls.minAzimuthAngle = -0.6;
-  controls.maxAzimuthAngle = 0.6;
-  controls.minDistance = 2.2;
-  controls.maxDistance = 5.5;
+  controls.target.set(0, DESK.top, deskCentreZ - 0.2);
+  controls.enableRotate = false;
+  controls.enablePan = true;
+  controls.screenSpacePanning = true;
+  controls.zoomToCursor = true;
+  controls.minDistance = 0.9;
+  controls.mouseButtons = {
+    LEFT: THREE.MOUSE.PAN,
+    MIDDLE: THREE.MOUSE.DOLLY,
+    RIGHT: THREE.MOUSE.PAN,
+  };
+  controls.touches = { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_PAN };
   controls.enableDamping = true;
+  // never wandering off the desk
+  controls.addEventListener("change", () => {
+    const t = controls.target;
+    const cx = THREE.MathUtils.clamp(t.x, -DESK.w / 2, DESK.w / 2);
+    const cz = THREE.MathUtils.clamp(t.z, deskBackZ, deskFrontZ);
+    if (cx !== t.x || cz !== t.z) {
+      camera.position.x += cx - t.x;
+      camera.position.z += cz - t.z;
+      t.x = cx;
+      t.z = cz;
+    }
+  });
   controls.update();
 
-  // the room: floor, back wall with the window, side wall
+  // the room: a floor, and the wall behind the desk with the window in it
+  // the floor stops at the wall: through the window there is only the sky
   const floor = new THREE.Mesh(
-    new THREE.PlaneGeometry(12, 12),
+    new THREE.PlaneGeometry(12, 6),
     new THREE.MeshStandardMaterial({ map: wood("#6b4a33", "#3a2618"), roughness: 0.85 }),
   );
   floor.rotation.x = -Math.PI / 2;
+  floor.position.z = wallZ + 3;
   floor.receiveShadow = true;
   scene.add(floor);
   const wallMat = new THREE.MeshStandardMaterial({ color: "#e9e2d6", roughness: 0.95 });
-  const back = new THREE.Group();
-  const wallZ = -1.6;
-  // the wall around a window opening (four panels), so light comes through the hole
-  const win = { x: -0.3, y: 1.75, w: 1.6, h: 1.1 };
+  // the window: wide, from just above the desk up, so its frame throws a cross over the desk
+  const win = { x: 0, y: DESK.top + 1.1, w: 3.4, h: 1.9 };
   const panels: readonly (readonly [number, number, number, number])[] = [
-    [-3, win.x - win.w / 2, 0, 3.2],
-    [win.x + win.w / 2, 3, 0, 3.2],
+    [-5, win.x - win.w / 2, 0, 4],
+    [win.x + win.w / 2, 5, 0, 4],
     [win.x - win.w / 2, win.x + win.w / 2, 0, win.y - win.h / 2],
-    [win.x - win.w / 2, win.x + win.w / 2, win.y + win.h / 2, 3.2],
+    [win.x - win.w / 2, win.x + win.w / 2, win.y + win.h / 2, 4],
   ];
   panels.forEach(([x0, x1, y0, y1]) => {
     const m = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, y1 - y0, 0.1), wallMat);
     m.position.set((x0 + x1) / 2, (y0 + y1) / 2, wallZ);
     m.receiveShadow = true;
     m.castShadow = true;
-    back.add(m);
+    scene.add(m);
   });
-  scene.add(back);
-  // the window: a frame with a cross, the sky behind it
   const frameMat = new THREE.MeshStandardMaterial({ color: "#f5f2ec", roughness: 0.6 });
   const bars: readonly (readonly [number, number, number, number])[] = [
-    [win.x, win.y + win.h / 2, win.w, 0.05],
-    [win.x, win.y - win.h / 2, win.w, 0.05],
-    [win.x - win.w / 2, win.y, 0.05, win.h],
-    [win.x + win.w / 2, win.y, 0.05, win.h],
-    [win.x, win.y, win.w, 0.035],
-    [win.x, win.y, 0.035, win.h],
+    [win.x, win.y + win.h / 2, win.w, 0.08],
+    [win.x, win.y - win.h / 2, win.w, 0.08],
+    [win.x - win.w / 2, win.y, 0.08, win.h],
+    [win.x + win.w / 2, win.y, 0.08, win.h],
+    [win.x, win.y + 0.1, win.w, 0.06],
+    [win.x, win.y, 0.06, win.h],
   ];
   bars.forEach(([x, y, w, h]) => {
-    const bar = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.08), frameMat);
+    const bar = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.1), frameMat);
     bar.position.set(x, y, wallZ);
     bar.castShadow = true;
     scene.add(bar);
   });
   const skyMat = new THREE.MeshBasicMaterial({ color: "#9cc9f0" });
-  const sky = new THREE.Mesh(new THREE.PlaneGeometry(8, 5), skyMat);
-  sky.position.set(win.x, 1.8, wallZ - 2.5);
+  const sky = new THREE.Mesh(new THREE.PlaneGeometry(12, 7), skyMat);
+  sky.position.set(win.x, win.y, wallZ - 3);
   scene.add(sky);
-  const side = new THREE.Mesh(new THREE.BoxGeometry(0.1, 3.2, 5), wallMat);
-  side.position.set(-3, 1.6, 0.9);
-  side.receiveShadow = true;
-  scene.add(side);
 
-  // the desk
+  // the desk, with a drawer in its front
   const deskTex = wood("#b07a4f", "#6e4527");
   deskTex.repeat.set(2, 1);
-  const desk = new THREE.Mesh(
-    new THREE.BoxGeometry(DESK.w + 0.2, 0.06, DESK.d + 0.2),
-    new THREE.MeshStandardMaterial({ map: deskTex, roughness: 0.7 }),
-  );
-  desk.position.set(0, DESK.top - 0.03, -0.25);
+  const deskWood = new THREE.MeshStandardMaterial({ map: deskTex, roughness: 0.7 });
+  const desk = new THREE.Mesh(new THREE.BoxGeometry(DESK.w + 0.2, 0.06, DESK.d + 0.2), deskWood);
+  desk.position.set(0, DESK.top - 0.03, deskCentreZ);
   desk.receiveShadow = true;
   desk.castShadow = true;
   scene.add(desk);
+  const apronMat = new THREE.MeshStandardMaterial({ color: "#8a5a36", roughness: 0.75 });
+  const apron = new THREE.Mesh(new THREE.BoxGeometry(DESK.w + 0.2, 0.18, 0.04), apronMat);
+  apron.position.set(0, DESK.top - 0.15, deskFrontZ);
+  apron.castShadow = true;
+  scene.add(apron);
+  const drawerFront = new THREE.Mesh(
+    new THREE.BoxGeometry(1.1, 0.13, 0.02),
+    new THREE.MeshStandardMaterial({ color: "#9a6a42", roughness: 0.7 }),
+  );
+  drawerFront.position.set(-DESK.w / 2 + 0.7, DESK.top - 0.15, deskFrontZ + 0.025);
+  scene.add(drawerFront);
+  const knob = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.025, 0.025, 0.03, 16),
+    new THREE.MeshStandardMaterial({ color: "#d9b46a", metalness: 0.7, roughness: 0.3 }),
+  );
+  knob.rotation.x = Math.PI / 2;
+  knob.position.set(drawerFront.position.x, DESK.top - 0.15, deskFrontZ + 0.05);
+  scene.add(knob);
   const legMat = new THREE.MeshStandardMaterial({ color: "#7a5234", roughness: 0.8 });
   [-1, 1].forEach((sx) =>
     [-1, 1].forEach((sz) => {
       const leg = new THREE.Mesh(new THREE.BoxGeometry(0.07, DESK.top - 0.06, 0.07), legMat);
-      leg.position.set(sx * (DESK.w / 2), (DESK.top - 0.06) / 2, -0.25 + sz * (DESK.d / 2));
+      leg.position.set(sx * (DESK.w / 2), (DESK.top - 0.06) / 2, deskCentreZ + sz * (DESK.d / 2));
       leg.castShadow = true;
       scene.add(leg);
     }),
   );
-  const deskOrigin = new THREE.Vector3(-DESK.w / 2, DESK.top, -0.25 - DESK.d / 2);
+  const deskOrigin = new THREE.Vector3(-DESK.w / 2, DESK.top, deskBackZ + 0.05);
   const cellCentre = (col: number, row: number, size: Footprint) =>
     new THREE.Vector3(
       deskOrigin.x + (col + size.cols / 2) * CELL,
@@ -353,42 +370,35 @@ export function createRoom(host: HTMLElement, options: RoomOptions): Room {
   grid.visible = false;
   scene.add(grid);
 
-  // the bookshelf, on the floor to the right of the desk: albums standing on its shelves
-  const shelf = new THREE.Group();
-  shelf.position.set(DESK.w / 2 + 0.75, 0, -0.9);
-  shelf.rotation.y = -0.5;
-  const shelfMat = new THREE.MeshStandardMaterial({
-    map: wood("#8a5d3b", "#4a2f1b"),
-    roughness: 0.8,
+  // the book stand on the desk: the albums stand between two bookends
+  const stand = new THREE.Group();
+  const endMat = new THREE.MeshStandardMaterial({
+    color: "#3a3f44",
+    metalness: 0.5,
+    roughness: 0.4,
   });
-  const sideBoard = (x: number) => {
-    const b = new THREE.Mesh(new THREE.BoxGeometry(0.04, 1.6, 0.4), shelfMat);
-    b.position.set(x, 0.8, 0);
-    b.castShadow = true;
-    shelf.add(b);
-  };
-  sideBoard(-0.5);
-  sideBoard(0.5);
-  [0.02, 0.55, 1.08, 1.58].forEach((y) => {
-    const b = new THREE.Mesh(new THREE.BoxGeometry(1.04, 0.04, 0.4), shelfMat);
-    b.position.set(0, y, 0);
-    b.castShadow = true;
-    b.receiveShadow = true;
-    shelf.add(b);
+  [-0.2, 0.2].forEach((x) => {
+    const end = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.36, 0.2), endMat);
+    end.position.set(x, 0.18, 0);
+    end.castShadow = true;
+    stand.add(end);
+    const foot = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.008, 0.2), endMat);
+    foot.position.set(x + (x < 0 ? 0.06 : -0.06), 0.004, 0);
+    stand.add(foot);
   });
-  scene.add(shelf);
 
-  // the albums: each either standing on the shelf (a spine) or open on the desk
+  // the albums: each either standing in the stand (a spine) or open on the desk
   type Album = { seed: number; spine: THREE.Mesh; open: THREE.Group | null };
   const albums: Album[] = Array.from({ length: 5 }, (_, i) => {
     const spine = new THREE.Mesh(
-      new THREE.BoxGeometry(0.06, 0.42, 0.32),
+      new THREE.BoxGeometry(0.06, 0.34, 0.24),
       new THREE.MeshStandardMaterial({ color: COVERS[i % COVERS.length], roughness: 0.8 }),
     );
-    spine.position.set(-0.38 + i * 0.085, 0.04 + 0.21 + (i > 2 ? 0.53 : 0), 0);
+    spine.position.set(-0.15 + i * 0.075, 0.17, 0);
+    spine.rotation.z = i === 4 ? -0.08 : 0;
     spine.castShadow = true;
     spine.userData = { album: i };
-    shelf.add(spine);
+    stand.add(spine);
     return { seed: i, spine, open: null };
   });
 
@@ -409,11 +419,12 @@ export function createRoom(host: HTMLElement, options: RoomOptions): Room {
     );
   const place = (it: Item) =>
     it.object.position.copy(cellCentre(it.cell.col, it.cell.row, it.size));
+  // an album taken out lies at the front first, near the hand
   const firstFree = (size: Footprint) =>
     Array.from({ length: ROWS * COLS }, (_, i) => ({
-      col: i % COLS,
-      row: Math.floor(i / COLS),
-    })).find((c) => fits(c.col, c.row, size, null));
+      col: [4, 5, 3, 6, 2, 7, 1, 8, 0][i % COLS] ?? i % COLS,
+      row: ROWS - size.rows - Math.floor(i / COLS),
+    })).find((c) => c.row >= 0 && fits(c.col, c.row, size, null));
   const addItem = (it: Item) => {
     items.push(it);
     it.object.userData = { item: it.id };
@@ -443,8 +454,23 @@ export function createRoom(host: HTMLElement, options: RoomOptions): Room {
     scene.remove(it.object);
     items.splice(i, 1);
   };
-  const first = albums[0];
-  if (first) takeOut(first);
+  // the plant in the back left corner, the stand beside it, the laptop at the back right
+  const plant = makePlant();
+  plant.scale.setScalar(1.35);
+  addItem({
+    id: "plant",
+    object: plant,
+    size: { cols: 1, rows: 1 },
+    cell: { col: 0, row: 0 },
+    kind: "mug",
+  });
+  addItem({
+    id: "stand",
+    object: stand,
+    size: { cols: 2, rows: 1 },
+    cell: { col: 1, row: 0 },
+    kind: "mug",
+  });
   const laptop = makeLaptop();
   addItem({
     id: "laptop",
@@ -453,21 +479,10 @@ export function createRoom(host: HTMLElement, options: RoomOptions): Room {
     cell: { col: 8, row: 0 },
     kind: "laptop",
   });
-  addItem({
-    id: "mug",
-    object: makeMug(),
-    size: { cols: 1, rows: 1 },
-    cell: { col: 10, row: 4 },
-    kind: "mug",
-  });
+  const first = albums[0];
+  if (first) takeOut(first);
   const lid = { open: true, angle: -1.85 };
   laptop.lid.rotation.x = lid.angle;
-
-  const plant = makePlant();
-  // a tall one on the floor by the window, beside the desk, where it is seen and its shadow falls
-  plant.position.set(-DESK.w / 2 - 0.45, 0, wallZ + 0.45);
-  plant.scale.setScalar(2.6);
-  scene.add(plant);
 
   // light: the sky, the sun through the window, a lamp at night
   const hemi = new THREE.HemisphereLight("#dfe8f5", "#6b4a33", 0.6);
@@ -584,7 +599,8 @@ export function createRoom(host: HTMLElement, options: RoomOptions): Room {
       ? day.clone().lerp(dusk, low * (state.weather === "clear" ? 0.7 : 0.3))
       : night;
     skyMat.color.copy(skyColour);
-    scene.background = new THREE.Color("#2b2420").lerp(night, s.day ? 0 : 0.6);
+    // seen through the window, the outside is all sky
+    scene.background = skyColour.clone();
     fall.visible = state.weather === "snow";
     streaks.visible = state.weather === "rain";
     fallMat.size = state.weather === "snow" ? 0.05 : 0.02;
@@ -661,18 +677,20 @@ export function createRoom(host: HTMLElement, options: RoomOptions): Room {
   renderer.domElement.addEventListener("pointerdown", onDown, { signal: stop.signal });
   addEventListener("pointermove", onMove, { signal: stop.signal });
   addEventListener("pointerup", onUp, { signal: stop.signal });
+  const resized = { once: false };
   const onResize = () => {
     renderer.setSize(host.clientWidth, host.clientHeight);
     camera.aspect = host.clientWidth / host.clientHeight;
-    // on a tall screen the desk must still fit across: the camera stands further back
-    controls.maxDistance = camera.aspect < 1 ? 9 : 5.5;
-    if (camera.aspect < 1) {
-      const back = camera.position
-        .clone()
-        .sub(controls.target)
-        .setLength(Math.min(9, 4.4 / camera.aspect));
-      camera.position.copy(controls.target).add(back);
-    }
+    // the whole desk fits across at the farthest (further back on a tall screen); closer is a
+    // pinch or a turn of the wheel
+    const far =
+      home.distanceTo(new THREE.Vector3(0, DESK.top, deskCentreZ - 0.2)) *
+      Math.max(1, 1.5 / camera.aspect);
+    controls.maxDistance = far;
+    const back = camera.position.clone().sub(controls.target);
+    if (back.length() > far || !resized.once)
+      camera.position.copy(controls.target).add(back.setLength(far));
+    resized.once = true;
     camera.updateProjectionMatrix();
   };
   onResize();
