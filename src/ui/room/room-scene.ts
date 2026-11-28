@@ -270,8 +270,10 @@ export function createRoom(host: HTMLElement, options: RoomOptions): Room {
   floor.receiveShadow = true;
   scene.add(floor);
   const wallMat = new THREE.MeshStandardMaterial({ color: "#e9e2d6", roughness: 0.95 });
-  // the window: wide, from just above the desk up, so its frame throws a cross over the desk
-  const win = { x: 0, y: DESK.top + 1.1, w: 3.4, h: 1.9 };
+  // a window seat: the desk fits in a nook, walls close on both sides, and the window fills the
+  // nook's back from just above the desk up, so its frame throws a cross over the desk
+  const nook = DESK.w / 2 + 0.12;
+  const win = { x: 0, y: DESK.top + 1.05, w: nook * 2 - 0.02, h: 1.8 };
   const panels: readonly (readonly [number, number, number, number])[] = [
     [-5, win.x - win.w / 2, 0, 4],
     [win.x + win.w / 2, 5, 0, 4],
@@ -299,6 +301,14 @@ export function createRoom(host: HTMLElement, options: RoomOptions): Room {
     bar.position.set(x, y, wallZ);
     bar.castShadow = true;
     scene.add(bar);
+  });
+  // the nook's side walls, from the window wall out past the desk's front
+  [-1, 1].forEach((side) => {
+    const wall = new THREE.Mesh(new THREE.BoxGeometry(0.1, 3.2, 2.6), wallMat);
+    wall.position.set(side * (nook + 0.05), 1.6, wallZ + 1.3);
+    wall.receiveShadow = true;
+    wall.castShadow = true;
+    scene.add(wall);
   });
   const skyMat = new THREE.MeshBasicMaterial({ color: "#9cc9f0" });
   const sky = new THREE.Mesh(new THREE.PlaneGeometry(12, 7), skyMat);
