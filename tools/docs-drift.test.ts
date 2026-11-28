@@ -15,8 +15,6 @@ const RETIRED = [
   "照度センサー",
   "jar3d",
   "AmbientLightSensor",
-  "ノート PC",
-  "ノートPC",
   "机のマット",
   "チュートリアルを閉じる",
 ];
