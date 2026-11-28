@@ -125,3 +125,4 @@ plan.md の表記「9、6」「5、0」は範囲(9〜6、5〜0)の意味と確�
 | PNG | アプリはブラウザの canvas で書き出す。テストとスクリプトは fast-png。自前の PNG エンコーダ・デコーダはなくした |
 | パレットの書き出し | 各パレットの「…」メニュー(Popover API)から PNG と .gpl を選ぶ |
 | 依存の固定 | `pnpm-workspace.yaml` の overrides で `vite` を vite-plus 1.7 が前提にする `@voidzero-dev/vite-plus-core@8.3.8000` に固定し、古い `vitest` の override を外した(古い core が混ざって `vp` が起動しなかった) |
+| 3D の机 | 2026-11-28: 斜め上から見下ろす 3D の机(ウィンドウシートの前の机)を場面にする。以前の「3D にしない」はのちに変更。詳細は `room-3d.md` | 試作 `?room` で確かめた |

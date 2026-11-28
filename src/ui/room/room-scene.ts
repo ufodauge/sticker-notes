@@ -303,7 +303,7 @@ export function createRoom(host: HTMLElement, options: RoomOptions): Room {
       WALL_H / 2,
       (roomWallZ + wallZ) / 2,
     );
-    wall.rotation.y = Math.atan2(-side * slant, seatDepth);
+    wall.rotation.y = Math.atan2(side * slant, seatDepth);
     wall.receiveShadow = true;
     wall.castShadow = true;
     scene.add(wall);
