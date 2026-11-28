@@ -24,6 +24,7 @@
 - `src/ui/App.tsx`: ツールバー、場面、ダイアログ類を並べるだけ
 - 場面: `src/ui/scene/DeskView.tsx`(画面より広い机、木目、机に貼ったシール、真ん中のシール帳)、`Room.tsx`(時刻の光)、`DeskTop.tsx`(机に貼ったシールの扱い)
 - シール帳: `src/ui/album/`(ページめくり、剥がす・貼る、ポケット、机の引き出し(捨てたシールが入り、取り出せる。`Drawer.tsx`))
+- 3D の机(試作 `?room`、デバッグビルドだけ。`docs/room-3d.md`): `src/ui/room/Room3D.tsx`(ページ。寄ったときに 2D の帳面を重ねる、引き出し・ポケットの画面)、`room-scene.ts`(three.js の場面、カメラ、押したときの扱い)、`room-things.ts`(本物の帳面のページの絵、引き出しの箱、透明なポケット)、`room-content.ts`(ストアから、机に見せるもの: 開いた見開き、引き出し、ポケット)
 - ツールバーのアイコン: `src/ui/PixelIcon.tsx`(16×16 のドット絵をそのまま書く)
 
 ## 出来事と流れ

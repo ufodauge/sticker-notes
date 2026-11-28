@@ -15,19 +15,34 @@
   display: block;
 }
 
-/* the controls: a strip of paper laid at the foot */
+/* the controls: a strip of paper laid at the foot, folded to its label until opened */
 .panel {
   position: absolute;
-  inset-inline: var(--space-2);
+  inset-inline-start: var(--space-2);
   inset-block-end: max(var(--space-2), env(safe-area-inset-bottom));
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2) var(--space-3);
+  max-inline-size: calc(100% - 2 * var(--space-2));
   padding: var(--space-2) var(--space-3);
   border-radius: 3px;
   background: var(--paper);
   box-shadow: var(--paper-shadow);
+}
+
+.panel[open] {
+  inset-inline-end: var(--space-2);
+}
+
+.summary {
+  min-block-size: 28px;
+  font-size: var(--text-small);
+  cursor: pointer;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  padding-block-start: var(--space-2);
 }
 
 .field {
@@ -58,4 +73,24 @@
   font-size: var(--text-small);
   box-shadow: var(--paper-shadow);
   rotate: -0.5deg;
+}
+
+/* close over the album: the 2D album laid over the 3D one, faded in once the camera is down */
+.close {
+  position: absolute;
+  inset: 0;
+  container-type: size;
+  opacity: 0;
+  transition: opacity var(--t-med) var(--ease-out);
+}
+
+.close[data-zoom="close"] {
+  opacity: 1;
+}
+
+/* only the book takes touches; a tap beside it goes back to the desk */
+.album {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
 }

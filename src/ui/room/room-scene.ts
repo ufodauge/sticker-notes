@@ -1,5 +1,13 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import {
+  ALBUM_PAGE,
+  DRAWER_PULL,
+  makeDrawerBox,
+  makePocket,
+  paintAlbumPages,
+  type RoomContent,
+} from "./room-things.ts";
 
 // A prototype (debug builds only, `?room`): the desk seen from above at a slant, in three
 // dimensions. On it, on a grid, things that can be moved about: open albums, a laptop whose lid
@@ -13,12 +21,37 @@ export type Weather = "clear" | "cloudy" | "rain" | "snow";
 export type RoomOptions = {
   // lighter drawing for a weak device: no shadows, fewer pixels
   readonly light: boolean;
+  // the real album (the first) tapped on the desk: to come close and work on it
+  readonly onAlbum?: () => void;
+  // a tap into the open drawer
+  readonly onDrawer?: () => void;
+  readonly onPocket?: () => void;
 };
+
+// a box on the screen, in the page's pixels
+export type ScreenBox = {
+  readonly left: number;
+  readonly top: number;
+  readonly width: number;
+  readonly height: number;
+};
+
+// what a test (or anyone) can point at on the screen
+type RoomThing = "album" | "spine" | "drawer" | "drawer-inside" | "pocket";
 
 export type Room = {
   readonly setTime: (hour: number, month: number) => void;
   readonly setWeather: (w: Weather) => void;
   readonly setEditing: (on: boolean) => void;
+  readonly setContent: (c: RoomContent) => void;
+  // the camera comes down over the real album until its spread fills `box`; false when it is
+  // not on the desk
+  readonly zoomIn: (box: ScreenBox, arrived: () => void) => boolean;
+  // back to where the desk was seen from before
+  readonly zoomOut: (arrived: () => void) => void;
+  // where a thing is on the screen (page pixels), if it is there
+  readonly where: (thing: RoomThing) => { readonly x: number; readonly y: number } | null;
+  readonly drawerOpen: () => boolean;
   // frames per second over the last second (to tell a weak device)
   readonly fps: () => number;
   readonly dispose: () => void;
@@ -36,7 +69,7 @@ type Item = {
   readonly object: THREE.Object3D;
   readonly size: Footprint;
   readonly cell: { col: number; row: number };
-  readonly kind: "album" | "laptop" | "mug" | "lamp";
+  readonly kind: "album" | "laptop" | "mug" | "lamp" | "pocket";
 };
 
 const wood = (base: string, dark: string, w = 512, h = 256): THREE.CanvasTexture => {
@@ -121,6 +154,7 @@ function makeAlbum(seed: number): THREE.Group {
       new THREE.BoxGeometry(0.46, 0.012, 0.64),
       new THREE.MeshStandardMaterial({ map: pageTexture(seed * 2 + side), roughness: 0.95 }),
     );
+    page.name = side < 0 ? "page-left" : "page-right";
     page.position.set(side * 0.235, 0.028, 0);
     page.rotation.z = side * -0.04;
     page.castShadow = true;
@@ -362,10 +396,21 @@ export function createRoom(host: HTMLElement, options: RoomOptions): Room {
   desk.castShadow = true;
   scene.add(desk);
   const apronMat = new THREE.MeshStandardMaterial({ color: "#8a5a36", roughness: 0.75 });
-  const apron = new THREE.Mesh(new THREE.BoxGeometry(DESK.w + 0.2, 0.18, 0.04), apronMat);
-  apron.position.set(0, DESK.top - 0.15, deskFrontZ);
-  apron.castShadow = true;
-  scene.add(apron);
+  // the apron, round the opening the drawer slides out of
+  const hole = { x: -DESK.w / 2 + 0.7, w: 1.02, y0: DESK.top - 0.215, y1: DESK.top - 0.09 };
+  const apronSpan = { x0: -(DESK.w + 0.2) / 2, x1: (DESK.w + 0.2) / 2, y0: DESK.top - 0.24 };
+  const apronParts: readonly (readonly [number, number, number, number])[] = [
+    [apronSpan.x0, hole.x - hole.w / 2, apronSpan.y0, DESK.top - 0.06],
+    [hole.x + hole.w / 2, apronSpan.x1, apronSpan.y0, DESK.top - 0.06],
+    [hole.x - hole.w / 2, hole.x + hole.w / 2, hole.y1, DESK.top - 0.06],
+    [hole.x - hole.w / 2, hole.x + hole.w / 2, apronSpan.y0, hole.y0],
+  ];
+  apronParts.forEach(([x0, x1, y0, y1]) => {
+    const apron = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, y1 - y0, 0.04), apronMat);
+    apron.position.set((x0 + x1) / 2, (y0 + y1) / 2, deskFrontZ);
+    apron.castShadow = true;
+    scene.add(apron);
+  });
   const drawerFront = new THREE.Mesh(
     new THREE.BoxGeometry(1.1, 0.13, 0.02),
     new THREE.MeshStandardMaterial({ color: "#9a6a42", roughness: 0.7 }),
@@ -379,6 +424,19 @@ export function createRoom(host: HTMLElement, options: RoomOptions): Room {
   knob.rotation.x = Math.PI / 2;
   knob.position.set(drawerFront.position.x, DESK.top - 0.15, deskFrontZ + 0.05);
   scene.add(knob);
+  // the drawer slides out as one: its front, its knob and the box behind them, with the stickers
+  // thrown off the album lying on its floor
+  const drawer = new THREE.Group();
+  scene.add(drawer);
+  drawer.attach(drawerFront);
+  drawer.attach(knob);
+  const drawerBox = makeDrawerBox();
+  drawerBox.group.position.set(hole.x, hole.y0 + 0.005, deskFrontZ);
+  drawer.add(drawerBox.group);
+  drawerFront.userData = { thing: "drawer-front" };
+  knob.userData = { thing: "drawer-front" };
+  drawerBox.group.userData = { thing: "drawer-inside" };
+  const drawerState = { open: false, out: 0 };
   const legMat = new THREE.MeshStandardMaterial({ color: "#7a5234", roughness: 0.8 });
   [-1, 1].forEach((sx) =>
     [-1, 1].forEach((sz) => {
@@ -488,6 +546,15 @@ export function createRoom(host: HTMLElement, options: RoomOptions): Room {
     a.open = group;
     a.spine.visible = false;
     addItem({ id: `album-${a.seed}`, object: group, size: albumSize, cell, kind: "album" });
+    if (a.seed === REAL) paintReal();
+  };
+  // the first album is the real one (the data holds one album so far): its pages are the album's
+  const REAL = 0;
+  const content: { now: RoomContent | null } = { now: null };
+  const realAlbum = () => albums.find((a) => a.seed === REAL)?.open ?? null;
+  const paintReal = () => {
+    const open = realAlbum();
+    if (open && content.now) paintAlbumPages(open, content.now.left, content.now.right);
   };
   const putBack = (id: string) => {
     const i = items.findIndex((it) => it.id === id);
@@ -574,6 +641,15 @@ export function createRoom(host: HTMLElement, options: RoomOptions): Room {
     cell: { col: 11, row: 0 },
     kind: "lamp",
   });
+  // the clear pocket, beside the album: what was received and not stuck yet
+  const pocket = makePocket();
+  addItem({
+    id: "pocket",
+    object: pocket.group,
+    size: { cols: 2, rows: 2 },
+    cell: { col: 9, row: 3 },
+    kind: "pocket",
+  });
 
   // the weather outside: falling rain or snow, seen through the window
   const fallCount = options.light ? 300 : 900;
@@ -655,7 +731,7 @@ export function createRoom(host: HTMLElement, options: RoomOptions): Room {
   const ray = new THREE.Raycaster();
   const pointer = new THREE.Vector2();
   const deskPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -DESK.top);
-  const pick = (e: PointerEvent) => {
+  const pick = (e: MouseEvent) => {
     const r = renderer.domElement.getBoundingClientRect();
     pointer.set(
       ((e.clientX - r.left) / r.width) * 2 - 1,
@@ -664,17 +740,40 @@ export function createRoom(host: HTMLElement, options: RoomOptions): Room {
     ray.setFromCamera(pointer, camera);
   };
   const owner = (o: THREE.Object3D | null): THREE.Object3D | null =>
-    o === null ? null : o.userData.item || o.userData.album !== undefined ? o : owner(o.parent);
-  const drag = { id: null as string | null, from: { x: 0, y: 0 }, moved: false };
+    o === null
+      ? null
+      : o.userData.item || o.userData.album !== undefined || o.userData.thing
+        ? o
+        : owner(o.parent);
+  const shown = (o: THREE.Object3D | null): boolean => o === null || (o.visible && shown(o.parent));
+  // the thing under the pointer: the nearest solid thing seen there (nothing behind it)
+  const hitThing = (): THREE.Object3D | null => {
+    const near = ray
+      .intersectObjects(scene.children, true)
+      .find((h) => h.object instanceof THREE.Mesh && shown(h.object));
+    return near ? owner(near.object) : null;
+  };
+  const drag = {
+    id: null as string | null,
+    from: { x: 0, y: 0 },
+    moved: false,
+    down: false,
+    dragged: false,
+  };
+  // seen close over the album (the 2D album lies over it then): the desk takes no touches
+  const zoom = {
+    close: false,
+    saved: { pos: new THREE.Vector3(), target: new THREE.Vector3() },
+  };
 
   const onDown = (e: PointerEvent) => {
+    if (zoom.close) return;
     pick(e);
     drag.from = { x: e.clientX, y: e.clientY };
     drag.moved = false;
-    const hit = ray
-      .intersectObjects(scene.children, true)
-      .map((h) => owner(h.object))
-      .find((o) => o);
+    drag.down = true;
+    drag.dragged = false;
+    const hit = hitThing();
     drag.id =
       state.editing && hit && typeof hit.userData.item === "string" ? hit.userData.item : null;
     controls.enabled = drag.id === null;
@@ -695,28 +794,49 @@ export function createRoom(host: HTMLElement, options: RoomOptions): Room {
       place(it);
     }
   };
-  const onUp = (e: PointerEvent) => {
-    const wasDrag = drag.id !== null && drag.moved;
+  const onUp = () => {
+    // only a press that began on the desk (not on the controls or an overlay above it)
+    if (!drag.down) return;
+    drag.down = false;
+    drag.dragged = drag.id !== null && drag.moved;
     drag.id = null;
-    controls.enabled = true;
-    if (wasDrag || Math.hypot(e.clientX - drag.from.x, e.clientY - drag.from.y) > 6) return;
+    controls.enabled = !zoom.close;
+  };
+  // a tap (a click, so that what it opens is not hit by the click itself): a spine takes its
+  // album out; the real album is come close to (any other is put back); the drawer's front pulls
+  // it out or pushes it in, a tap into it opens it; the laptop opens or shuts. While things are
+  // being moved, a tap on an album puts it back
+  const onTap = (e: MouseEvent) => {
+    if (zoom.close || drag.dragged) return;
+    if (Math.hypot(e.clientX - drag.from.x, e.clientY - drag.from.y) > 6) return;
     pick(e);
-    const hit = ray
-      .intersectObjects(scene.children, true)
-      .map((h) => owner(h.object))
-      .find((o) => o);
-    if (!hit || state.editing) return;
+    const hit = hitThing();
+    if (!hit) return;
+    const it = items.find((x) => x.id === hit.userData.item);
+    if (state.editing) {
+      if (it?.kind === "album") putBack(it.id);
+      return;
+    }
     if (typeof hit.userData.album === "number") {
       const a = albums[hit.userData.album];
       if (a) takeOut(a);
       return;
     }
-    const it = items.find((x) => x.id === hit.userData.item);
+    if (hit.userData.thing === "drawer-front") drawerState.open = !drawerState.open;
+    if (hit.userData.thing === "drawer-inside") {
+      if (drawerState.open) options.onDrawer?.();
+      else drawerState.open = true;
+    }
     if (it?.kind === "laptop") lid.open = !lid.open;
-    if (it?.kind === "album") putBack(it.id);
+    if (it?.kind === "pocket") options.onPocket?.();
+    if (it?.kind === "album") {
+      if (it.object === realAlbum()) options.onAlbum?.();
+      else putBack(it.id);
+    }
   };
   const stop = new AbortController();
   renderer.domElement.addEventListener("pointerdown", onDown, { signal: stop.signal });
+  renderer.domElement.addEventListener("click", onTap, { signal: stop.signal });
   addEventListener("pointermove", onMove, { signal: stop.signal });
   addEventListener("pointerup", onUp, { signal: stop.signal });
   const resized = { once: false };
@@ -730,7 +850,7 @@ export function createRoom(host: HTMLElement, options: RoomOptions): Room {
       Math.max(1, 1.15 / camera.aspect);
     controls.maxDistance = far;
     const back = camera.position.clone().sub(controls.target);
-    if (back.length() > far || !resized.once)
+    if (!zoom.close && (back.length() > far || !resized.once))
       camera.position.copy(controls.target).add(back.setLength(far));
     resized.once = true;
     camera.updateProjectionMatrix();
@@ -769,10 +889,49 @@ export function createRoom(host: HTMLElement, options: RoomOptions): Room {
         streakGeo.getAttribute("position").needsUpdate = true;
       }
     }
-    controls.update();
+    // the drawer slides toward out or in
+    drawerState.out +=
+      ((drawerState.open ? DRAWER_PULL : 0) - drawerState.out) * Math.min(1, dt * 7);
+    drawer.position.z = drawerState.out;
+    if (fly.active) {
+      const k = Math.min(1, (performance.now() - fly.start) / FLY_MS);
+      const ease = k < 0.5 ? 4 * k * k * k : 1 - (-2 * k + 2) ** 3 / 2;
+      camera.position.lerpVectors(fly.from.pos, fly.to.pos, ease);
+      camera.lookAt(fly.look.lerpVectors(fly.from.target, fly.to.target, ease));
+      if (k >= 1) {
+        fly.active = false;
+        fly.arrived();
+      }
+    } else if (!zoom.close) controls.update();
     renderer.render(scene, camera);
     state.frame = requestAnimationFrame(tick);
   };
+
+  // the camera's flight down to the album and back up
+  const FLY_MS = 700;
+  const fly = {
+    active: false,
+    start: 0,
+    from: { pos: new THREE.Vector3(), target: new THREE.Vector3() },
+    to: { pos: new THREE.Vector3(), target: new THREE.Vector3() },
+    look: new THREE.Vector3(),
+    arrived: () => undefined as void,
+  };
+  const flyTo = (pos: THREE.Vector3, target: THREE.Vector3, arrived: () => void) => {
+    fly.from.pos.copy(camera.position);
+    fly.from.target.copy(fly.active ? fly.look : controls.target);
+    fly.to.pos.copy(pos);
+    fly.to.target.copy(target);
+    fly.start = performance.now();
+    fly.arrived = arrived;
+    fly.active = true;
+  };
+  const toScreen = (p: THREE.Vector3) => {
+    const r = renderer.domElement.getBoundingClientRect();
+    const v = p.clone().project(camera);
+    return { x: r.left + ((v.x + 1) / 2) * r.width, y: r.top + ((1 - v.y) / 2) * r.height };
+  };
+  const worldOf = (o: THREE.Object3D, local: THREE.Vector3) => o.localToWorld(local.clone());
   state.frame = requestAnimationFrame(tick);
 
   return {
@@ -789,6 +948,74 @@ export function createRoom(host: HTMLElement, options: RoomOptions): Room {
       state.editing = on;
       grid.visible = on;
     },
+    setContent: (c) => {
+      content.now = c;
+      paintReal();
+      drawerBox.fill(c.drawer);
+      pocket.fill(c.pocket);
+    },
+    zoomIn: (box, arrived) => {
+      const open = realAlbum();
+      if (!open) return false;
+      if (!zoom.close) {
+        zoom.saved.pos.copy(camera.position);
+        zoom.saved.target.copy(controls.target);
+      }
+      zoom.close = true;
+      controls.enabled = false;
+      // looking straight down (a hair from the front, so the far edge is the top), from as high
+      // as makes the page as tall on the screen as the box, shifted so it lies where the box is
+      const r = renderer.domElement.getBoundingClientRect();
+      const perPx = ALBUM_PAGE.d / box.height;
+      const fov = THREE.MathUtils.degToRad(camera.fov);
+      const height = (r.height * perPx) / (2 * Math.tan(fov / 2));
+      const centre = open.position.clone().setY(open.position.y + ALBUM_PAGE.top);
+      const target = centre
+        .clone()
+        .add(
+          new THREE.Vector3(
+            (r.left + r.width / 2 - (box.left + box.width / 2)) * perPx,
+            0,
+            (r.top + r.height / 2 - (box.top + box.height / 2)) * perPx,
+          ),
+        );
+      flyTo(target.clone().add(new THREE.Vector3(0, height, height * 0.001)), target, arrived);
+      return true;
+    },
+    zoomOut: (arrived) => {
+      if (!zoom.close) {
+        arrived();
+        return;
+      }
+      flyTo(zoom.saved.pos, zoom.saved.target, () => {
+        camera.position.copy(zoom.saved.pos);
+        controls.target.copy(zoom.saved.target);
+        zoom.close = false;
+        controls.enabled = true;
+        controls.update();
+        arrived();
+      });
+    },
+    where: (thing) => {
+      const open = realAlbum();
+      const spine = albums.find((a) => a.seed === REAL)?.spine;
+      const at =
+        thing === "album"
+          ? open && worldOf(open, new THREE.Vector3(ALBUM_PAGE.w / 2, ALBUM_PAGE.top, 0))
+          : thing === "spine"
+            ? spine?.visible
+              ? worldOf(spine, new THREE.Vector3(0, 0.1, 0))
+              : null
+            : thing === "drawer"
+              ? worldOf(drawerFront, new THREE.Vector3(0.3, 0, 0.011))
+              : thing === "drawer-inside"
+                ? drawerState.out > DRAWER_PULL * 0.9
+                  ? worldOf(drawerBox.group, new THREE.Vector3(0, 0.02, -0.12))
+                  : null
+                : worldOf(pocket.group, new THREE.Vector3(0, 0.016, 0));
+      return at ? toScreen(at) : null;
+    },
+    drawerOpen: () => drawerState.out > DRAWER_PULL * 0.9,
     fps: () => state.frames.length,
     dispose: () => {
       cancelAnimationFrame(state.frame);
