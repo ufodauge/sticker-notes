@@ -100,6 +100,8 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ["**/*.{js,css,html,png,webmanifest}"],
+        // the 3D desk's models and textures (debug builds' `?room`) are not kept offline
+        globIgnores: ["room/**"],
         navigateFallback: "index.html",
         cleanupOutdatedCaches: true,
       },

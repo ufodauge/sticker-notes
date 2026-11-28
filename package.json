@@ -9,6 +9,7 @@
     "test:e2e": "playwright test",
     "gen:vectors": "node scripts/gen-vectors.ts",
     "gen:icons": "node scripts/gen-icons.ts",
+    "gen:room": "node scripts/gen-room-assets.ts",
     "check:compiler": "node scripts/check-react-compiler.ts",
     "knip": "knip",
     "test:mutation": "mutator"
