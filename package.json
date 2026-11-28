@@ -22,6 +22,7 @@
     "react-dom": "^19.3.1",
     "react-easy-crop": "6.2.5",
     "simple-icons": "^16.38.1",
+    "three": "^0.187.0",
     "valibot": "1.5.0"
   },
   "devDependencies": {
@@ -34,6 +35,7 @@
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "@types/three": "^0.187.0",
     "@vitejs/plugin-react": "^6.1.2",
     "babel-plugin-react-compiler": "^1.0.0",
     "css-modules-content-mapper": "workspace:*",
@@ -42,7 +44,7 @@
     "knip": "^6.47.0",
     "sharp": "^0.35.5",
     "typescript": "7.1.0-beta",
-    "vite": "npm:@voidzero-dev/vite-plus-core@8.3.8000",
+    "vite": "npm:@voidzero-dev/vite-plus-core@8.3.8001",
     "vite-plugin-pwa": "^2.0.0",
     "vite-plus": "latest",
     "workbox-window": "^7.4.1"

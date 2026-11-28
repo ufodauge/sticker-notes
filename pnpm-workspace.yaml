@@ -2,6 +2,6 @@ packages:
   - tools/*
 
 overrides:
-  # vite-plus 1.7 bundles its own Vite build and expects this exact core;
+  # vite-plus 1.8 bundles its own Vite build and expects this exact core;
   # the old `vitest` → vite-plus-test override (0.1.x) pulled in an incompatible core
-  vite: "npm:@voidzero-dev/vite-plus-core@8.3.8000"
+  vite: "npm:@voidzero-dev/vite-plus-core@8.3.8001"

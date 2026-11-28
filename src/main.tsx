@@ -36,12 +36,22 @@ const Samples =
     ? lazy(() => import("./ui/samples/Samples.tsx").then((m) => ({ default: m.Samples })))
     : null;
 const samples = Samples !== null && new URLSearchParams(location.search).has("samples");
+// debug builds only: `?room` tries the three-dimensional desk (a prototype)
+const Room3D =
+  import.meta.env.DEV || import.meta.env.VITE_DEBUG === "1"
+    ? lazy(() => import("./ui/room/Room3D.tsx").then((m) => ({ default: m.Room3D })))
+    : null;
+const room = Room3D !== null && new URLSearchParams(location.search).has("room");
 
 const root = document.getElementById("root");
 if (root) {
   createRoot(root).render(
     <StrictMode>
-      {Samples && samples ? (
+      {Room3D && room ? (
+        <Suspense fallback={null}>
+          <Room3D />
+        </Suspense>
+      ) : Samples && samples ? (
         <Suspense fallback={null}>
           <Samples />
         </Suspense>

@@ -213,6 +213,18 @@ export const debugText = {
   hourClock: "端末の時計",
   hourAt: (h: number) => `${h}時`,
   samples: "見本(場面と素材)",
+  // the three-dimensional desk prototype (?room)
+  room: {
+    weak: "この端末では重いかも(動きが遅いときは軽くして)",
+    lighter: "軽くする",
+    hour: (h: number) =>
+      `時刻 ${Math.floor(h)}:${String(Math.round((h % 1) * 60)).padStart(2, "0")}`,
+    month: (m: number) => `${m}月`,
+    weather: "天気",
+    weathers: { clear: "晴れ", cloudy: "くもり", rain: "雨", snow: "雪" },
+    edit: "並べかえ",
+    hint: "本棚の背を押すと取り出す・机の帳面を押すとしまう・PC を押すと開け閉め・並べかえ中はドラッグで動かす",
+  },
   flows: "流れを見る",
   flowsClose: "流れを閉じる",
   flowsFire: "出来事を起こす",
