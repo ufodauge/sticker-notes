@@ -25,6 +25,7 @@
 - 場面: `src/ui/scene/DeskView.tsx`(画面より広い机、木目、机に貼ったシール、真ん中のシール帳)、`Room.tsx`(時刻の光)、`DeskTop.tsx`(机に貼ったシールの扱い)
 - シール帳: `src/ui/album/`(ページめくり、剥がす・貼る、ポケット、机の引き出し(捨てたシールが入り、取り出せる。`Drawer.tsx`))
 - ツールバーのアイコン: `src/ui/PixelIcon.tsx`(16×16 のドット絵をそのまま書く)
+- 3D の机(`?room`、`docs/room-3d.md`): `src/ui/room/Room3D.tsx`(操作の板)、`room-scene.ts`(three.js の場面。物はコードで描く)、`room-assets.ts`(物の名前の表。`public/room/` にファイルがあれば、コードの形と入れ替える)。モデルとテクスチャの決まりは `docs/room-assets.md`
 
 ## 出来事と流れ
 

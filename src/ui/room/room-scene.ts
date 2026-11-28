@@ -1,12 +1,14 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { roomAssets } from "./room-assets.ts";
 
 // A prototype (debug builds only, `?room`): the desk seen from above at a slant, in three
 // dimensions. On it, on a grid, things that can be moved about: open albums, a laptop whose lid
 // opens and shuts; beside it a bookshelf the albums are taken from and put back on; at the back a
 // window with a plant, the sun coming in by the hour and the time of year, and the weather
-// outside. Everything is drawn from code (no image files). Not part of the app: a way to feel the
-// idea before deciding on it.
+// outside. Everything is drawn from code; a designer's file takes a drawn thing's place when there
+// is one (room-assets.ts, docs/room-assets.md). Not part of the app: a way to feel the idea
+// before deciding on it.
 
 export type Weather = "clear" | "cloudy" | "rain" | "snow";
 
@@ -150,6 +152,7 @@ function makeLaptop(): { group: THREE.Group; lid: THREE.Group; screen: THREE.Mes
   group.add(keys);
   // the lid hinges at the back edge
   const lid = new THREE.Group();
+  lid.name = "lid";
   lid.position.set(0, 0.02, -0.21);
   const shell = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.012, 0.42), metal);
   shell.position.set(0, 0.006, 0.21);
@@ -159,6 +162,7 @@ function makeLaptop(): { group: THREE.Group; lid: THREE.Group; screen: THREE.Mes
     new THREE.PlaneGeometry(0.56, 0.36),
     new THREE.MeshStandardMaterial({ color: "#0d1117", emissive: "#b9c9dc", emissiveIntensity: 0 }),
   );
+  screen.name = "screen";
   screen.rotation.x = Math.PI / 2;
   screen.position.set(0, -0.001, 0.21);
   lid.add(screen);
@@ -216,6 +220,8 @@ export function createRoom(host: HTMLElement, options: RoomOptions): Room {
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   host.append(renderer.domElement);
+  // models and textures from files, where a designer has made them
+  const assets = roomAssets(renderer.domElement);
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color("#2b2420");
@@ -269,15 +275,18 @@ export function createRoom(host: HTMLElement, options: RoomOptions): Room {
   controls.update();
 
   // the floor, in the room only: through the window there is only the sky
-  const floor = new THREE.Mesh(
-    new THREE.PlaneGeometry(12, 6),
-    new THREE.MeshStandardMaterial({ map: wood("#6b4a33", "#3a2618"), roughness: 0.85 }),
-  );
+  const floorMat = new THREE.MeshStandardMaterial({
+    map: wood("#6b4a33", "#3a2618"),
+    roughness: 0.85,
+  });
+  assets.texture("floor-wood", floorMat);
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(12, 6), floorMat);
   floor.rotation.x = -Math.PI / 2;
   floor.position.z = roomWallZ + 3;
   floor.receiveShadow = true;
   scene.add(floor);
   const wallMat = new THREE.MeshStandardMaterial({ color: "#e9e2d6", roughness: 0.95 });
+  assets.texture("wall", wallMat);
   // the room's wall, on both sides of the recess
   [
     [-5, -seatFront / 2],
@@ -333,6 +342,9 @@ export function createRoom(host: HTMLElement, options: RoomOptions): Room {
   above.position.set(0, (WALL_H + win.y + win.h / 2) / 2, wallZ);
   scene.add(above);
   const frameMat = new THREE.MeshStandardMaterial({ color: "#f5f2ec", roughness: 0.6 });
+  // the frame's origin is the window's centre (the bars are drawn where they are in the room)
+  const frameParts = new THREE.Group();
+  frameParts.position.set(-win.x, -win.y, -wallZ);
   const bars: readonly (readonly [number, number, number, number])[] = [
     [win.x, win.y + win.h / 2, win.w, 0.08],
     [win.x, win.y - win.h / 2, win.w, 0.08],
@@ -345,27 +357,34 @@ export function createRoom(host: HTMLElement, options: RoomOptions): Room {
     const bar = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.1), frameMat);
     bar.position.set(x, y, wallZ);
     bar.castShadow = true;
-    scene.add(bar);
+    frameParts.add(bar);
   });
+  const frame = assets.model("window-frame", frameParts).object;
+  frame.position.set(win.x, win.y, wallZ);
+  scene.add(frame);
   const skyMat = new THREE.MeshBasicMaterial({ color: "#9cc9f0" });
   const sky = new THREE.Mesh(new THREE.PlaneGeometry(12, 7), skyMat);
   sky.position.set(win.x, win.y, wallZ - 3);
   scene.add(sky);
 
   // the desk, with a drawer in its front
+  // the desk's origin is the middle of its top (its parts are drawn where they are in the room)
+  const deskParts = new THREE.Group();
+  deskParts.position.set(0, -DESK.top, -deskCentreZ);
   const deskTex = wood("#b07a4f", "#6e4527");
   deskTex.repeat.set(2, 1);
   const deskWood = new THREE.MeshStandardMaterial({ map: deskTex, roughness: 0.7 });
+  assets.texture("desk-wood", deskWood);
   const desk = new THREE.Mesh(new THREE.BoxGeometry(DESK.w + 0.2, 0.06, DESK.d + 0.2), deskWood);
   desk.position.set(0, DESK.top - 0.03, deskCentreZ);
   desk.receiveShadow = true;
   desk.castShadow = true;
-  scene.add(desk);
+  deskParts.add(desk);
   const apronMat = new THREE.MeshStandardMaterial({ color: "#8a5a36", roughness: 0.75 });
   const apron = new THREE.Mesh(new THREE.BoxGeometry(DESK.w + 0.2, 0.18, 0.04), apronMat);
   apron.position.set(0, DESK.top - 0.15, deskFrontZ);
   apron.castShadow = true;
-  scene.add(apron);
+  deskParts.add(apron);
   const drawerFront = new THREE.Mesh(
     new THREE.BoxGeometry(1.1, 0.13, 0.02),
     new THREE.MeshStandardMaterial({ color: "#9a6a42", roughness: 0.7 }),
@@ -385,9 +404,12 @@ export function createRoom(host: HTMLElement, options: RoomOptions): Room {
       const leg = new THREE.Mesh(new THREE.BoxGeometry(0.07, DESK.top - 0.06, 0.07), legMat);
       leg.position.set(sx * (DESK.w / 2), (DESK.top - 0.06) / 2, deskCentreZ + sz * (DESK.d / 2));
       leg.castShadow = true;
-      scene.add(leg);
+      deskParts.add(leg);
     }),
   );
+  const deskModel = assets.model("desk", deskParts).object;
+  deskModel.position.set(0, DESK.top, deskCentreZ);
+  scene.add(deskModel);
   const deskOrigin = new THREE.Vector3(-DESK.w / 2, DESK.top, deskBackZ + 0.05);
   const cellCentre = (col: number, row: number, size: Footprint) =>
     new THREE.Vector3(
@@ -418,7 +440,7 @@ export function createRoom(host: HTMLElement, options: RoomOptions): Room {
   scene.add(grid);
 
   // the book stand on the desk: the albums stand between two bookends
-  const stand = new THREE.Group();
+  const standParts = new THREE.Group();
   const endMat = new THREE.MeshStandardMaterial({
     color: "#3a3f44",
     metalness: 0.5,
@@ -428,11 +450,12 @@ export function createRoom(host: HTMLElement, options: RoomOptions): Room {
     const end = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.36, 0.2), endMat);
     end.position.set(x, 0.18, 0);
     end.castShadow = true;
-    stand.add(end);
+    standParts.add(end);
     const foot = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.008, 0.2), endMat);
     foot.position.set(x + (x < 0 ? 0.06 : -0.06), 0.004, 0);
-    stand.add(foot);
+    standParts.add(foot);
   });
+  const stand = assets.model("book-stand", standParts).object;
 
   // the albums: each either standing in the stand (a spine) or open on the desk
   type Album = { seed: number; spine: THREE.Mesh; open: THREE.Group | null };
@@ -502,8 +525,9 @@ export function createRoom(host: HTMLElement, options: RoomOptions): Room {
     items.splice(i, 1);
   };
   // the stand at the back left, the laptop at the back right (the plant is on the window seat)
-  const plant = makePlant();
-  plant.scale.setScalar(1.5);
+  const plantDrawn = makePlant();
+  plantDrawn.scale.setScalar(1.5);
+  const plant = assets.model("plant", plantDrawn).object;
   plant.position.set(-seatBack / 2 + 0.3, seatTop, wallZ + 0.3);
   scene.add(plant);
   addItem({
@@ -514,9 +538,10 @@ export function createRoom(host: HTMLElement, options: RoomOptions): Room {
     kind: "mug",
   });
   const laptop = makeLaptop();
+  const laptopModel = assets.model("laptop", laptop.group);
   addItem({
     id: "laptop",
-    object: laptop.group,
+    object: laptopModel.object,
     size: { cols: 3, rows: 2 },
     cell: { col: 8, row: 0 },
     kind: "laptop",
@@ -569,7 +594,7 @@ export function createRoom(host: HTMLElement, options: RoomOptions): Room {
   });
   addItem({
     id: "lamp",
-    object: lampGroup,
+    object: assets.model("lamp", lampGroup, { node: "light", object: lamp }).object,
     size: { cols: 1, rows: 1 },
     cell: { col: 11, row: 0 },
     kind: "lamp",
@@ -745,8 +770,10 @@ export function createRoom(host: HTMLElement, options: RoomOptions): Room {
     // the lid eases toward open or shut; the screen lights when open
     const target = lid.open ? -1.85 : 0;
     lid.angle += (target - lid.angle) * Math.min(1, dt * 6);
-    laptop.lid.rotation.x = lid.angle;
-    const screenMat = laptop.screen.material;
+    const lidNode = laptopModel.node("lid") ?? laptop.lid;
+    lidNode.rotation.x = lid.angle;
+    const screen = laptopModel.node("screen");
+    const screenMat = screen instanceof THREE.Mesh ? screen.material : null;
     if (screenMat instanceof THREE.MeshStandardMaterial) {
       screenMat.emissiveIntensity = lid.open ? 0.35 : 0;
     }
@@ -793,6 +820,7 @@ export function createRoom(host: HTMLElement, options: RoomOptions): Room {
     dispose: () => {
       cancelAnimationFrame(state.frame);
       stop.abort();
+      assets.dispose();
       controls.dispose();
       renderer.dispose();
       renderer.domElement.remove();
