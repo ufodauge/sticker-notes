@@ -6,7 +6,7 @@ test("?room loads the files the manifest lists, without page errors", async ({ p
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/?room");
-  const canvas = page.locator("canvas");
+  const canvas = page.locator("canvas[data-engine]");
   await expect(canvas).toBeVisible();
   await expect(canvas).toHaveAttribute("data-room-assets", /\bplant\b/, { timeout: 15_000 });
   expect(errors).toEqual([]);
