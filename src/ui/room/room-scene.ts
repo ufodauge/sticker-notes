@@ -222,7 +222,16 @@ export function createRoom(host: HTMLElement, options: RoomOptions): Room {
 
   // where things are: the desk pushed against the wall under a big window
   const deskBackZ = -1.0;
-  const wallZ = deskBackZ - 0.08;
+  // the room's wall runs just behind the desk; in it, a window seat: a recess whose side walls
+  // narrow toward the back, with a seat at about the desk's height and the window at its back.
+  // The desk is pushed up against the seat; the plant stands on the seat
+  const roomWallZ = deskBackZ - 0.02;
+  const seatDepth = 0.9;
+  const wallZ = roomWallZ - seatDepth;
+  const seatFront = DESK.w + 0.1;
+  const seatBack = seatFront * 0.68;
+  const seatTop = DESK.top - 0.05;
+  const WALL_H = 6;
   const deskCentreZ = deskBackZ + 0.05 + DESK.d / 2;
   const deskFrontZ = deskBackZ + 0.1 + DESK.d;
 
@@ -259,34 +268,70 @@ export function createRoom(host: HTMLElement, options: RoomOptions): Room {
   });
   controls.update();
 
-  // the room: a floor, and the wall behind the desk with the window in it
-  // the floor stops at the wall: through the window there is only the sky
+  // the floor, in the room only: through the window there is only the sky
   const floor = new THREE.Mesh(
     new THREE.PlaneGeometry(12, 6),
     new THREE.MeshStandardMaterial({ map: wood("#6b4a33", "#3a2618"), roughness: 0.85 }),
   );
   floor.rotation.x = -Math.PI / 2;
-  floor.position.z = wallZ + 3;
+  floor.position.z = roomWallZ + 3;
   floor.receiveShadow = true;
   scene.add(floor);
   const wallMat = new THREE.MeshStandardMaterial({ color: "#e9e2d6", roughness: 0.95 });
-  // a window seat: the desk fits in a nook, walls close on both sides, and the window fills the
-  // nook's back from just above the desk up, so its frame throws a cross over the desk
-  const nook = DESK.w / 2 + 0.12;
-  const win = { x: 0, y: DESK.top + 1.05, w: nook * 2 - 0.02, h: 1.8 };
-  const panels: readonly (readonly [number, number, number, number])[] = [
-    [-5, win.x - win.w / 2, 0, 4],
-    [win.x + win.w / 2, 5, 0, 4],
-    [win.x - win.w / 2, win.x + win.w / 2, 0, win.y - win.h / 2],
-    [win.x - win.w / 2, win.x + win.w / 2, win.y + win.h / 2, 4],
-  ];
-  panels.forEach(([x0, x1, y0, y1]) => {
-    const m = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, y1 - y0, 0.1), wallMat);
-    m.position.set((x0 + x1) / 2, (y0 + y1) / 2, wallZ);
+  // the room's wall, on both sides of the recess
+  [
+    [-5, -seatFront / 2],
+    [seatFront / 2, 5],
+  ].forEach(([x0 = 0, x1 = 0]) => {
+    // solid back to the window's line (the recess is cut into it), and taller than where one
+    // looks from, so nothing is seen over it
+    const m = new THREE.Mesh(
+      new THREE.BoxGeometry(x1 - x0, WALL_H, roomWallZ - wallZ + 0.1),
+      wallMat,
+    );
+    m.position.set((x0 + x1) / 2, WALL_H / 2, (roomWallZ + wallZ) / 2);
     m.receiveShadow = true;
-    m.castShadow = true;
     scene.add(m);
   });
+  // the recess's side walls, closing in toward the window
+  const slant = (seatFront - seatBack) / 2;
+  const sideLength = Math.hypot(slant, seatDepth);
+  [-1, 1].forEach((side) => {
+    const wall = new THREE.Mesh(new THREE.BoxGeometry(0.08, WALL_H, sideLength), wallMat);
+    wall.position.set(
+      (side * (seatFront / 2 + seatBack / 2)) / 2,
+      WALL_H / 2,
+      (roomWallZ + wallZ) / 2,
+    );
+    wall.rotation.y = Math.atan2(-side * slant, seatDepth);
+    wall.receiveShadow = true;
+    wall.castShadow = true;
+    scene.add(wall);
+  });
+  // the seat: a board over the recess's floor, cut to its shape
+  const seatShape = new THREE.Shape();
+  seatShape.moveTo(-seatFront / 2, -roomWallZ);
+  seatShape.lineTo(seatFront / 2, -roomWallZ);
+  seatShape.lineTo(seatBack / 2, -wallZ);
+  seatShape.lineTo(-seatBack / 2, -wallZ);
+  seatShape.closePath();
+  const seat = new THREE.Mesh(
+    new THREE.ExtrudeGeometry(seatShape, { depth: seatTop, bevelEnabled: false }),
+    new THREE.MeshStandardMaterial({ color: "#efe9df", roughness: 0.8 }),
+  );
+  seat.rotation.x = -Math.PI / 2;
+  seat.receiveShadow = true;
+  seat.castShadow = true;
+  scene.add(seat);
+  // the window at the recess's back: from just above the seat up, its frame throwing a cross
+  // over the seat and the desk
+  const win = { x: 0, y: seatTop + 1.0, w: seatBack - 0.04, h: 1.8 };
+  const above = new THREE.Mesh(
+    new THREE.BoxGeometry(seatFront, WALL_H - (win.y + win.h / 2), 0.1),
+    wallMat,
+  );
+  above.position.set(0, (WALL_H + win.y + win.h / 2) / 2, wallZ);
+  scene.add(above);
   const frameMat = new THREE.MeshStandardMaterial({ color: "#f5f2ec", roughness: 0.6 });
   const bars: readonly (readonly [number, number, number, number])[] = [
     [win.x, win.y + win.h / 2, win.w, 0.08],
@@ -301,14 +346,6 @@ export function createRoom(host: HTMLElement, options: RoomOptions): Room {
     bar.position.set(x, y, wallZ);
     bar.castShadow = true;
     scene.add(bar);
-  });
-  // the nook's side walls, from the window wall out past the desk's front
-  [-1, 1].forEach((side) => {
-    const wall = new THREE.Mesh(new THREE.BoxGeometry(0.1, 3.2, 2.6), wallMat);
-    wall.position.set(side * (nook + 0.05), 1.6, wallZ + 1.3);
-    wall.receiveShadow = true;
-    wall.castShadow = true;
-    scene.add(wall);
   });
   const skyMat = new THREE.MeshBasicMaterial({ color: "#9cc9f0" });
   const sky = new THREE.Mesh(new THREE.PlaneGeometry(12, 7), skyMat);
@@ -464,21 +501,16 @@ export function createRoom(host: HTMLElement, options: RoomOptions): Room {
     scene.remove(it.object);
     items.splice(i, 1);
   };
-  // the plant in the back left corner, the stand beside it, the laptop at the back right
+  // the stand at the back left, the laptop at the back right (the plant is on the window seat)
   const plant = makePlant();
-  plant.scale.setScalar(1.35);
-  addItem({
-    id: "plant",
-    object: plant,
-    size: { cols: 1, rows: 1 },
-    cell: { col: 0, row: 0 },
-    kind: "mug",
-  });
+  plant.scale.setScalar(1.5);
+  plant.position.set(-seatBack / 2 + 0.3, seatTop, wallZ + 0.3);
+  scene.add(plant);
   addItem({
     id: "stand",
     object: stand,
     size: { cols: 2, rows: 1 },
-    cell: { col: 1, row: 0 },
+    cell: { col: 0, row: 0 },
     kind: "mug",
   });
   const laptop = makeLaptop();
@@ -695,7 +727,7 @@ export function createRoom(host: HTMLElement, options: RoomOptions): Room {
     // pinch or a turn of the wheel
     const far =
       home.distanceTo(new THREE.Vector3(0, DESK.top, deskCentreZ - 0.2)) *
-      Math.max(1, 1.5 / camera.aspect);
+      Math.max(1, 1.15 / camera.aspect);
     controls.maxDistance = far;
     const back = camera.position.clone().sub(controls.target);
     if (back.length() > far || !resized.once)
